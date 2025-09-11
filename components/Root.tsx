@@ -1,5 +1,17 @@
-import React from "react";
+import queryClient from "@/config/tanstack-query";
+import App from "./App";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { HotkeysProvider } from "react-hotkeys-hook";
+
+import "../assets/main.css";
+import "../assets/font.css";
 
 export default function Root() {
-  return <div>Root</div>;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <HotkeysProvider initiallyActiveScopes={["settings"]}>
+        <App />
+      </HotkeysProvider>
+    </QueryClientProvider>
+  );
 }

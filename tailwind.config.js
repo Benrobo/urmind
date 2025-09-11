@@ -33,6 +33,7 @@ export default {
       fontFamily: {
         inter: ["Inter", "sans-serif"],
         geistmono: ["Geist Mono", "monospace"],
+        poppins: ["Poppins", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -163,6 +164,7 @@ export default {
           200: "rgba(228, 41, 93, 0.3)",
         },
         purple: {
+          50: "#f6effb",
           100: "#8f63f3",
           102: "#7f21cc",
           105: "rgb(143, 99, 243,.3)",

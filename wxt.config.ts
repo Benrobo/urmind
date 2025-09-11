@@ -13,8 +13,16 @@ export default defineConfig({
   vite: () => ({
     plugins: [tailwindcss()],
   }),
-  manifest: {
-    permissions: ["sidePanel", "storage", "contextMenus"],
-    host_permissions: ["https://en.wikipedia.org/"],
+  manifest: ({ browser, command, manifestVersion, mode }) => {
+    return {
+      name: "Urmind",
+      description: "Your mind in your browser.",
+      version: "0.1.0",
+      permissions: ["storage", "activeTab", "cookies", "alarms", "scripting"],
+      host_permissions: ["https://en.wikipedia.org/*"],
+      action: {
+        default_title: "Urmind",
+      },
+    };
   },
 });

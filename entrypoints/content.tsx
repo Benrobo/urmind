@@ -1,3 +1,4 @@
+import "~/assets/main.css";
 import { browser } from "wxt/browser";
 import { ContentScriptContext } from "wxt/utils/content-script-context";
 import { defineContentScript } from "wxt/utils/define-content-script";
@@ -5,21 +6,21 @@ import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
 import ReactDOM from "react-dom/client";
 import Root from "@/components/Root.tsx";
 
+import "../assets/main.css";
+import { SUPPORTED_DOMAINS } from "@/config";
+
 export default defineContentScript({
-  matches: ["https://en.wikipedia.org/*"],
+  matches: SUPPORTED_DOMAINS,
+  cssInjectionMode: "ui",
+  runAt: "document_start",
   async main(ctx) {
     console.log("Hello content.");
 
-    // Example: Open sidepanel when user clicks a specific element
-    document.addEventListener("click", async (event) => {
-      try {
-        await browser.runtime.sendMessage({ action: "openSidePanel" });
-      } catch (error) {
-        console.log("Could not open sidepanel:", error);
-      }
-    });
+    const mountUi = async () => {
+      await renderMainAppUi(ctx);
+    };
 
-    await renderMainAppUi(ctx);
+    await mountUi();
   },
 });
 
@@ -27,13 +28,13 @@ async function renderMainAppUi(ctx: ContentScriptContext) {
   await waitForBody();
 
   const ui = await createShadowRootUi(ctx, {
-    name: "waymaker-context-keeper",
+    name: "urmind-wrapper",
     position: "overlay",
     anchor: "body",
     onMount: (container: HTMLElement) => {
       // Don't mount react app directly on <body>
       const wrapper = document.createElement("div");
-      wrapper.className = "waymaker-ctx-keeper-wrapper";
+      wrapper.className = "urmind-wrapper";
       wrapper.style.background = "transparent";
       wrapper.style.backgroundColor = "transparent";
       container.append(wrapper);
