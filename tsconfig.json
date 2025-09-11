@@ -1,8 +1,15 @@
 {
   "extends": "./.wxt/tsconfig.json",
   "compilerOptions": {
+    "lib": ["es2022", "DOM", "DOM.Iterable"],
+    "declaration": true,
+    "declarationMap": true,
+    "incremental": false,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noUncheckedIndexedAccess": true,
     "jsx": "react-jsx",
-    "types": [""],
+    "types": ["chrome"],
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "Bundler",
@@ -13,12 +20,12 @@
     "strict": true,
     "skipLibCheck": true,
     "outDir": "dist",
-    "allowImportingTsExtensions": true,
-    "paths": {
-      "@/*": ["./*"],
-      "#imports": ["./.wxt/types/imports-module.d.ts"]
-    }
+    "allowImportingTsExtensions": true
+    // "paths": {
+    //   "@/*": ["./*"],
+    //   "#imports": ["./.wxt/types/imports-module.d.ts"]
+    // }
   },
-  "include": ["../**/*", "./wxt.d.ts", "./vite-env.d.ts"],
-  "exclude": ["../.output"]
+  "include": ["./**/*", "./wxt.d.ts", "./vite-env.d.ts"],
+  "exclude": ["./.output"]
 }
