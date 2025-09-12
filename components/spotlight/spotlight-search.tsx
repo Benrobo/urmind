@@ -1,58 +1,38 @@
 import React, { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import {
-  X,
   Sparkles,
-  ArrowRight,
   Command,
   FileText,
-  Play,
   Globe,
   BookOpen,
-  Code,
   LucideIcon,
+  Search,
+  Hash,
+  ChevronUp,
+  ChevronDown,
+  CornerDownLeft,
+  Image,
+  File,
 } from "lucide-react";
 import { SearchResult, SpotlightProps, SearchResultType } from "@/types/search";
 import { useHotkeys } from "react-hotkeys-hook";
 import { contextSpotlightVisibilityStore } from "@/store/context.store";
 import useStorageStore from "@/hooks/useStorageStore";
 
-// Search utility functions
-const getResultIcon = (type: SearchResultType): LucideIcon => {
+// Get icon for content type
+const getContentIcon = (type: string): LucideIcon => {
   switch (type) {
-    case "context":
-      return BookOpen;
-    case "artifact":
-      return Code;
-    case "page":
+    case "text":
       return FileText;
-    case "video":
-      return Play;
-    case "link":
+    case "url":
       return Globe;
-    case "document":
-      return FileText;
+    case "artifact:document":
+      return File;
+    case "artifact:image":
+      return Image;
     default:
       return FileText;
-  }
-};
-
-const getResultIconColor = (type: SearchResultType): string => {
-  switch (type) {
-    case "context":
-      return "text-blue-100";
-    case "artifact":
-      return "text-purple-100";
-    case "page":
-      return "text-gray-102.1";
-    case "video":
-      return "text-red-100";
-    case "link":
-      return "text-blue-100";
-    case "document":
-      return "text-gray-102.1";
-    default:
-      return "text-gray-102.1";
   }
 };
 
@@ -62,12 +42,9 @@ export default function SpotlightSearch({
   results = [],
   onResultClick,
   onClose,
-  actions = [],
 }: SpotlightProps) {
   const [searchQuery, setSearchQuery] = useState(initialQuery);
-  const { value: isVisible, setValue: setVisibility } = useStorageStore(
-    contextSpotlightVisibilityStore
-  );
+  const { value: isVisible } = useStorageStore(contextSpotlightVisibilityStore);
 
   // Hotkey configuration
   const hotKeysConfigOptions = {
@@ -110,29 +87,64 @@ export default function SpotlightSearch({
     hotKeysConfigOptions
   );
 
-  const filteredResults = useMemo(() => {
-    if (!searchQuery.trim()) return results;
-
-    const query = searchQuery.toLowerCase();
-    return results.filter(
-      (result) =>
-        result.title.toLowerCase().includes(query) ||
-        result.description?.toLowerCase().includes(query) ||
-        result.source?.toLowerCase().includes(query) ||
-        result.metadata?.tags?.some((tag) => tag.toLowerCase().includes(query))
-    );
-  }, [searchQuery, results]);
-
-  const defaultActions = [
+  // Recent saved context items
+  const savedContext = [
     {
-      id: "ask-urmind",
-      label: "Ask Urmind",
-      icon: Sparkles,
-      onClick: () => console.log("Ask Urmind clicked"),
+      id: "1",
+      title: "Docker Setup Tutorial",
+      subtitle: "Highlighted text from docker.com • 2 hours ago",
+      icon: FileText,
+      type: "text",
+      timestamp: "2h ago",
+    },
+    {
+      id: "2",
+      title: "Xbox Game Pass Research",
+      subtitle: "gaming.microsoft.com/xbox/game-pass",
+      icon: Globe,
+      type: "url",
+      timestamp: "1d ago",
+    },
+    {
+      id: "3",
+      title: "React Best Practices.pdf",
+      subtitle: "PDF document saved from dev.to",
+      icon: File,
+      type: "artifact:document",
+      timestamp: "3h ago",
+    },
+    {
+      id: "4",
+      title: "UI Design Screenshot",
+      subtitle: "Interface mockup saved from Figma",
+      icon: Image,
+      type: "artifact:image",
+      timestamp: "1h ago",
     },
   ];
 
-  const allActions = [...defaultActions];
+  const filteredContext = useMemo(() => {
+    if (!searchQuery.trim()) return savedContext;
+
+    const query = searchQuery.toLowerCase();
+    return savedContext.filter(
+      (item) =>
+        item.title.toLowerCase().includes(query) ||
+        item.subtitle.toLowerCase().includes(query) ||
+        item.type.toLowerCase().includes(query)
+    );
+  }, [searchQuery, savedContext]);
+
+  // AI action for querying the user's memory
+  const aiAction = {
+    id: "ask-urmind-ai",
+    title: "Ask UrMind AI",
+    subtitle: searchQuery
+      ? `Ask about: "${searchQuery}"`
+      : "Ask AI about anything in your memory",
+    icon: Sparkles,
+    shortcut: "⌘⏎",
+  };
 
   const handleResultClick = (result: SearchResult) => {
     onResultClick?.(result);
@@ -157,10 +169,10 @@ export default function SpotlightSearch({
   return (
     <div
       className={cn(
-        "w-[800px] min-h-[450px] max-h-[80vh] rounded-xl fixed font-poppins",
-        "bg-gradient-to-b from-dark-100/50 via-dark-101/60 to-dark-101/50 backdrop-blur-xl",
-        "border border-white-100/30",
-        "shadow-2xl shadow-dark-100/50"
+        "w-[700px] max-h-[80vh] rounded-[12px] fixed",
+        "bg-gray-100/95 backdrop-blur-xl",
+        "border border-gray-102/30",
+        "shadow-2xl shadow-black/20"
       )}
       style={{
         zIndex: 1000,
@@ -170,151 +182,116 @@ export default function SpotlightSearch({
       }}
       onKeyDown={handleKeyDown}
     >
-      <div className="p-4 border-b-[1px] border-white-100/20">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3 flex-1">
-            <input
-              type="text"
-              placeholder={placeholder}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 bg-transparent text-white placeholder-gray-102.1 text-sm outline-none"
-              autoFocus
-            />
+      {/* Search Header */}
+      <div className="px-4 py-3 border-b border-white-400/60">
+        <div className="flex items-center space-x-3">
+          <Search size={18} className="text-white/60" />
+          <input
+            type="text"
+            placeholder="Ask your mind... or search your memory"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 bg-transparent text-white placeholder-white/60 text-sm outline-none"
+            autoFocus
+          />
+          <div className="flex items-center space-x-1 text-white/60 text-xs">
+            <span className="bg-white/10 px-2 py-1 rounded text-xs">⌘</span>
+            <span>K</span>
           </div>
-          {/* <div className="flex items-center space-x-2">
-            <button
-              onClick={handleClose}
-              className="p-1 hover:bg-gray-102 rounded transition-colors"
-            >
-              <X size={20} className="w-4 h-4 text-white-100" />
-            </button>
-          </div> */}
         </div>
       </div>
 
-      <div className="h-[400px] flex flex-col overflow-hidden">
-        <div className="flex-1 p-4 overflow-y-auto customScrollbar">
-          <div className="mb-6">
-            <h3 className="text-xs font-medium font-poppins text-gray-102.1 mb-3">
-              Actions
+      <div className="max-h-[500px] overflow-y-auto">
+        {/* Ask UrMind AI Action */}
+        <div className="px-4 py-3 border-b border-gray-102/20">
+          <div className="flex items-center space-x-3 p-3 rounded-lg bg-white/15 hover:bg-white/20 cursor-pointer group border border-white/20">
+            <div className="w-8 h-8 rounded bg-white/20 flex items-center justify-center">
+              <Sparkles size={16} className="text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-white">
+                {aiAction.title}
+              </div>
+              <div className="text-xs text-white/70">{aiAction.subtitle}</div>
+            </div>
+            <div className="text-xs text-white bg-white/20 px-2 py-1 rounded font-mono">
+              {aiAction.shortcut}
+            </div>
+          </div>
+        </div>
+
+        {/* Saved Context Section */}
+        <div className="px-4 py-3">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-medium text-white">
+              Your saved context
             </h3>
-            <div className="space-y-2">
-              {allActions.map((action, index) => {
-                const IconComponent = action.icon;
-                return (
-                  <div
-                    key={action.id}
-                    data-action={index === 0 ? "first" : undefined}
-                    className="flex items-center space-x-3 p-2 rounded-sm hover:bg-gray-102/90 cursor-pointer font-poppins transition-colors"
-                    onClick={action.onClick}
-                  >
-                    <IconComponent size={20} className="text-blue-100" />
-                    <span className="text-sm text-white-100 font-normal font-poppins">
-                      {action.label}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+            <button className="text-xs text-white/60 hover:text-white underline">
+              View all
+            </button>
           </div>
 
-          {filteredResults.length > 0 && (
-            <div>
-              <h3 className="text-xs font-poppins font-medium text-gray-102.1 mb-3">
-                Best matches
-              </h3>
-              <div className="space-y-2">
-                {filteredResults.map((result) => {
-                  const IconComponent = getResultIcon(result.type);
-                  const iconColor = getResultIconColor(result.type);
-
-                  return (
-                    <div
-                      key={result.id}
-                      className="p-3 rounded-sm hover:bg-gray-102/50 cursor-pointer border border-gray-100/20 transition-colors"
-                      onClick={() => handleResultClick(result)}
-                    >
-                      <div className="flex items-start space-x-3">
-                        {result.icon ? (
-                          <span className="text-xl">{result.icon}</span>
-                        ) : (
-                          <IconComponent className={`w-5 h-5 ${iconColor}`} />
-                        )}
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <span className="font-medium text-white">
-                              {result.title}
-                            </span>
-                            {result.metadata?.tags &&
-                              result.metadata.tags.length > 0 && (
-                                <span className="text-xs text-gray-102.1 bg-gray-100/20 px-2 py-0.5 rounded">
-                                  {result.metadata.tags[0]}
-                                </span>
-                              )}
-                          </div>
-                          {result.source && (
-                            <div className="text-xs text-gray-102.1 mb-2">
-                              {result.source}
-                            </div>
-                          )}
-                          {result.description && (
-                            <p className="text-sm text-gray-102.1 leading-relaxed">
-                              {result.description}
-                            </p>
-                          )}
-                          {result.metadata && (
-                            <div className="flex items-center space-x-4 mt-2 text-xs text-gray-102.1">
-                              {result.metadata.created && (
-                                <span>
-                                  Created {result.metadata.author} •{" "}
-                                  {result.metadata.created}
-                                </span>
-                              )}
-                              {result.metadata.edited && (
-                                <span>
-                                  Edited {result.metadata.author} •{" "}
-                                  {result.metadata.edited}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        <IconComponent className={`w-5 h-5 ${iconColor}`} />
-                      </div>
+          <div className="space-y-1">
+            {filteredContext.map((item) => {
+              const IconComponent = getContentIcon(item.type);
+              return (
+                <div
+                  key={item.id}
+                  className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/10 cursor-pointer group"
+                >
+                  <div className="w-8 h-8 rounded bg-white/10 flex items-center justify-center">
+                    <IconComponent size={16} className="text-white/80" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-white truncate">
+                      {item.title}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {filteredResults.length === 0 && searchQuery.trim() && (
-            <div className="w-full min-h-[200px] flex-center text-center py-8 ">
-              <p className="text-white-100/50 font-geistmono text-sm">
-                No results found for{" "}
-                <span className="text-white-100">"{searchQuery}"</span>
-              </p>
-            </div>
-          )}
+                    <div className="text-xs text-white/60 truncate">
+                      {item.subtitle}
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="text-xs text-white/40 bg-white/10 px-2 py-1 rounded">
+                      {item.type}
+                    </div>
+                    <div className="text-xs text-white/50">
+                      {item.timestamp}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* Bottom Footer */}
-      <div className="border-t-[1px] border-t-gray-102 bg-dark-102 px-4 py-3 rounded-b-xl">
-        <div className="w-full flex items-center justify-between text-sm">
-          <div></div>
-          <div className="flex items-center space-x-4">
-            <div className="w-px h-4 bg-gray-100/30"></div>
-            <div className="flex font-geistmono items-center space-x-2 text-gray-102.1 hover:text-white cursor-pointer transition-colors">
-              <span className="text-xs">Actions</span>
-              <div className="flex items-center space-x-1 bg-gray-102 px-2 py-1 rounded">
-                <Command size={12} />
-              </div>
-              <div className="flex items-center space-x-1 bg-gray-102 px-2 py-0.5 rounded">
-                <span className="text-xs">K</span>
-              </div>
+      {/* Bottom Navigation */}
+      <div className="border-t border-white-400/60 px-4 py-3 bg-gray-100/50 backdrop-blur-sm rounded-b-[12px]">
+        <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md">
+              <ChevronUp size={12} className="text-white/80" />
+              <ChevronDown size={12} className="text-white/80" />
+              <span className="text-white/80 ml-1">navigate</span>
             </div>
+            <div className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md">
+              <Hash size={12} className="text-white/80" />
+              <span className="text-white/80 ml-1">tags</span>
+            </div>
+            <div className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md">
+              <CornerDownLeft size={12} className="text-white/80" />
+              <span className="text-white/80 ml-1">open</span>
+            </div>
+            <div className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md">
+              <span className="text-white/80 bg-white/20 px-1.5 py-0.5 rounded text-xs font-mono">
+                esc
+              </span>
+              <span className="text-white/80 ml-1">close</span>
+            </div>
+          </div>
+          <div className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md">
+            <CornerDownLeft size={12} className="text-white/80" />
+            <span className="text-white/80 ml-1">parent</span>
           </div>
         </div>
       </div>

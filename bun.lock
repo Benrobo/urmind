@@ -6,7 +6,6 @@
       "dependencies": {
         "@fontsource-variable/geist-mono": "^5.2.6",
         "@fontsource-variable/inter": "^5.2.6",
-        "@fontsource/poppins": "^5.2.6",
         "@tailwindcss/postcss": "^4.1.11",
         "@tanstack/react-query": "^5.83.0",
         "@wxt-dev/storage": "^1.1.1",
@@ -147,8 +146,6 @@
     "@fontsource-variable/geist-mono": ["@fontsource-variable/geist-mono@5.2.6", "", {}, "sha512-vw6T9JGTrYJ980bn7W8iTPhe2jVK5ifunVs7xh9dfTVArjDSkJs03JjeZrH5LKEpGABLXSlSlNU57HRm4tmFMg=="],
 
     "@fontsource-variable/inter": ["@fontsource-variable/inter@5.2.6", "", {}, "sha512-jks/bficUPQ9nn7GvXvHtlQIPudW7Wx8CrlZoY8bhxgeobNxlQan8DclUJuYF2loYRrGpfrhCIZZspXYysiVGg=="],
-
-    "@fontsource/poppins": ["@fontsource/poppins@5.2.6", "", {}, "sha512-NFr0121+vWCfzLDVvSZOzwAjRUaNj6QHA9gtUh/KHHoWf1Qn23EkwVFs63XZ6UtF5K1b3UNmCx77YEMGgV7BOQ=="],
 
     "@isaacs/balanced-match": ["@isaacs/balanced-match@4.0.1", "", {}, "sha512-yzMTt9lEb8Gv7zRioUilSglI0c0smZ9k5D65677DLWLtWJaXIS3CqcGyUFByYKlnUj6TkjLVs54fBl6+TiGQDQ=="],
 
