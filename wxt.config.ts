@@ -19,7 +19,11 @@ export default defineConfig({
       description: "Your mind in your browser.",
       version: "0.1.0",
       permissions: ["storage", "activeTab", "cookies", "alarms", "scripting"],
-      host_permissions: ["https://en.wikipedia.org/*"],
+      host_permissions: [
+        "https://en.wikipedia.org/*",
+        "http://127.0.0.1/*",
+        "http://localhost/*",
+      ],
       action: {
         default_title: "Urmind",
       },

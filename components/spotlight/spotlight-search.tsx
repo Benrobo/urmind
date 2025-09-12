@@ -20,6 +20,7 @@ import { useHotkeys } from "react-hotkeys-hook";
 import { contextSpotlightVisibilityStore } from "@/store/context.store";
 import useStorageStore from "@/hooks/useStorageStore";
 import ChatSessionMessages from "./chat-session/messages";
+import DeepResearchResult from "./deep-research";
 
 // Message and Source interfaces
 interface Message {
@@ -313,12 +314,13 @@ export default function SpotlightSearch({
         </div>
 
         {/* Show Chat Messages or Saved Context */}
-        {showChat ? (
-          <ChatSessionMessages
-            messages={messages}
-            isStreaming={isStreaming}
-            streamingText={streamingText}
-          />
+        {true ? (
+          // <ChatSessionMessages
+          //   messages={messages}
+          //   isStreaming={isStreaming}
+          //   streamingText={streamingText}
+          // />
+          <DeepResearchResult />
         ) : (
           /* Saved Context Section */
           <div className="px-4 py-3">
