@@ -196,7 +196,7 @@ export default function SpotlightSearch({
           />
           <div className="flex items-center space-x-1 text-white/60 text-xs">
             <span className="bg-white/10 px-2 py-1 rounded text-xs">⌘</span>
-            <span>K</span>
+            <span>U</span>
           </div>
         </div>
       </div>
