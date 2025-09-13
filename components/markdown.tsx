@@ -18,7 +18,7 @@ export default function MarkdownRenderer({
       <Markdown
         children={markdownString}
         components={{
-          p: ({ children }) => <p className="mb-4 last:mb-0">{children}</p>,
+          p: ({ children }) => <p className="mb-4 last:mb-3">{children}</p>,
           h1: ({ children }) => (
             <h1 className="text-[15px] font-bold mb-4">{children}</h1>
           ),

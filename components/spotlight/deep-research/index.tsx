@@ -4,6 +4,7 @@ import { MessageSquare, FileText } from "lucide-react";
 import { SpotlightConversations } from "@/types/spotlight";
 import { mockSpotlightConversations } from "@/mock-data/mock-spotlight";
 import MarkdownRenderer from "@/components/markdown";
+import { Collapsible } from "@/components/Collapsible";
 
 export default function DeepResearchResult() {
   return (
@@ -82,7 +83,7 @@ function ResearchMessage() {
                   {/* Active tab underline - 6px wider than tab */}
                   {activeTabRef && (
                     <div
-                      className="absolute bottom-0 h-0.5 bg-white transition-all duration-300 ease-in-out"
+                      className="absolute bottom-0 h-0.5 bg-white transition-all duration-200 ease-in-out"
                       style={{
                         width: `${activeTabRef.offsetWidth + 6}px`,
                         left: `${activeTabRef.offsetLeft}px`,
@@ -136,7 +137,7 @@ function ResearchMessage() {
                         />
                       );
                     case "tool-searchContexts":
-                      return <p key={idx}>{part.state}</p>;
+                      return <ExpandableToolCard key={idx} />;
                     default:
                       return null;
                   }
@@ -146,5 +147,15 @@ function ResearchMessage() {
           </div>
         ))}
     </div>
+  );
+}
+
+function ExpandableToolCard() {
+  return (
+    <Collapsible isOpen={false}>
+      <div className="w-full h-auto flex flex-col relative overflow-y-auto">
+        welcome
+      </div>
+    </Collapsible>
   );
 }
