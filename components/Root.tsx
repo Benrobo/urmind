@@ -3,8 +3,8 @@ import App from "./App";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { HotkeysProvider } from "react-hotkeys-hook";
 
-import "../assets/main.css";
 import "../assets/font.css";
+import "../assets/main.css";
 
 export default function Root() {
   return (

@@ -260,7 +260,7 @@ export default function SpotlightSearch({
     <div
       className={cn(
         "w-[700px] max-h-[80vh] rounded-[12px] fixed",
-        "bg-gray-100/95 backdrop-blur-xl",
+        "bg-gray-100/80 backdrop-blur-xl",
         "border border-gray-102/30",
         "shadow-2xl shadow-black/20"
       )}
@@ -291,7 +291,7 @@ export default function SpotlightSearch({
         </div>
       </div>
 
-      <div className="max-h-[500px] overflow-y-auto">
+      <div className="max-h-[500px] overflow-y-auto customScrollbar">
         {/* Ask UrMind AI Action */}
         <div className="px-4 py-3 border-b border-gray-102/20">
           <div

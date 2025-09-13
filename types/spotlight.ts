@@ -1,9 +1,3 @@
-export type ContextType =
-  | "text"
-  | "url"
-  | "artifact:document"
-  | "artifact:image";
-
 export type AssistantResponseType =
   | "step-start"
   | "text"

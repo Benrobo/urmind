@@ -1,7 +1,7 @@
 import React from "react";
 import SpotlightSearch from "./spotlight-search";
 import { SearchResult } from "@/types/search";
-import { mockSearchResults, mockActions } from "@/mock-data/spotlight";
+import { mockSearchResults, mockActions } from "@/mock-data/mock-spotlight";
 import { contextSpotlightVisibilityStore } from "@/store/context.store";
 import useStorageStore from "@/hooks/useStorageStore";
 

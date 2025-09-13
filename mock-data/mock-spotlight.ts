@@ -1,5 +1,7 @@
 import { SearchResult } from "@/types/search";
 import { MessageCircle, Star, Sparkles } from "lucide-react";
+import { SpotlightConversations } from "@/types/spotlight";
+import { Context } from "@/types/context";
 
 // Mock search results with different types
 export const mockSearchResults: SearchResult[] = [
@@ -107,10 +109,6 @@ export const mockActions = [
   },
 ];
 
-export const chatSessionMessages = [{}];
-
-import { SpotlightConversations } from "@/types/spotlight";
-
 export const mockSpotlightConversations: SpotlightConversations[] = [
   {
     id: "conv-1",
@@ -151,38 +149,33 @@ export const mockSpotlightConversations: SpotlightConversations[] = [
               ],
             },
             output: {
-              query: "Next.js authentication TypeScript",
               results: [
                 {
-                  id: "ctx-1",
-                  title: "NextAuth.js Documentation",
-                  type: "url",
-                  url: "https://next-auth.js.org/getting-started/introduction",
+                  contextId: "ctx-1",
                   relevance: 0.95,
                 },
                 {
-                  id: "ctx-2",
-                  title: "Next.js Auth Tutorial",
-                  type: "text",
-                  content:
-                    "Complete guide to implementing authentication in Next.js with TypeScript, covering JWT tokens, middleware, and session management.",
+                  contextId: "ctx-2",
                   relevance: 0.92,
                 },
                 {
-                  id: "ctx-3",
-                  title: "TypeScript Auth Patterns",
-                  type: "artifact:document",
-                  url: "auth-patterns.pdf",
+                  contextId: "ctx-3",
                   relevance: 0.88,
                 },
                 {
-                  id: "ctx-4",
-                  title: "Next.js Middleware Auth",
-                  type: "url",
-                  url: "https://nextjs.org/docs/app/building-your-application/routing/middleware",
+                  contextId: "ctx-4",
                   relevance: 0.85,
                 },
+                {
+                  contextId: "ctx-5",
+                  relevance: 0.82,
+                },
+                {
+                  contextId: "ctx-6",
+                  relevance: 0.78,
+                },
               ],
+              count: 6,
             },
           },
           {
