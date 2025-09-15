@@ -1,10 +1,21 @@
 import { cn } from "@/lib/utils";
 import React, { useState } from "react";
-import { MessageSquare, FileText } from "lucide-react";
-import { SpotlightConversations } from "@/types/spotlight";
+import {
+  MessageSquare,
+  FileText,
+  Loader,
+  Check,
+  CheckCheck,
+  ChevronDown,
+} from "lucide-react";
+import {
+  AssistantResponseState,
+  SpotlightConversations,
+} from "@/types/spotlight";
 import { mockSpotlightConversations } from "@/mock-data/mock-spotlight";
 import MarkdownRenderer from "@/components/markdown";
 import { Collapsible } from "@/components/Collapsible";
+import { UrmindTools } from "@/types/context";
 
 export default function DeepResearchResult() {
   return (
@@ -137,7 +148,15 @@ function ResearchMessage() {
                         />
                       );
                     case "tool-searchContexts":
-                      return <ExpandableToolCard key={idx} />;
+                      return (
+                        <ExpandableToolCard
+                          key={idx}
+                          type={"tool-searchContexts"}
+                          state={part.state!}
+                          input={part.input!}
+                          output={part.output!}
+                        />
+                      );
                     default:
                       return null;
                   }
@@ -150,12 +169,59 @@ function ResearchMessage() {
   );
 }
 
-function ExpandableToolCard() {
+type ExpandableToolCardProps = {
+  type: UrmindTools;
+  state: AssistantResponseState;
+  input: Record<string, any>;
+  output: Record<string, any>;
+};
+
+function ExpandableToolCard({
+  type,
+  state,
+  input,
+  output,
+}: ExpandableToolCardProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const toolTypeTitleMap = {
+    "tool-searchContexts": "Searching Contexts",
+    "tool-addToContexts": "Add to Contexts",
+  } as const;
+
   return (
-    <Collapsible isOpen={false}>
-      <div className="w-full h-auto flex flex-col relative overflow-y-auto">
-        welcome
-      </div>
-    </Collapsible>
+    <div className="w-full h-auto border border-white/10 rounded-lg mb-2 bg-white/20 px-2 text-white-100">
+      <button
+        className="w-full h-auto flex items-center justify-between gap-2 relative overflow-y-auto py-1"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="w-full flex items-center justify-start gap-2">
+          {state === "output-streaming" && (
+            <Loader className="w-4 h-4 text-white/80 animate-spin" />
+          )}
+          {state === "output-available" && (
+            <CheckCheck className="w-4 h-4 text-white/80" />
+          )}
+          <span className="text-white/80 text-sm font-medium">
+            {toolTypeTitleMap[type]}
+          </span>
+        </div>
+        <div className="w-full flex items-center justify-end gap-2">
+          <button className="text-white/80 text-sm font-medium">
+            <ChevronDown
+              className={cn("w-4 h-4 text-white/80", isOpen && "rotate-180")}
+            />
+          </button>
+        </div>
+      </button>
+      <Collapsible isOpen={isOpen}>
+        <div className="w-full h-auto flex flex-col relative overflow-y-auto py-1 pl-7">
+          <div className="w-full h-auto flex items-center justify-start gap-2">
+            <span className="text-white/80 text-sm font-medium">
+              {toolTypeTitleMap[type]}
+            </span>
+          </div>
+        </div>
+      </Collapsible>
+    </div>
   );
 }

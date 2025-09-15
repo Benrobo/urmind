@@ -8,7 +8,7 @@ export type AssistantResponseType =
 export type AssistantResponseState =
   | "done"
   | "input-available"
-  | "input-streaming"
+  | "output-streaming"
   | "output-error"
   | "output-available";
 
