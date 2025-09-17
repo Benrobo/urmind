@@ -18,6 +18,8 @@
     "@electric-sql/pglite": "^0.3.8",
     "@fontsource-variable/geist-mono": "^5.2.6",
     "@fontsource-variable/inter": "^5.2.6",
+    "@langchain/community": "^0.3.56",
+    "@langchain/core": "^0.3.76",
     "@tailwindcss/postcss": "^4.1.11",
     "@tanstack/react-query": "^5.83.0",
     "@wxt-dev/storage": "^1.1.1",

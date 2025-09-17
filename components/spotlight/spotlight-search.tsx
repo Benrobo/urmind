@@ -314,7 +314,7 @@ export default function SpotlightSearch({
         </div>
 
         {/* Show Chat Messages or Saved Context */}
-        {true ? (
+        {false ? (
           // <ChatSessionMessages
           //   messages={messages}
           //   isStreaming={isStreaming}

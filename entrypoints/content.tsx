@@ -5,10 +5,13 @@ import { defineContentScript } from "wxt/utils/define-content-script";
 import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
 import ReactDOM from "react-dom/client";
 import Root from "@/components/Root.tsx";
-import { initDb } from "@/services/db";
+import urmindDb, { initDb } from "@/services/db";
 
 import "../assets/main.css";
 import { SUPPORTED_DOMAINS } from "@/config";
+import { chromeAi } from "@/helpers/agent/utils";
+import aiService from "@/services/ai.service";
+import pageExtractionService from "@/services/page-extraction/extraction";
 
 export default defineContentScript({
   matches: SUPPORTED_DOMAINS,
@@ -27,8 +30,25 @@ export default defineContentScript({
   },
 });
 
+async function aiConfig() {
+  await aiService.init();
+
+  // const embeddingFactory = new EmbeddingFactory();
+
+  // const vectorSearch = await urmindDb.embeddings?.cosineSimilarity(
+  //   "Hello, world!",
+  //   {
+  //     limit: 10,
+  //   }
+  // );
+
+  // console.log({ vectorSearch });
+}
+
 async function renderMainAppUi(ctx: ContentScriptContext) {
   await waitForBody();
+
+  await pageExtractionService.extractPageMetadata();
 
   const ui = await createShadowRootUi(ctx, {
     name: "urmind-wrapper",
@@ -55,6 +75,9 @@ async function renderMainAppUi(ctx: ContentScriptContext) {
   });
 
   ui.mount();
+
+  await aiConfig();
+
   return ui;
 }
 

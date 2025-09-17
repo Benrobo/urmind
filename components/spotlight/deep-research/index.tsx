@@ -73,7 +73,7 @@ function ResearchMessage() {
     <div className="w-full h-full flex flex-col relative py-4 overflow-y-auto">
       {activeConversation &&
         activeConversation?.messages.map((msg) => (
-          <div>
+          <div key={msg.id}>
             {msg?.role === "user" && (
               <div className="w-full flex flex-col gap-1 pb-4 px-4">
                 <div className="w-full flex items-center justify-start mb-2">
@@ -206,11 +206,11 @@ function ExpandableToolCard({
           </span>
         </div>
         <div className="w-full flex items-center justify-end gap-2">
-          <button className="text-white/80 text-sm font-medium">
+          <div className="text-white/80 text-sm font-medium">
             <ChevronDown
               className={cn("w-4 h-4 text-white/80", isOpen && "rotate-180")}
             />
-          </button>
+          </div>
         </div>
       </button>
       <Collapsible isOpen={isOpen}>

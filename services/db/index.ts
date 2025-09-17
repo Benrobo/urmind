@@ -1,10 +1,18 @@
 import { openDB, IDBPDatabase } from "idb";
 import { UrmindDB } from "@/types/database";
+import { ContextService } from "./context";
+import { EmbeddingService } from "./embedding";
+import { ConversationService } from "./conversation";
 
 class UrmindDatabase {
   private db: IDBPDatabase<UrmindDB> | null = null;
   private dbName = "urmind-db";
   private version = 1;
+
+  // Service instances
+  public contexts: ContextService | null = null;
+  public embeddings: EmbeddingService | null = null;
+  public conversations: ConversationService | null = null;
 
   async init(): Promise<void> {
     this.db = await openDB<UrmindDB>(this.dbName, this.version, {
@@ -44,8 +52,16 @@ class UrmindDatabase {
       },
     });
 
+    // Initialize service instances
+    this.contexts = new ContextService(this.db);
+    this.embeddings = new EmbeddingService(this.db);
+    this.conversations = new ConversationService(this.db);
+
     // Insert test data
     await this.insertTestData();
+
+    // Initialize embedding service
+    await this.embeddings.init();
   }
 
   private async insertTestData(): Promise<void> {
@@ -56,176 +72,6 @@ class UrmindDatabase {
     } catch (error) {
       // Test data might already exist, ignore error
     }
-  }
-
-  // Context methods
-  async createContext(
-    context: Omit<UrmindDB["contexts"]["value"], "createdAt" | "updatedAt">
-  ): Promise<string> {
-    if (!this.db) throw new Error("Database not initialized");
-
-    const now = Date.now();
-    const contextData = {
-      ...context,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    await this.db.add("contexts", contextData);
-    return context.id;
-  }
-
-  async getContext(
-    id: string
-  ): Promise<UrmindDB["contexts"]["value"] | undefined> {
-    if (!this.db) throw new Error("Database not initialized");
-    return await this.db.get("contexts", id);
-  }
-
-  async getAllContexts(): Promise<UrmindDB["contexts"]["value"][]> {
-    if (!this.db) throw new Error("Database not initialized");
-    return await this.db.getAll("contexts");
-  }
-
-  async getContextsByType(
-    type: string
-  ): Promise<UrmindDB["contexts"]["value"][]> {
-    if (!this.db) throw new Error("Database not initialized");
-    return await this.db.getAllFromIndex("contexts", "by-type", type);
-  }
-
-  async updateContext(
-    id: string,
-    updates: Partial<UrmindDB["contexts"]["value"]>
-  ): Promise<void> {
-    if (!this.db) throw new Error("Database not initialized");
-
-    const existing = await this.getContext(id);
-    if (!existing) throw new Error("Context not found");
-
-    const updated = {
-      ...existing,
-      ...updates,
-      updatedAt: Date.now(),
-    };
-
-    await this.db.put("contexts", updated);
-  }
-
-  async deleteContext(id: string): Promise<void> {
-    if (!this.db) throw new Error("Database not initialized");
-    await this.db.delete("contexts", id);
-  }
-
-  // Embedding methods
-  async createEmbedding(
-    embedding: UrmindDB["embeddings"]["value"]
-  ): Promise<string> {
-    if (!this.db) throw new Error("Database not initialized");
-
-    await this.db.add("embeddings", embedding);
-    return embedding.id;
-  }
-
-  async getEmbedding(
-    id: string
-  ): Promise<UrmindDB["embeddings"]["value"] | undefined> {
-    if (!this.db) throw new Error("Database not initialized");
-    return await this.db.get("embeddings", id);
-  }
-
-  async getEmbeddingsByMetadata(
-    metadataKey: string,
-    metadataValue: any
-  ): Promise<UrmindDB["embeddings"]["value"][]> {
-    if (!this.db) throw new Error("Database not initialized");
-    return await this.db.getAllFromIndex(
-      "embeddings",
-      "by-metadata",
-      metadataKey
-    );
-  }
-
-  async getAllEmbeddings(): Promise<UrmindDB["embeddings"]["value"][]> {
-    if (!this.db) throw new Error("Database not initialized");
-    return await this.db.getAll("embeddings");
-  }
-
-  async updateEmbedding(
-    id: string,
-    updates: Partial<UrmindDB["embeddings"]["value"]>
-  ): Promise<void> {
-    if (!this.db) throw new Error("Database not initialized");
-
-    const existing = await this.getEmbedding(id);
-    if (!existing) throw new Error("Embedding not found");
-
-    const updated = {
-      ...existing,
-      ...updates,
-    };
-
-    await this.db.put("embeddings", updated);
-  }
-
-  async deleteEmbedding(id: string): Promise<void> {
-    if (!this.db) throw new Error("Database not initialized");
-    await this.db.delete("embeddings", id);
-  }
-
-  // Conversation methods
-  async createConversation(
-    conversation: Omit<
-      UrmindDB["conversations"]["value"],
-      "createdAt" | "updatedAt"
-    >
-  ): Promise<string> {
-    if (!this.db) throw new Error("Database not initialized");
-
-    const now = Date.now();
-    const conversationData = {
-      ...conversation,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    await this.db.add("conversations", conversationData);
-    return conversation.id;
-  }
-
-  async getConversation(
-    id: string
-  ): Promise<UrmindDB["conversations"]["value"] | undefined> {
-    if (!this.db) throw new Error("Database not initialized");
-    return await this.db.get("conversations", id);
-  }
-
-  async getAllConversations(): Promise<UrmindDB["conversations"]["value"][]> {
-    if (!this.db) throw new Error("Database not initialized");
-    return await this.db.getAll("conversations");
-  }
-
-  async updateConversation(
-    id: string,
-    updates: Partial<UrmindDB["conversations"]["value"]>
-  ): Promise<void> {
-    if (!this.db) throw new Error("Database not initialized");
-
-    const existing = await this.getConversation(id);
-    if (!existing) throw new Error("Conversation not found");
-
-    const updated = {
-      ...existing,
-      ...updates,
-      updatedAt: Date.now(),
-    };
-
-    await this.db.put("conversations", updated);
-  }
-
-  async deleteConversation(id: string): Promise<void> {
-    if (!this.db) throw new Error("Database not initialized");
-    await this.db.delete("conversations", id);
   }
 
   // Test methods
