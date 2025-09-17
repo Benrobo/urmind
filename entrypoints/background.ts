@@ -1,3 +1,4 @@
+import pageIndexerJob from "@/triggers/page-indexer";
 import { browser } from "wxt/browser";
 import { defineBackground } from "wxt/utils/define-background";
 
@@ -36,22 +37,30 @@ function handleOmniboxInput() {
   });
 }
 
-export default defineBackground(() => {
+export default defineBackground(async () => {
   console.log("Background script loaded");
 
-  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === "openOptionsPage") {
-      chrome.runtime.openOptionsPage(() => {
-        if (chrome.runtime.lastError) {
-          chrome.tabs.create({
-            url: chrome.runtime.getURL("options.html"),
-          });
-        }
-        sendResponse({ success: true });
-      });
-      return true; // Keep message channel open for async response
+  chrome.runtime.onMessage.addListener(
+    async (request, sender, sendResponse) => {
+      if (request.action === "openOptionsPage") {
+        chrome.runtime.openOptionsPage(() => {
+          if (chrome.runtime.lastError) {
+            chrome.tabs.create({
+              url: chrome.runtime.getURL("options.html"),
+            });
+          }
+          sendResponse({ success: true });
+        });
+        return true; // Keep message channel open for async response
+      }
+
+      if (request.action === "navigation-detected") {
+        await pageIndexerJob.trigger({
+          url: request.url,
+        });
+      }
     }
-  });
+  );
 
   handleOmniboxInput();
 });

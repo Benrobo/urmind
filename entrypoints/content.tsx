@@ -12,23 +12,11 @@ import { SUPPORTED_DOMAINS } from "@/config";
 import { chromeAi } from "@/helpers/agent/utils";
 import aiService from "@/services/ai.service";
 import pageExtractionService from "@/services/page-extraction/extraction";
+import { sendMessageToBackgroundScript } from "@/helpers/messaging";
+import NavigationMonitor from "@/helpers/navigation-monitor";
 
-export default defineContentScript({
-  matches: SUPPORTED_DOMAINS,
-  cssInjectionMode: "ui",
-  runAt: "document_start",
-  async main(ctx) {
-    console.log("Hello content.");
-
-    await initDb();
-
-    const mountUi = async () => {
-      await renderMainAppUi(ctx);
-    };
-
-    await mountUi();
-  },
-});
+let currentUrl = location.href;
+let navigationMonitor: NavigationMonitor | null = null;
 
 async function aiConfig() {
   await aiService.init();
@@ -45,10 +33,61 @@ async function aiConfig() {
   // console.log({ vectorSearch });
 }
 
+function monitorUrlChanges(cb?: () => void) {
+  const observer = new MutationObserver(() => {
+    if (location.href !== currentUrl) {
+      console.log("URL changed from", currentUrl, "to", location.href);
+      currentUrl = location.href;
+
+      sendMessageToBackgroundScript({
+        action: "navigation-detected",
+        payload: {
+          url: location.href,
+        },
+      });
+
+      cb?.();
+    }
+  });
+
+  observer.observe(document, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    attributeFilter: ["href"],
+  });
+
+  return observer;
+}
+
+export default defineContentScript({
+  matches: SUPPORTED_DOMAINS,
+  cssInjectionMode: "ui",
+  runAt: "document_start",
+  async main(ctx) {
+    await initDb();
+
+    monitorUrlChanges();
+
+    await aiConfig();
+
+    navigationMonitor = new NavigationMonitor({
+      onNavigationChange: (newUrl, oldUrl) => {
+        console.log("Navigation detected:", { newUrl, oldUrl });
+      },
+    });
+    await navigationMonitor.startMonitoring();
+
+    const mountUi = async () => {
+      await renderMainAppUi(ctx);
+    };
+
+    await mountUi();
+  },
+});
+
 async function renderMainAppUi(ctx: ContentScriptContext) {
   await waitForBody();
-
-  await pageExtractionService.extractPageMetadata();
 
   const ui = await createShadowRootUi(ctx, {
     name: "urmind-wrapper",
@@ -75,8 +114,6 @@ async function renderMainAppUi(ctx: ContentScriptContext) {
   });
 
   ui.mount();
-
-  await aiConfig();
 
   return ui;
 }
