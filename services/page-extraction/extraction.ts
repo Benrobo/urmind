@@ -1,5 +1,17 @@
+export type PageMetadata = {
+  title: string;
+  description: string | null;
+  og: {
+    image: string | null;
+    title: string | null;
+    favicon: string | null;
+  };
+  pageContent: string;
+  pageUrl: string;
+};
+
 class PageExtractionService {
-  async extractPageMetadata() {
+  async extractPageMetadata(): Promise<PageMetadata> {
     if (!document || !document.head || !document.body) {
       console.log("No document or head or body");
       return {
@@ -25,7 +37,7 @@ class PageExtractionService {
 
     return {
       title: _title,
-      description: _description,
+      description: _description?.getAttribute("content") ?? null,
       og: {
         image: ogdetails.ogImage ?? null,
         title: ogdetails.ogTitle ?? null,

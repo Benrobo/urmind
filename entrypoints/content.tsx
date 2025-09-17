@@ -71,7 +71,7 @@ export default defineContentScript({
       });
     });
 
-    // await aiConfig();
+    await aiConfig();
 
     navigationMonitor = new NavigationMonitor({
       onNavigationChange: (newUrl, oldUrl) => {

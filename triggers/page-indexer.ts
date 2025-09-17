@@ -1,16 +1,11 @@
-import pageExtractionService from "@/services/page-extraction/extraction";
+import pageExtractionService, {
+  PageMetadata,
+} from "@/services/page-extraction/extraction";
 import { Task, task } from "./task";
 
 type PageIndexerPayload = {
   url: string;
-  pageMetadata: {
-    title: string;
-    description: Element | null;
-    og: {
-      image: string | null;
-      title: string | null;
-    };
-  };
+  pageMetadata: PageMetadata;
 };
 
 const pageIndexerJob: Task<PageIndexerPayload> = task<PageIndexerPayload>({

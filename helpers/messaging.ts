@@ -1,3 +1,5 @@
+import { PageMetadata } from "@/services/page-extraction/extraction";
+
 interface BaseProps {
   action: "navigation-detected" | "openOptionsPage";
   payload?: Record<string, any>;
@@ -7,16 +9,7 @@ interface NavigationDetectedMessage extends BaseProps {
   action: "navigation-detected";
   payload: {
     url: string;
-    pageMetadata: {
-      title: string;
-      description: Element | null;
-      og: {
-        image: string | null;
-        title: string | null;
-      };
-      pageContent: string;
-      pageUrl: string;
-    };
+    pageMetadata: PageMetadata;
   };
 }
 
