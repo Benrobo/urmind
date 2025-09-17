@@ -18,7 +18,14 @@ export default defineConfig({
       name: "Urmind",
       description: "Your mind in your browser.",
       version: "0.1.0",
-      permissions: ["storage", "activeTab", "cookies", "alarms", "scripting"],
+      permissions: [
+        "storage",
+        "activeTab",
+        "cookies",
+        "alarms",
+        "scripting",
+        "omnibox",
+      ],
       host_permissions: [
         "https://en.wikipedia.org/*",
         "http://127.0.0.1/*",
@@ -27,6 +34,11 @@ export default defineConfig({
       action: {
         default_title: "Urmind",
       },
+      options_ui: {
+        page: "/options.html",
+        open_in_tab: true,
+      },
+      omnibox: { keyword: "urmind" },
     };
   },
 });
