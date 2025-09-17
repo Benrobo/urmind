@@ -14,7 +14,7 @@ import {
 } from "@/types/spotlight";
 import { mockSpotlightConversations } from "@/mock-data/mock-spotlight";
 import MarkdownRenderer from "@/components/markdown";
-import { Collapsible } from "@/components/Collapsible";
+import { Collapsible } from "@/components/collapsible";
 import { UrmindTools } from "@/types/context";
 
 export default function DeepResearchResult() {

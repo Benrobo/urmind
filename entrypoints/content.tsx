@@ -5,6 +5,7 @@ import { defineContentScript } from "wxt/utils/define-content-script";
 import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
 import ReactDOM from "react-dom/client";
 import Root from "@/components/Root.tsx";
+import { initDb } from "@/services/db";
 
 import "../assets/main.css";
 import { SUPPORTED_DOMAINS } from "@/config";
@@ -15,6 +16,8 @@ export default defineContentScript({
   runAt: "document_start",
   async main(ctx) {
     console.log("Hello content.");
+
+    await initDb();
 
     const mountUi = async () => {
       await renderMainAppUi(ctx);
