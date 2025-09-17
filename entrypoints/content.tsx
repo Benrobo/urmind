@@ -38,14 +38,6 @@ function monitorUrlChanges(cb?: () => void) {
     if (location.href !== currentUrl) {
       console.log("URL changed from", currentUrl, "to", location.href);
       currentUrl = location.href;
-
-      sendMessageToBackgroundScript({
-        action: "navigation-detected",
-        payload: {
-          url: location.href,
-        },
-      });
-
       cb?.();
     }
   });
@@ -67,9 +59,19 @@ export default defineContentScript({
   async main(ctx) {
     await initDb();
 
-    monitorUrlChanges();
+    const pageMetadata = await pageExtractionService.extractPageMetadata();
 
-    await aiConfig();
+    monitorUrlChanges(async () => {
+      sendMessageToBackgroundScript({
+        action: "navigation-detected",
+        payload: {
+          url: location.href,
+          pageMetadata,
+        },
+      });
+    });
+
+    // await aiConfig();
 
     navigationMonitor = new NavigationMonitor({
       onNavigationChange: (newUrl, oldUrl) => {
@@ -77,11 +79,23 @@ export default defineContentScript({
           action: "navigation-detected",
           payload: {
             url: newUrl,
+            pageMetadata,
           },
         });
       },
     });
     await navigationMonitor.startMonitoring();
+
+    window.addEventListener("DOMContentLoaded", () => {
+      console.log("DOMContentLoaded");
+      sendMessageToBackgroundScript({
+        action: "navigation-detected",
+        payload: {
+          url: location.href,
+          pageMetadata,
+        },
+      });
+    });
 
     const mountUi = async () => {
       await renderMainAppUi(ctx);
