@@ -120,6 +120,16 @@ export default function SpotlightSearch({
     hotKeysConfigOptions
   );
 
+  useHotkeys(
+    "ctrl+shift+m, meta+shift+m",
+    () => {
+      if (isVisible) {
+        openMindboard();
+      }
+    },
+    hotKeysConfigOptions
+  );
+
   // Recent saved context items
   const savedContext = [
     {
@@ -243,6 +253,19 @@ export default function SpotlightSearch({
   const handleClose = () => {
     contextSpotlightVisibilityStore.hide();
     onClose?.();
+  };
+
+  const openMindboard = async () => {
+    console.log("Opening mindboard...");
+    try {
+      chrome.runtime.sendMessage({
+        action: "openOptionsPage",
+      });
+    } catch (error) {
+      console.error("Error opening options:", error);
+    }
+
+    contextSpotlightVisibilityStore.hide();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -392,9 +415,20 @@ export default function SpotlightSearch({
               <span className="text-white/80 ml-1">close</span>
             </div>
           </div>
-          <div className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md">
-            <CornerDownLeft size={12} className="text-white/80" />
-            <span className="text-white/80 ml-1">parent</span>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={openMindboard}
+              className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md hover:bg-white/20 transition-colors cursor-pointer"
+            >
+              <span className="text-white/80 bg-white/20 px-1.5 py-0.5 rounded text-xs font-mono">
+                ⌘⇧M
+              </span>
+              <span className="text-white/80 ml-1">mindboard</span>
+            </button>
+            <div className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md">
+              <CornerDownLeft size={12} className="text-white/80" />
+              <span className="text-white/80 ml-1">parent</span>
+            </div>
           </div>
         </div>
       </div>

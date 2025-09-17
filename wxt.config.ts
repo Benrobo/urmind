@@ -25,6 +25,7 @@ export default defineConfig({
         "alarms",
         "scripting",
         "omnibox",
+        "tabs",
       ],
       host_permissions: [
         "https://en.wikipedia.org/*",
@@ -39,6 +40,15 @@ export default defineConfig({
         open_in_tab: true,
       },
       omnibox: { keyword: "urmind" },
+      content_security_policy: {
+        extension_pages: "script-src 'self'; object-src 'self'",
+      },
+      web_accessible_resources: [
+        {
+          resources: ["options.html"],
+          matches: ["<all_urls>"],
+        },
+      ],
     };
   },
 });

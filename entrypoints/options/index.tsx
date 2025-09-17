@@ -1,3 +1,3 @@
 export default function Options() {
-  return <div>Options</div>;
+  return <div>Mind Board</div>;
 }

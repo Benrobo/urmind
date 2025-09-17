@@ -39,5 +39,19 @@ function handleOmniboxInput() {
 export default defineBackground(() => {
   console.log("Background script loaded");
 
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "openOptionsPage") {
+      chrome.runtime.openOptionsPage(() => {
+        if (chrome.runtime.lastError) {
+          chrome.tabs.create({
+            url: chrome.runtime.getURL("options.html"),
+          });
+        }
+        sendResponse({ success: true });
+      });
+      return true; // Keep message channel open for async response
+    }
+  });
+
   handleOmniboxInput();
 });
