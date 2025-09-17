@@ -73,7 +73,12 @@ export default defineContentScript({
 
     navigationMonitor = new NavigationMonitor({
       onNavigationChange: (newUrl, oldUrl) => {
-        console.log("Navigation detected:", { newUrl, oldUrl });
+        sendMessageToBackgroundScript({
+          action: "navigation-detected",
+          payload: {
+            url: newUrl,
+          },
+        });
       },
     });
     await navigationMonitor.startMonitoring();

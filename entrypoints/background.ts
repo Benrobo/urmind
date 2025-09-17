@@ -56,7 +56,7 @@ export default defineBackground(async () => {
 
       if (request.action === "navigation-detected") {
         await pageIndexerJob.trigger({
-          url: request.url,
+          url: request.payload.url,
         });
       }
     }
