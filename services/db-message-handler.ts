@@ -1,3 +1,4 @@
+import logger from "@/lib/logger";
 import urmindDb from "@/services/db";
 
 type DatabaseOperation =
@@ -23,7 +24,7 @@ export class DatabaseMessageHandler {
     data?: any,
     contextId?: string
   ): Promise<any> {
-    console.log("🎯 Content script handling DB operation:", operation, {
+    logger.log("🎯 Content script handling DB operation:", operation, {
       data,
       contextId,
     });
@@ -35,7 +36,6 @@ export class DatabaseMessageHandler {
     let result;
 
     switch (operation) {
-      // Context CRUD operations
       case "createContext":
         result = await urmindDb.contexts.createContext(data);
         break;
@@ -83,7 +83,7 @@ export class DatabaseMessageHandler {
         throw new Error(`Unknown DB operation: ${operation}`);
     }
 
-    console.log("✅ DB operation completed:", operation, result);
+    logger.log("✅ DB operation completed:", operation, result);
     return result;
   }
 
@@ -97,7 +97,6 @@ export class DatabaseMessageHandler {
       sendResponse: (response?: any) => void
     ) => {
       if (request.action === "db-operation") {
-        // Handle async operation properly
         (async () => {
           try {
             const { operation, data, contextId } = request.payload;
@@ -108,7 +107,7 @@ export class DatabaseMessageHandler {
             );
             sendResponse({ result });
           } catch (error) {
-            console.error("❌ DB operation failed:", error);
+            logger.error("❌ DB operation failed:", error);
             sendResponse({
               error: error instanceof Error ? error.message : String(error),
             });
@@ -133,12 +132,11 @@ export function useDatabaseMessageHandler() {
     const listener = handler.createMessageListener();
     chrome.runtime.onMessage.addListener(listener);
 
-    console.log("📡 Database message handler initialized");
+    // logger.log("📡 Database message handler initialized");
 
     // Return cleanup function
     return () => {
       chrome.runtime.onMessage.removeListener(listener);
-      console.log("📡 Database message handler cleaned up");
     };
   };
 

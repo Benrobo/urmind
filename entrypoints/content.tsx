@@ -95,8 +95,8 @@ export default defineContentScript({
     await initDb();
 
     // Set up database message handler
-    const { setupListener } = useDatabaseMessageHandler();
-    const cleanupHandler = setupListener();
+    const dbMessageHandler = useDatabaseMessageHandler();
+    dbMessageHandler.setupListener();
 
     // Signal to background script that content script is ready
     sendMessageToBackgroundScript({
@@ -107,7 +107,7 @@ export default defineContentScript({
       },
     });
 
-    await testCreateContext();
+    // await testCreateContext();
 
     const pageMetadata = await pageExtractionService.extractPageMetadata();
 

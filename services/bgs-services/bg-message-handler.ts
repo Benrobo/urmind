@@ -1,3 +1,4 @@
+import logger from "@/lib/logger";
 import pageIndexerJob from "@/triggers/page-indexer";
 import type {
   ContentScriptReadyPayload,
@@ -25,17 +26,17 @@ export class BackgroundMessageHandler {
   ): Promise<MessageResponse> {
     const tabId = sender.tab?.id;
     if (!tabId) {
-      console.warn("⚠️ Content script ready signal without tab ID");
+      logger.warn("⚠️ Content script ready signal without tab ID");
       return { success: false };
     }
 
-    console.log("📡 Content script ready for tab:", tabId, payload.url);
+    logger.log("📡 Content script ready for tab:", tabId, payload.url);
     this.readyContentScripts.add(tabId);
 
     // Process any pending page indexing jobs for this tab
     const pendingJobs = this.pendingPageIndexingJobs.get(tabId) || [];
     for (const job of pendingJobs) {
-      console.log("🔄 Processing pending page indexing job for tab:", tabId);
+      logger.log("🔄 Processing pending page indexing job for tab:", tabId);
       try {
         await pageIndexerJob.trigger({
           url: job.url,
@@ -43,7 +44,7 @@ export class BackgroundMessageHandler {
           tabId: tabId,
         });
       } catch (error) {
-        console.error("Failed to process pending page indexing job:", error);
+        logger.error("Failed to process pending page indexing job:", error);
       }
     }
     this.pendingPageIndexingJobs.delete(tabId);
@@ -62,7 +63,7 @@ export class BackgroundMessageHandler {
 
     if (tabId && this.readyContentScripts.has(tabId)) {
       // Content script is ready, process immediately
-      console.log(
+      logger.log(
         "✅ Content script ready, processing navigation immediately for tab:",
         tabId
       );
@@ -73,11 +74,11 @@ export class BackgroundMessageHandler {
           tabId: tabId,
         });
       } catch (error) {
-        console.error("Failed to process navigation-detected:", error);
+        logger.error("Failed to process navigation-detected:", error);
       }
     } else {
       // Content script not ready yet, queue the job
-      console.log(
+      logger.log(
         "⏳ Content script not ready, queuing navigation job for tab:",
         tabId
       );
@@ -115,7 +116,7 @@ export class BackgroundMessageHandler {
    * Clean up when a tab is closed
    */
   cleanupTab(tabId: number): void {
-    console.log("🧹 Cleaning up for closed tab:", tabId);
+    logger.log("🧹 Cleaning up for closed tab:", tabId);
     this.readyContentScripts.delete(tabId);
     this.pendingPageIndexingJobs.delete(tabId);
   }
@@ -152,13 +153,13 @@ export class BackgroundMessageHandler {
             break;
 
           default:
-            console.warn("🤷‍♂️ Unknown action:", request.action);
+            logger.warn("🤷‍♂️ Unknown action:", request.action);
             break;
         }
 
         sendResponse(result);
       } catch (error) {
-        console.error("❌ Background message handler error:", error);
+        logger.error("❌ Background message handler error:", error);
         sendResponse({
           success: false,
           error: error instanceof Error ? error.message : String(error),
