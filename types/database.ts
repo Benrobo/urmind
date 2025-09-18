@@ -1,4 +1,5 @@
 import { DBSchema } from "idb";
+import { ContextType } from "./context";
 
 // Define the database schema
 export interface UrmindDB extends DBSchema {
@@ -6,19 +7,24 @@ export interface UrmindDB extends DBSchema {
     key: string;
     value: {
       id: string;
-      type: "text" | "url" | "artifact:document" | "artifact:image";
+      fingerprint: string;
+      category: string;
+      type: ContextType;
       title: string;
       description: string;
+      content: string | null;
       summary: string;
-      url?: string;
-      image?: string;
-      content?: string;
+      url: string | null;
+      image: string | null;
+      favicon: string | null;
       createdAt: number;
       updatedAt: number;
     };
     indexes: {
       "by-type": string;
       "by-created": number;
+      "by-fingerprint": string;
+      "by-category": string;
     };
   };
   embeddings: {
@@ -54,13 +60,6 @@ export interface UrmindDB extends DBSchema {
     };
     indexes: {
       "by-created": number;
-    };
-  };
-  test: {
-    key: number;
-    value: {
-      id: number;
-      name: string;
     };
   };
 }

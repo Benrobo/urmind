@@ -5,7 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   dev: {
     server: {
-      port: 3000,
+      port: 5174,
     },
   },
   imports: false,
@@ -41,7 +41,8 @@ export default defineConfig({
       },
       omnibox: { keyword: "urmind" },
       content_security_policy: {
-        extension_pages: "script-src 'self'; object-src 'self'",
+        extension_pages:
+          "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src-elem 'self' ws://localhost:5174/ https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; connect-src 'self' ws://localhost:5174/ http://localhost:5174/ https://huggingface.co/ https://cdn-lfs.huggingface.co/ https://cdn.jsdelivr.net https://generativelanguage.googleapis.com https://api.openai.com",
       },
       web_accessible_resources: [
         {

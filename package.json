@@ -47,7 +47,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.11",
-    "@types/async-retry": "^1",
+    "@types/async-retry": "^1.4.9",
     "@types/chrome": "^0.1.3",
     "@types/md5": "^2.3.5",
     "@types/react": "^19.1.2",

@@ -10,7 +10,13 @@ export class EmbeddingService {
 
   async init(): Promise<void> {
     console.log("Initializing embedding service");
-    await this.embeddingFactory.init();
+    try {
+      await this.embeddingFactory.init();
+      console.log("Embedding service initialized successfully");
+    } catch (error) {
+      console.error("Failed to initialize embedding service:", error);
+      throw new Error(`Embedding service initialization failed: ${error}`);
+    }
   }
 
   async cosineSimilarity(
@@ -105,7 +111,14 @@ export class EmbeddingFactory {
   );
 
   async init(): Promise<void> {
-    await this.pipePromise;
+    try {
+      await this.pipePromise;
+    } catch (error) {
+      console.error("Failed to initialize embedding model:", error);
+      throw new Error(
+        `WebAssembly embedding model failed to load. This may be due to Content Security Policy restrictions. Error: ${error}`
+      );
+    }
   }
 
   async getEmbeddingFromText(text: string) {

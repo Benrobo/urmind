@@ -1,3 +1,6 @@
+import { batchPageContentByByteLength } from "@/helpers/page-indexing.helpers";
+import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+
 export type PageMetadata = {
   title: string;
   description: string | null;
@@ -8,6 +11,7 @@ export type PageMetadata = {
   };
   pageContent: string;
   pageUrl: string;
+  pageContentBatches: string[];
 };
 
 class PageExtractionService {
@@ -24,6 +28,7 @@ class PageExtractionService {
         },
         pageContent: "",
         pageUrl: "",
+        pageContentBatches: [],
       };
     }
 
@@ -35,6 +40,12 @@ class PageExtractionService {
     const pageUrl = window.location.href;
     const favicon = this.extractFavicon(pageUrl);
 
+    const splitter = new RecursiveCharacterTextSplitter({
+      chunkSize: 5000,
+      chunkOverlap: 600,
+    });
+    const pageContentBatches = await splitter.splitText(pageContent ?? "");
+
     return {
       title: _title,
       description: _description?.getAttribute("content") ?? null,
@@ -45,6 +56,7 @@ class PageExtractionService {
       },
       pageContent: pageContent,
       pageUrl: pageUrl,
+      pageContentBatches,
     };
   }
 

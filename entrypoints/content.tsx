@@ -14,6 +14,7 @@ import aiService from "@/services/ai.service";
 import pageExtractionService from "@/services/page-extraction/extraction";
 import { sendMessageToBackgroundScript } from "@/helpers/messaging";
 import NavigationMonitor from "@/helpers/navigation-monitor";
+import { useDatabaseMessageHandler } from "@/services/db-message-handler";
 
 let currentUrl = location.href;
 let navigationMonitor: NavigationMonitor | null = null;
@@ -31,6 +32,40 @@ async function aiConfig() {
   // );
 
   // console.log({ vectorSearch });
+}
+
+async function testCreateContext() {
+  try {
+    await initDb();
+    console.log("🧪 Creating test context...");
+
+    const testId = `test-${Date.now()}`;
+    const contextId = await urmindDb.contexts?.createContext({
+      id: testId,
+      fingerprint: testId,
+      category: "test",
+      type: "text",
+      title: "Test Context",
+      description: "This is a test context",
+      content: "Test content",
+      summary: "Test summary",
+      url: "https://example.com",
+      image: null,
+      favicon: null,
+    });
+
+    console.log("🧪 Test context created:", contextId);
+
+    // Verify immediately
+    const verification = await urmindDb.contexts?.getContext(testId);
+    console.log("🧪 Test context verification:", verification);
+
+    // Get all contexts
+    const allContexts = await urmindDb.contexts?.getAllContexts();
+    console.log("🧪 All contexts after test:", allContexts);
+  } catch (error) {
+    console.error("🧪 Test failed:", error);
+  }
 }
 
 function monitorUrlChanges(cb?: () => void) {
@@ -58,6 +93,21 @@ export default defineContentScript({
   runAt: "document_start",
   async main(ctx) {
     await initDb();
+
+    // Set up database message handler
+    const { setupListener } = useDatabaseMessageHandler();
+    const cleanupHandler = setupListener();
+
+    // Signal to background script that content script is ready
+    sendMessageToBackgroundScript({
+      action: "content-script-ready",
+      payload: {
+        tabId: 0, // Will be filled by background script with sender.tab.id
+        url: location.href,
+      },
+    });
+
+    await testCreateContext();
 
     const pageMetadata = await pageExtractionService.extractPageMetadata();
 

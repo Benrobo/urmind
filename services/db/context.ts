@@ -14,14 +14,40 @@ export class ContextService {
       updatedAt: now,
     };
 
-    await this.db.add("contexts", contextData);
-    return context.id;
+    console.log("Creating context:", contextData);
+    console.log("Database instance:", this.db);
+
+    try {
+      const result = await this.db.put("contexts", contextData);
+      console.log("Context creation result:", result);
+
+      // Verify the context was created
+      const verification = await this.db.get("contexts", context.id);
+      console.log("Context verification:", verification);
+
+      return context.id;
+    } catch (error) {
+      console.error("Failed to create context:", error);
+      throw error;
+    }
   }
 
   async getContext(
     id: string
   ): Promise<UrmindDB["contexts"]["value"] | undefined> {
     return await this.db.get("contexts", id);
+  }
+
+  async getContextByFingerprint(
+    fingerprint: string
+  ): Promise<UrmindDB["contexts"]["value"] | undefined> {
+    return await this.db.get("contexts", fingerprint);
+  }
+
+  async getAllContextCategories(): Promise<string[]> {
+    const contexts = await this.db.getAll("contexts");
+    const categories = contexts.map((context) => context.category);
+    return [...new Set(categories)];
   }
 
   async getAllContexts(): Promise<UrmindDB["contexts"]["value"][]> {
