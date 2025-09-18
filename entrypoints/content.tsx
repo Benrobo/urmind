@@ -34,40 +34,6 @@ async function aiConfig() {
   // console.log({ vectorSearch });
 }
 
-async function testCreateContext() {
-  try {
-    await initDb();
-    console.log("🧪 Creating test context...");
-
-    const testId = `test-${Date.now()}`;
-    const contextId = await urmindDb.contexts?.createContext({
-      id: testId,
-      fingerprint: testId,
-      category: "test",
-      type: "text",
-      title: "Test Context",
-      description: "This is a test context",
-      content: "Test content",
-      summary: "Test summary",
-      url: "https://example.com",
-      image: null,
-      favicon: null,
-    });
-
-    console.log("🧪 Test context created:", contextId);
-
-    // Verify immediately
-    const verification = await urmindDb.contexts?.getContext(testId);
-    console.log("🧪 Test context verification:", verification);
-
-    // Get all contexts
-    const allContexts = await urmindDb.contexts?.getAllContexts();
-    console.log("🧪 All contexts after test:", allContexts);
-  } catch (error) {
-    console.error("🧪 Test failed:", error);
-  }
-}
-
 function monitorUrlChanges(cb?: () => void) {
   const observer = new MutationObserver(() => {
     if (location.href !== currentUrl) {
@@ -107,19 +73,17 @@ export default defineContentScript({
       },
     });
 
-    // await testCreateContext();
-
     const pageMetadata = await pageExtractionService.extractPageMetadata();
 
-    monitorUrlChanges(async () => {
-      sendMessageToBackgroundScript({
-        action: "navigation-detected",
-        payload: {
-          url: location.href,
-          pageMetadata,
-        },
-      });
-    });
+    // monitorUrlChanges(async () => {
+    //   sendMessageToBackgroundScript({
+    //     action: "navigation-detected",
+    //     payload: {
+    //       url: location.href,
+    //       pageMetadata,
+    //     },
+    //   });
+    // });
 
     await aiConfig();
 

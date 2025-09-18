@@ -19,6 +19,11 @@ export class EmbeddingService {
     }
   }
 
+  async generateEmbeddingFromText(text: string) {
+    const embedding = await this.embeddingFactory.getEmbeddingFromText(text);
+    return embedding;
+  }
+
   async cosineSimilarity(
     query: string,
     options: {
@@ -53,7 +58,10 @@ export class EmbeddingService {
   async getEmbedding(
     id: string
   ): Promise<UrmindDB["embeddings"]["value"] | undefined> {
-    return await this.db.get("embeddings", id);
+    const tx = this.db.transaction("embeddings", "readonly");
+    const store = tx.objectStore("embeddings");
+    const index = store.index("by-id");
+    return await index.get(id);
   }
 
   async getEmbeddingsByMetadata(

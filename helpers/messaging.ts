@@ -1,4 +1,6 @@
+import { DatabaseOperations } from "@/services/db-message-handler";
 import { PageMetadata } from "@/services/page-extraction/extraction";
+import retry from "async-retry";
 
 interface BaseProps {
   action:
@@ -21,16 +23,6 @@ interface OpenOptionsPageMessage extends BaseProps {
   action: "openOptionsPage";
 }
 
-type DatabaseOperation =
-  | "createContext"
-  | "getContext"
-  | "getAllContexts"
-  | "updateContext"
-  | "deleteContext"
-  | "getAllContextCategories"
-  | "getContextsByType"
-  | "getContextByFingerprint";
-
 interface ContentScriptReadyMessage extends BaseProps {
   action: "content-script-ready";
   payload: {
@@ -42,7 +34,7 @@ interface ContentScriptReadyMessage extends BaseProps {
 interface DBOperationMessage extends BaseProps {
   action: "db-operation";
   payload: {
-    operation: DatabaseOperation;
+    operation: DatabaseOperations;
     data?: any;
     contextId?: string;
   };
@@ -58,36 +50,13 @@ export function sendMessageToBackgroundScript(
   chrome.runtime.sendMessage(message);
 }
 
-export function sendDBOperationMessage(
-  operation: DatabaseOperation,
-  data?: any,
-  contextId?: string
-): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const message: DBOperationMessage = {
-      action: "db-operation",
-      payload: { operation, data, contextId },
-    };
-
-    chrome.runtime.sendMessage(message, (response) => {
-      if (chrome.runtime.lastError) {
-        reject(chrome.runtime.lastError);
-      } else if (response?.error) {
-        reject(new Error(response.error));
-      } else {
-        resolve(response?.result);
-      }
-    });
-  });
-}
-
 /**
  * Send database operation message to a specific tab's content script
  * This is used by the background script to communicate with content scripts
  */
-export function sendDBOperationMessageToTab(
+export function sendDBOperationMessageToContentScript(
   tabId: number,
-  operation: DatabaseOperation,
+  operation: DatabaseOperations,
   data?: any,
   contextId?: string
 ): Promise<any> {

@@ -8,11 +8,11 @@ export interface UrmindDB extends DBSchema {
     value: {
       id: string;
       fingerprint: string;
+      contentFingerprint: string;
       category: string;
       type: ContextType;
       title: string;
       description: string;
-      content: string | null;
       summary: string;
       url: string | null;
       image: string | null;
@@ -21,7 +21,9 @@ export interface UrmindDB extends DBSchema {
       updatedAt: number;
     };
     indexes: {
+      "by-id": string;
       "by-type": string;
+      "by-content-fingerprint": string;
       "by-created": number;
       "by-fingerprint": string;
       "by-category": string;
@@ -35,6 +37,7 @@ export interface UrmindDB extends DBSchema {
       metadata: Record<string, any>;
     };
     indexes: {
+      "by-id": string;
       "by-metadata": string;
     };
   };
@@ -59,6 +62,7 @@ export interface UrmindDB extends DBSchema {
       updatedAt: number;
     };
     indexes: {
+      "by-id": string;
       "by-created": number;
     };
   };

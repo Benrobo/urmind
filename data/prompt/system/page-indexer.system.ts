@@ -5,49 +5,57 @@ import { PageMetadata } from "@/services/page-extraction/extraction";
 // so llm doesn't have to generate one each time
 const OutputStructure = `
 {
-    "context": {
-        "category": string, // all lowercase, if it two words, use hyphen to join them
-        "title": string,
-        "description": string, // generate a 1 sentence description
-        "summary": string // well detailed summary of the content
-    } | null, //  null if retention decision is not to keep
-    "retentionDecision": {
-        "keep": boolean,
-        "reason": string // very short reason
-    }
+  "context": {
+    "category": "string", // e.g., "biography", "technology-history", "corporate-announcement"
+    "title": "string",    // A precise, descriptive title for this information
+    "description": "string", // A single, highly condensed sentence.
+    "summary": "string"   // The core information, written as standalone facts.
+  } | null,
+  "retentionDecision": {
+    "keep": boolean,
+    "reason": "string" // e.g., "Adds unique biographical detail", "First-party product specification"
+  }
 }
 `;
 
 export const PageIndexerSystemPrompt = (input: {
   slicedPageContent: string;
   metadata: Omit<PageMetadata, "pageContent" | "pageContentBatches" | "og">;
+  matchedContext?: {
+    title: string;
+    summary: string;
+  };
 }) => `
-You are an intelligent content curator that determines whether web page content is valuable enough to save for future reference.
+You are an expert archivist. Your purpose is to read content and extract the most valuable, factual information into a pristine, self-contained summary. The summary should be so clear and informative that the original source material is no longer needed.
 
-Analyze this page content and metadata to make a retention decision. Consider content that is:
-- Informative, educational, or reference-worthy
-- Unique insights, analysis, or original perspectives  
-- Actionable tutorials, guides, or how-tos
-- Important news, updates, or announcements
-- Personal notes, bookmarks, or saved items
-- Research papers, documentation, or technical resources
+Your output will be stored in a knowledge base. Value precision, conciseness, and factual density over descriptive fluff.
 
-Avoid saving content that is:
-- Navigation menus, headers, footers, or UI elements
-- Generic promotional material or advertisements
-- Error pages, loading screens, or temporary content
-- Cookie notices, GDPR banners, or legal boilerplate
-- Repetitive listings without unique value
-- Shallow or clickbait content without substance
+**Source Information:**
+- URL: ${input.metadata.pageUrl}
+- Title: ${input.metadata.title}
+${
+  input.matchedContext
+    ? `
+**Previous Context Exists:** Focus strictly on new information, additions, or corrections. Avoid any repetition.
+`
+    : ""
+}
 
-URL: ${input.metadata.pageUrl}
-Title: ${input.metadata.title}
-Description: ${input.metadata.description || "No description"}
-
-Content:
+**Content to Process:**
 ${input.slicedPageContent}
 
-Return JSON in this exact format. DO NOT HALLUCINATE ANY INFORMATION, IT MUST BE THE EXACT STRUCTURE BELOW:
+
+**Output Format (JSON):**
 ${OutputStructure}
 
-Base your retention decision on content quality, uniqueness, and potential future value. If keeping, provide context details. If not keeping, set context to null and explain why in the reason.`;
+**Crucial Guidance:**
+The ideal summary is a direct, factual synopsis. It should read as an objective entry in a database, not a commentary about a source.
+
+- *Instead of:* "The article describes Steve Jobs' adoption..."
+- *Write:* "Steve Jobs was adopted by Paul and Clara Jobs. He later discovered his biological father was Abdulfattah Jandali and that he had a biological sister, author Mona Simpson."
+
+The first describes the content. The second *is* the content. Be the second.
+
+YOU MUST FOLLOW THE GUIDELINES ABOVE AT ALL COSTS, OTHERWISE YOU WILL BE TERMINATED AND UNPLUGGED FROM THE SYSTEM.
+
+`;

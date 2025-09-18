@@ -7,7 +7,7 @@ import { ConversationService } from "./conversation";
 class UrmindDatabase {
   private db: IDBPDatabase<UrmindDB> | null = null;
   private dbName = "urmind-db";
-  private version = 3;
+  private version = 3.3;
   private initPromise: Promise<void> | null = null;
 
   // Service instances
@@ -48,7 +48,12 @@ class UrmindDatabase {
           const contextStore = db.createObjectStore("contexts", {
             keyPath: "id",
           });
+          contextStore.createIndex("by-id", "id");
           contextStore.createIndex("by-type", "type");
+          contextStore.createIndex(
+            "by-content-fingerprint",
+            "contentFingerprint"
+          );
           contextStore.createIndex("by-created", "createdAt");
           contextStore.createIndex("by-fingerprint", "fingerprint");
           contextStore.createIndex("by-category", "category");
@@ -60,6 +65,7 @@ class UrmindDatabase {
           const embeddingStore = db.createObjectStore("embeddings", {
             keyPath: "id",
           });
+          embeddingStore.createIndex("by-id", "id");
           embeddingStore.createIndex("by-metadata", "metadata");
         }
 
@@ -69,6 +75,7 @@ class UrmindDatabase {
           const conversationStore = db.createObjectStore("conversations", {
             keyPath: "id",
           });
+          conversationStore.createIndex("by-id", "id");
           conversationStore.createIndex("by-created", "createdAt");
         }
       },

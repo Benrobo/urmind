@@ -82,6 +82,9 @@ export class BackgroundMessageHandler {
         "⏳ Content script not ready, queuing navigation job for tab:",
         tabId
       );
+
+      // sometimes the page extraction metadata event get sent before
+      // the content script is ready, so we need to check if the tabId is valid
       if (tabId) {
         if (!this.pendingPageIndexingJobs.has(tabId)) {
           this.pendingPageIndexingJobs.set(tabId, []);

@@ -1,7 +1,5 @@
-import {
-  sendDBOperationMessage,
-  sendDBOperationMessageToTab,
-} from "@/helpers/messaging";
+import { sendDBOperationMessageToContentScript } from "@/helpers/messaging";
+import logger from "@/lib/logger";
 import { UrmindDB } from "@/types/database";
 
 /**
@@ -9,27 +7,39 @@ import { UrmindDB } from "@/types/database";
  * to content script where IndexedDB operations work properly.
  */
 export class DatabaseProxy {
+  private tabId?: number;
+
+  /**
+   * Set the tab ID for subsequent operations
+   */
+  withTabId(tabId: number): DatabaseProxy {
+    const proxy = new DatabaseProxy();
+    proxy.tabId = tabId;
+    return proxy;
+  }
+
+  /**
+   * Private method to get tab ID with validation
+   */
+  private getTabId(): number {
+    if (this.tabId === undefined) {
+      throw new Error("Tab ID not set. Call withTabId() first.");
+    }
+    return this.tabId;
+  }
+
   /**
    * Get all context categories via content script
    */
-  async getAllContextCategories(tabId?: number): Promise<string[]> {
-    console.log(
-      "🔄 Proxying getAllContextCategories to content script",
-      tabId ? `on tab: ${tabId}` : ""
-    );
-
+  async getAllContextCategories(): Promise<string[]> {
     try {
-      const result = tabId
-        ? await sendDBOperationMessageToTab(tabId, "getAllContextCategories")
-        : await sendDBOperationMessage("getAllContextCategories");
-      console.log(
-        "✅ Categories retrieved via proxy:",
-        result?.length || 0,
-        "items"
+      const result = await sendDBOperationMessageToContentScript(
+        this.getTabId(),
+        "getAllContextCategories"
       );
       return result || [];
     } catch (error) {
-      console.error("❌ Proxy getAllContextCategories failed:", error);
+      logger.error("❌ Proxy getAllContextCategories failed:", error);
       throw error;
     }
   }
@@ -38,29 +48,17 @@ export class DatabaseProxy {
    * Get contexts by type via content script
    */
   async getContextsByType(
-    type: string,
-    tabId?: number
+    type: string
   ): Promise<UrmindDB["contexts"]["value"][]> {
-    console.log(
-      "🔄 Proxying getContextsByType to content script:",
-      type,
-      tabId ? `on tab: ${tabId}` : ""
-    );
-
     try {
-      const result = tabId
-        ? await sendDBOperationMessageToTab(tabId, "getContextsByType", {
-            type,
-          })
-        : await sendDBOperationMessage("getContextsByType", { type });
-      console.log(
-        "✅ Contexts by type retrieved via proxy:",
-        result?.length || 0,
-        "items"
+      const result = await sendDBOperationMessageToContentScript(
+        this.getTabId(),
+        "getContextsByType",
+        { type }
       );
       return result || [];
     } catch (error) {
-      console.error("❌ Proxy getContextsByType failed:", error);
+      logger.error("❌ Proxy getContextsByType failed:", error);
       throw error;
     }
   }
@@ -69,51 +67,55 @@ export class DatabaseProxy {
    * Get context by fingerprint via content script
    */
   async getContextByFingerprint(
-    fingerprint: string,
-    tabId?: number
+    fingerprint: string
   ): Promise<UrmindDB["contexts"]["value"] | undefined> {
-    console.log(
-      "🔄 Proxying getContextByFingerprint to content script:",
-      fingerprint,
-      tabId ? `on tab: ${tabId}` : ""
-    );
-
     try {
-      const result = tabId
-        ? await sendDBOperationMessageToTab(tabId, "getContextByFingerprint", {
-            fingerprint,
-          })
-        : await sendDBOperationMessage("getContextByFingerprint", {
-            fingerprint,
-          });
-      console.log("✅ Context by fingerprint retrieved via proxy:", result);
+      const result = await sendDBOperationMessageToContentScript(
+        this.getTabId(),
+        "getContextByFingerprint",
+        { fingerprint }
+      );
       return result;
     } catch (error) {
-      console.error("❌ Proxy getContextByFingerprint failed:", error);
+      logger.error("❌ Proxy getContextByFingerprint failed:", error);
       throw error;
     }
   }
+
+  /**
+   * Get context by content fingerprint via content script
+   */
+  async getContextByContentFingerprint(
+    contentFingerprint: string
+  ): Promise<UrmindDB["contexts"]["value"] | undefined> {
+    try {
+      const result = await sendDBOperationMessageToContentScript(
+        this.getTabId(),
+        "getContextByContentFingerprint",
+        { contentFingerprint }
+      );
+      return result;
+    } catch (error) {
+      logger.error("❌ Proxy getContextByContentFingerprint failed:", error);
+      throw error;
+    }
+  }
+
   /**
    * Create a new context via content script
    */
   async createContext(
-    context: Omit<UrmindDB["contexts"]["value"], "createdAt" | "updatedAt">,
-    tabId?: number
+    context: Omit<UrmindDB["contexts"]["value"], "createdAt" | "updatedAt">
   ): Promise<string> {
-    console.log(
-      "🔄 Proxying createContext to content script:",
-      context,
-      tabId ? `on tab: ${tabId}` : ""
-    );
-
     try {
-      const result = tabId
-        ? await sendDBOperationMessageToTab(tabId, "createContext", context)
-        : await sendDBOperationMessage("createContext", context);
-      console.log("✅ Context created via proxy:", result);
+      const result = await sendDBOperationMessageToContentScript(
+        this.getTabId(),
+        "createContext",
+        context
+      );
       return result;
     } catch (error) {
-      console.error("❌ Proxy createContext failed:", error);
+      logger.error("❌ Proxy createContext failed:", error);
       throw error;
     }
   }
@@ -122,23 +124,18 @@ export class DatabaseProxy {
    * Get context by ID via content script
    */
   async getContext(
-    id: string,
-    tabId?: number
+    id: string
   ): Promise<UrmindDB["contexts"]["value"] | undefined> {
-    console.log(
-      "🔄 Proxying getContext to content script:",
-      id,
-      tabId ? `on tab: ${tabId}` : ""
-    );
-
     try {
-      const result = tabId
-        ? await sendDBOperationMessageToTab(tabId, "getContext", undefined, id)
-        : await sendDBOperationMessage("getContext", undefined, id);
-      console.log("✅ Context retrieved via proxy:", result);
+      const result = await sendDBOperationMessageToContentScript(
+        this.getTabId(),
+        "getContext",
+        undefined,
+        id
+      );
       return result;
     } catch (error) {
-      console.error("❌ Proxy getContext failed:", error);
+      logger.error("❌ Proxy getContext failed:", error);
       throw error;
     }
   }
@@ -146,26 +143,15 @@ export class DatabaseProxy {
   /**
    * Get all contexts via content script
    */
-  async getAllContexts(
-    tabId?: number
-  ): Promise<UrmindDB["contexts"]["value"][]> {
-    console.log(
-      "🔄 Proxying getAllContexts to content script",
-      tabId ? `on tab: ${tabId}` : ""
-    );
-
+  async getAllContexts(): Promise<UrmindDB["contexts"]["value"][]> {
     try {
-      const result = tabId
-        ? await sendDBOperationMessageToTab(tabId, "getAllContexts")
-        : await sendDBOperationMessage("getAllContexts");
-      console.log(
-        "✅ All contexts retrieved via proxy:",
-        result?.length || 0,
-        "items"
+      const result = await sendDBOperationMessageToContentScript(
+        this.getTabId(),
+        "getAllContexts"
       );
       return result || [];
     } catch (error) {
-      console.error("❌ Proxy getAllContexts failed:", error);
+      logger.error("❌ Proxy getAllContexts failed:", error);
       throw error;
     }
   }
@@ -175,25 +161,17 @@ export class DatabaseProxy {
    */
   async updateContext(
     id: string,
-    updates: Partial<UrmindDB["contexts"]["value"]>,
-    tabId?: number
+    updates: Partial<UrmindDB["contexts"]["value"]>
   ): Promise<void> {
-    console.log(
-      "🔄 Proxying updateContext to content script:",
-      id,
-      updates,
-      tabId ? `on tab: ${tabId}` : ""
-    );
-
     try {
-      if (tabId) {
-        await sendDBOperationMessageToTab(tabId, "updateContext", updates, id);
-      } else {
-        await sendDBOperationMessage("updateContext", updates, id);
-      }
-      console.log("✅ Context updated via proxy");
+      await sendDBOperationMessageToContentScript(
+        this.getTabId(),
+        "updateContext",
+        updates,
+        id
+      );
     } catch (error) {
-      console.error("❌ Proxy updateContext failed:", error);
+      logger.error("❌ Proxy updateContext failed:", error);
       throw error;
     }
   }
@@ -201,27 +179,131 @@ export class DatabaseProxy {
   /**
    * Delete context via content script
    */
-  async deleteContext(id: string, tabId?: number): Promise<void> {
-    console.log(
-      "🔄 Proxying deleteContext to content script:",
-      id,
-      tabId ? `on tab: ${tabId}` : ""
-    );
-
+  async deleteContext(id: string): Promise<void> {
     try {
-      if (tabId) {
-        await sendDBOperationMessageToTab(
-          tabId,
-          "deleteContext",
-          undefined,
-          id
-        );
-      } else {
-        await sendDBOperationMessage("deleteContext", undefined, id);
-      }
-      console.log("✅ Context deleted via proxy");
+      await sendDBOperationMessageToContentScript(
+        this.getTabId(),
+        "deleteContext",
+        undefined,
+        id
+      );
     } catch (error) {
-      console.error("❌ Proxy deleteContext failed:", error);
+      logger.error("❌ Proxy deleteContext failed:", error);
+      throw error;
+    }
+  }
+
+  // ==================== EMBEDDING OPERATIONS ====================
+
+  /**
+   * Generate embedding from text via content script
+   */
+  async generateEmbeddingFromText(text: string): Promise<number[]> {
+    try {
+      const result = await sendDBOperationMessageToContentScript(
+        this.getTabId(),
+        "generateEmbeddingFromText",
+        { text }
+      );
+      return result;
+    } catch (error) {
+      logger.error("❌ Proxy generateEmbeddingFromText failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Calculate cosine similarity via content script
+   */
+  async cosineSimilarity(
+    text: string,
+    options: {
+      limit?: number;
+    }
+  ) {
+    try {
+      const result = await sendDBOperationMessageToContentScript(
+        this.getTabId(),
+        "cosineSimilarity",
+        { text, options }
+      );
+      return result as {
+        id: string;
+        score: number;
+        metadata: Record<string, any>;
+      }[];
+    } catch (error) {
+      logger.error("❌ Proxy cosineSimilarity failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create embedding via content script
+   */
+  async createEmbedding(data: any): Promise<string> {
+    try {
+      const result = await sendDBOperationMessageToContentScript(
+        this.getTabId(),
+        "createEmbedding",
+        data
+      );
+      return result;
+    } catch (error) {
+      logger.error("❌ Proxy createEmbedding failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get embedding by ID via content script
+   */
+  async getEmbedding(id: string): Promise<any> {
+    try {
+      const result = await sendDBOperationMessageToContentScript(
+        this.getTabId(),
+        "getEmbedding",
+        { id }
+      );
+      return result;
+    } catch (error) {
+      logger.error("❌ Proxy getEmbedding failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get embeddings by metadata via content script
+   */
+  async getEmbeddingsByMetadata(
+    metadataKey: string,
+    metadataValue: any
+  ): Promise<any[]> {
+    try {
+      const result = await sendDBOperationMessageToContentScript(
+        this.getTabId(),
+        "getEmbeddingsByMetadata",
+        { metadataKey, metadataValue }
+      );
+      return result || [];
+    } catch (error) {
+      logger.error("❌ Proxy getEmbeddingsByMetadata failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update embedding via content script
+   */
+  async updateEmbedding(id: string, updates: any): Promise<void> {
+    try {
+      await sendDBOperationMessageToContentScript(
+        this.getTabId(),
+        "updateEmbedding",
+        { id, updates }
+      );
+    } catch (error) {
+      logger.error("❌ Proxy updateEmbedding failed:", error);
       throw error;
     }
   }

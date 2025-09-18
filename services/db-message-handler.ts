@@ -1,7 +1,8 @@
 import logger from "@/lib/logger";
 import urmindDb from "@/services/db";
 
-type DatabaseOperation =
+export type DatabaseOperations =
+  // context operations
   | "createContext"
   | "getContext"
   | "getAllContexts"
@@ -9,7 +10,15 @@ type DatabaseOperation =
   | "deleteContext"
   | "getAllContextCategories"
   | "getContextsByType"
-  | "getContextByFingerprint";
+  | "getContextByFingerprint"
+  | "getContextByContentFingerprint"
+  // embedding operations
+  | "generateEmbeddingFromText"
+  | "cosineSimilarity"
+  | "createEmbedding"
+  | "getEmbedding"
+  | "getEmbeddingsByMetadata"
+  | "updateEmbedding";
 
 /**
  * Database operation handler for content script message listeners
@@ -20,7 +29,7 @@ export class DatabaseMessageHandler {
    * Handle a database operation message from background script
    */
   async handleOperation(
-    operation: DatabaseOperation,
+    operation: DatabaseOperations,
     data?: any,
     contextId?: string
   ): Promise<any> {
@@ -79,11 +88,56 @@ export class DatabaseMessageHandler {
         );
         break;
 
+      case "getContextByContentFingerprint":
+        if (!data?.contentFingerprint)
+          throw new Error(
+            "contentFingerprint required for getContextByContentFingerprint"
+          );
+        result = await urmindDb.contexts.getContextByContentFingerprint(
+          data.contentFingerprint
+        );
+        break;
+
+      case "generateEmbeddingFromText":
+        result = await urmindDb.embeddings?.generateEmbeddingFromText(
+          data.text
+        );
+        break;
+
+      case "cosineSimilarity":
+        result = await urmindDb.embeddings?.cosineSimilarity(
+          data.text,
+          data.options
+        );
+        break;
+
+      case "createEmbedding":
+        result = await urmindDb.embeddings?.createEmbedding(data);
+        break;
+
+      case "getEmbedding":
+        result = await urmindDb.embeddings?.getEmbedding(data.id);
+        break;
+
+      case "getEmbeddingsByMetadata":
+        result = await urmindDb.embeddings?.getEmbeddingsByMetadata(
+          data.metadataKey,
+          data.metadataValue
+        );
+        break;
+
+      case "updateEmbedding":
+        result = await urmindDb.embeddings?.updateEmbedding(
+          data.id,
+          data.updates
+        );
+        break;
+
       default:
         throw new Error(`Unknown DB operation: ${operation}`);
     }
 
-    logger.log("✅ DB operation completed:", operation, result);
+    logger.log("✅ DB operation completed:", operation);
     return result;
   }
 
@@ -100,6 +154,9 @@ export class DatabaseMessageHandler {
         (async () => {
           try {
             const { operation, data, contextId } = request.payload;
+
+            console.log("🔍 DB operation:", operation, { data, contextId });
+
             const result = await this.handleOperation(
               operation,
               data,

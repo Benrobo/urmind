@@ -35,13 +35,28 @@ export class ContextService {
   async getContext(
     id: string
   ): Promise<UrmindDB["contexts"]["value"] | undefined> {
-    return await this.db.get("contexts", id);
+    const tx = this.db.transaction("contexts", "readonly");
+    const store = tx.objectStore("contexts");
+    const index = store.index("by-id");
+    return await index.get(id);
   }
 
   async getContextByFingerprint(
     fingerprint: string
   ): Promise<UrmindDB["contexts"]["value"] | undefined> {
-    return await this.db.get("contexts", fingerprint);
+    const tx = this.db.transaction("contexts", "readonly");
+    const store = tx.objectStore("contexts");
+    const index = store.index("by-fingerprint");
+    return await index.get(fingerprint);
+  }
+
+  async getContextByContentFingerprint(
+    contentFingerprint: string
+  ): Promise<UrmindDB["contexts"]["value"] | undefined> {
+    const tx = this.db.transaction("contexts", "readonly");
+    const store = tx.objectStore("contexts");
+    const index = store.index("by-content-fingerprint");
+    return await index.get(contentFingerprint);
   }
 
   async getAllContextCategories(): Promise<string[]> {
