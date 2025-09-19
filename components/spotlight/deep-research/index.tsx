@@ -70,10 +70,16 @@ function ResearchMessage() {
   };
 
   return (
-    <div className="w-full h-full flex flex-col relative top-0 left-0 py-4 overflow-y-auto">
+    <div className="w-full h-full flex flex-col relative top-0 left-0 py-4 pb-[10em]">
       {activeConversation &&
-        activeConversation?.messages.map((msg) => (
-          <div key={msg.id}>
+        activeConversation?.messages.map((msg, idx) => (
+          <div
+            key={msg.id}
+            className={cn(
+              idx === activeConversation?.messages.length - 1 &&
+                "pb-10 border-b-[1px] border-b-white-300/20"
+            )}
+          >
             {msg?.role === "user" && (
               <div className="w-full flex flex-col gap-1 pb-4 px-4">
                 <div className="w-full flex items-center justify-start mb-2">

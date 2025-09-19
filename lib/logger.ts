@@ -1,5 +1,5 @@
 /**
- * @description Logger for Context Keeper Extension
+ * @description Logger for UrMind Extension
  * Provides methods for logging with options for global logging and labels.
  * By default, logs are shown only in development mode.
  * Can be configured to log globally or with specific labels.
@@ -23,7 +23,7 @@ function baseLogger(
 ) {
   const { global = false, label } = options;
   if (isDev || global) {
-    const prefix = label ? `[${label}]` : "[Context Keeper]";
+    const prefix = label ? `[${label}]` : "[UrMind]";
 
     // Capture stack trace
     const err = new Error();

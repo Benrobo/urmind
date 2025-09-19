@@ -250,7 +250,7 @@ export default function SpotlightSearch({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 bg-transparent text-white placeholder-white/60 text-sm outline-none"
-            autoFocus
+            autoFocus={true}
           />
           <div className="flex items-center space-x-1 text-white/60 text-xs">
             <span className="bg-white/10 px-2 py-1 rounded text-xs">⌘</span>
@@ -261,29 +261,30 @@ export default function SpotlightSearch({
 
       <div className="max-h-[500px] overflow-y-auto customScrollbar">
         {/* Ask UrMind AI Action */}
-        <div className="px-4 py-3 border-b border-gray-102/20">
-          <div
-            className="flex items-center space-x-3 p-3 rounded-lg bg-white/15 hover:bg-white/20 cursor-pointer group border border-white/20"
-            onClick={handleAskUrMind}
-          >
-            <div className="w-8 h-8 rounded bg-white/20 flex items-center justify-center">
-              <Sparkles size={16} className="text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-white">
-                {aiAction.title}
+        {!showDeepResearch && (
+          <div className="px-4 py-3 border-b border-gray-102/20">
+            <div
+              className="flex items-center space-x-3 p-3 rounded-lg bg-white/15 hover:bg-white/20 cursor-pointer group border border-white/20"
+              onClick={handleAskUrMind}
+            >
+              <div className="w-8 h-8 rounded bg-white/20 flex items-center justify-center">
+                <Sparkles size={16} className="text-white" />
               </div>
-              <div className="text-xs text-white/70">{aiAction.subtitle}</div>
-            </div>
-            <div className="text-xs text-white bg-white/20 px-2 py-1 rounded font-mono">
-              {aiAction.shortcut}
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-white">
+                  {aiAction.title}
+                </div>
+                <div className="text-xs text-white/70">{aiAction.subtitle}</div>
+              </div>
+              <div className="text-xs text-white bg-white/20 px-2 py-1 rounded font-mono">
+                {aiAction.shortcut}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Show Chat Messages or Saved Context */}
         <section className="w-full min-h-[350px] relative overflow-hidden">
-          {/* SavedContext - slides out to left when toggled */}
           <div
             className={cn(
               "absolute inset-0 transition-transform duration-300 ease-in-out overflow-y-auto customScrollbar",
@@ -293,10 +294,9 @@ export default function SpotlightSearch({
             <SavedContext query={searchQuery} />
           </div>
 
-          {/* DeepResearch - slides in from right when toggled */}
           <div
             className={cn(
-              "absolute inset-0 transition-transform duration-300 ease-in-out overflow-y-auto customScrollbar",
+              "absolute inset-0 transition-transform duration-300 ease-in-out overflow-y-auto customScrollbar pl-[2px]",
               showDeepResearch ? "translate-x-0" : "translate-x-full"
             )}
           >

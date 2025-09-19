@@ -7,7 +7,7 @@ import { ConversationService } from "./conversation";
 class UrmindDatabase {
   private db: IDBPDatabase<UrmindDB> | null = null;
   private dbName = "urmind-db";
-  private version = 3.3;
+  private version = 3.4;
   private initPromise: Promise<void> | null = null;
 
   // Service instances

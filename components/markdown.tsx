@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import React from "react";
+import React, { memo } from "react";
 import Markdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
@@ -9,10 +9,11 @@ type MarkdownRendererProps = {
   className?: string;
 };
 
-export default function MarkdownRenderer({
+const MarkdownRenderer = memo(function MarkdownRenderer({
   markdownString,
   className,
 }: MarkdownRendererProps) {
+  if (!markdownString) return null;
   return (
     <div className={cn("w-full h-auto text-xs font-geistmono", className)}>
       <Markdown
@@ -68,4 +69,6 @@ export default function MarkdownRenderer({
       />
     </div>
   );
-}
+});
+
+export default MarkdownRenderer;

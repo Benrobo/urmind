@@ -13,8 +13,8 @@ export type Context = {
   type: ContextType;
   title: string;
   description: string;
-  //   content: string | null; // Content shouldn't be stored
-  summary: string; // summary is enough to represent the context
+  highlightText: string;
+  summary: string;
   url: string | null;
   image: string | null;
   favicon: string | null;

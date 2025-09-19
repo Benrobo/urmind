@@ -1,8 +1,11 @@
-import React from "react";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import useSavedContext from "@/hooks/useContext";
 import { FileText, Globe, LucideIcon, Image, File } from "lucide-react";
+import { constructUrlTextFragment } from "@/lib/utils";
+import { Context } from "@/types/context";
+import logger from "@/lib/logger";
+import { contextSpotlightVisibilityStore } from "@/store/context.store";
 
 dayjs.extend(relativeTime);
 
@@ -35,6 +38,17 @@ export default function SavedContext({ query }: SavedContextProps) {
     }
   };
 
+  const handleClick = async (item: Context) => {
+    if (item.highlightText?.length > 0) {
+      window.open(
+        constructUrlTextFragment(item.url! ?? "", item.highlightText),
+        "_blank"
+      );
+    } else {
+      logger.warn("🚨 Unsupported context type:", item.type);
+    }
+  };
+
   return (
     <div className="w-full relative">
       <div className="px-4 py-3">
@@ -46,35 +60,54 @@ export default function SavedContext({ query }: SavedContextProps) {
         </div>
 
         <div className="space-y-1">
-          {filteredContext.map((item) => {
-            const IconComponent = getContentIcon(item.type);
-            return (
-              <div
-                key={item.id}
-                className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/10 cursor-pointer group"
-              >
-                <div className="w-8 h-8 rounded bg-white/10 flex items-center justify-center">
-                  <IconComponent size={16} className="text-white/80" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-white truncate">
-                    {item.title}
+          {filteredContext.length > 0 ? (
+            filteredContext.map((item) => {
+              const IconComponent = getContentIcon(item.type);
+              return (
+                <button
+                  key={item.id}
+                  className="w-full flex text-start items-center space-x-3 p-2 rounded-lg hover:bg-white/10 cursor-pointer group outline-none border-none"
+                  onClick={() => {
+                    handleClick(item);
+                  }}
+                >
+                  <div className="w-8 h-8 rounded bg-white/10 flex items-center justify-center">
+                    <IconComponent size={16} className="text-white/80" />
                   </div>
-                  <div className="text-xs text-white/60 truncate">
-                    {item.description}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-white truncate">
+                      {item.title}
+                    </div>
+                    <div className="text-xs text-white/60 truncate">
+                      {item.description}
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="text-xs text-white/40 bg-white/10 px-2 py-1 rounded">
-                    {item.type}
+                  <div className="flex items-center space-x-2">
+                    <div className="text-xs text-white/40 bg-white/10 px-2 py-1 rounded">
+                      {item.type}
+                    </div>
+                    <div className="text-xs text-white/50">
+                      {dayjs(item.createdAt).fromNow()}
+                    </div>
                   </div>
-                  <div className="text-xs text-white/50">
-                    {dayjs(item.createdAt).fromNow()}
-                  </div>
-                </div>
+                </button>
+              );
+            })
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-3">
+                <FileText size={20} className="text-white/60" />
               </div>
-            );
-          })}
+              <h4 className="text-sm font-medium text-white mb-1">
+                No contexts found
+              </h4>
+              <p className="text-xs text-white/60 max-w-xs">
+                {query.trim()
+                  ? `No contexts match "${query.trim()}"`
+                  : "Your mind will grow as you explore"}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

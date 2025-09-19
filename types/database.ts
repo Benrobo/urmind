@@ -14,6 +14,7 @@ export interface UrmindDB extends DBSchema {
       title: string;
       description: string;
       summary: string;
+      highlightText: string;
       url: string | null;
       image: string | null;
       favicon: string | null;

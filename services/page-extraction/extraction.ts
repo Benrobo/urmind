@@ -40,11 +40,12 @@ class PageExtractionService {
     const pageUrl = window.location.href;
     const favicon = this.extractFavicon(pageUrl);
 
-    const splitter = new RecursiveCharacterTextSplitter({
-      chunkSize: 5000,
+    // Split content into batches for LLM processing
+    const textSplitter = new RecursiveCharacterTextSplitter({
+      chunkSize: 20000,
       chunkOverlap: 600,
     });
-    const pageContentBatches = await splitter.splitText(pageContent ?? "");
+    const pageContentBatches = await textSplitter.splitText(pageContent ?? "");
 
     return {
       title: _title,
@@ -54,7 +55,7 @@ class PageExtractionService {
         title: ogdetails.ogTitle ?? null,
         favicon: favicon ?? null,
       },
-      pageContent: pageContent,
+      pageContent: pageContent ?? "",
       pageUrl: pageUrl,
       pageContentBatches,
     };
