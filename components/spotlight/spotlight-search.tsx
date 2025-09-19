@@ -286,7 +286,7 @@ export default function SpotlightSearch({
           {/* SavedContext - slides out to left when toggled */}
           <div
             className={cn(
-              "absolute inset-0 transition-transform duration-300 ease-in-out",
+              "absolute inset-0 transition-transform duration-300 ease-in-out overflow-y-auto customScrollbar",
               showDeepResearch ? "-translate-x-full" : "translate-x-0"
             )}
           >
@@ -296,7 +296,7 @@ export default function SpotlightSearch({
           {/* DeepResearch - slides in from right when toggled */}
           <div
             className={cn(
-              "absolute inset-0 transition-transform duration-300 ease-in-out",
+              "absolute inset-0 transition-transform duration-300 ease-in-out overflow-y-auto customScrollbar",
               showDeepResearch ? "translate-x-0" : "translate-x-full"
             )}
           >
