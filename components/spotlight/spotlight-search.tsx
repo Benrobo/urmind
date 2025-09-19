@@ -2,25 +2,24 @@ import React, { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import {
   Sparkles,
-  Command,
-  FileText,
-  Globe,
-  BookOpen,
-  LucideIcon,
   Search,
   Hash,
   ChevronUp,
   ChevronDown,
   CornerDownLeft,
-  Image,
-  File,
 } from "lucide-react";
 import { SearchResult, SpotlightProps, SearchResultType } from "@/types/search";
 import { useHotkeys } from "react-hotkeys-hook";
 import { contextSpotlightVisibilityStore } from "@/store/context.store";
 import useStorageStore from "@/hooks/useStorageStore";
-import ChatSessionMessages from "./chat-session/messages";
 import DeepResearchResult from "./deep-research";
+import useSavedContext from "@/hooks/useContext";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+import SavedContext from "./saved-context";
+import { ContextType } from "@/types/context";
+
+dayjs.extend(relativeTime);
 
 // Message and Source interfaces
 interface Message {
@@ -35,25 +34,9 @@ interface Source {
   id: string;
   title: string;
   subtitle: string;
-  type: "text" | "url" | "artifact:document" | "artifact:image";
+  type: ContextType;
   url?: string;
 }
-
-// Get icon for content type
-const getContentIcon = (type: string): LucideIcon => {
-  switch (type) {
-    case "text":
-      return FileText;
-    case "url":
-      return Globe;
-    case "artifact:document":
-      return File;
-    case "artifact:image":
-      return Image;
-    default:
-      return FileText;
-  }
-};
 
 export default function SpotlightSearch({
   searchQuery: initialQuery = "",
@@ -65,6 +48,7 @@ export default function SpotlightSearch({
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [showDeepResearch, setShowDeepResearch] = useState(false);
   const [streamingText, setStreamingText] = useState("");
   const [showChat, setShowChat] = useState(false);
   const { value: isVisible } = useStorageStore(contextSpotlightVisibilityStore);
@@ -93,6 +77,16 @@ export default function SpotlightSearch({
       if (isVisible) {
         contextSpotlightVisibilityStore.hide();
       }
+    },
+    hotKeysConfigOptions
+  );
+
+  // Toggle between SavedContext and DeepResearch on Cmd+Enter
+  useHotkeys(
+    "meta+enter, ctrl+enter",
+    (e) => {
+      e.preventDefault();
+      setShowDeepResearch(!showDeepResearch);
     },
     hotKeysConfigOptions
   );
@@ -130,55 +124,6 @@ export default function SpotlightSearch({
     hotKeysConfigOptions
   );
 
-  // Recent saved context items
-  const savedContext = [
-    {
-      id: "1",
-      title: "Docker Setup Tutorial",
-      subtitle: "Highlighted text from docker.com • 2 hours ago",
-      icon: FileText,
-      type: "text",
-      timestamp: "2h ago",
-    },
-    {
-      id: "2",
-      title: "Xbox Game Pass Research",
-      subtitle: "gaming.microsoft.com/xbox/game-pass",
-      icon: Globe,
-      type: "url",
-      timestamp: "1d ago",
-    },
-    {
-      id: "3",
-      title: "React Best Practices.pdf",
-      subtitle: "PDF document saved from dev.to",
-      icon: File,
-      type: "artifact:document",
-      timestamp: "3h ago",
-    },
-    {
-      id: "4",
-      title: "UI Design Screenshot",
-      subtitle: "Interface mockup saved from Figma",
-      icon: Image,
-      type: "artifact:image",
-      timestamp: "1h ago",
-    },
-  ];
-
-  const filteredContext = useMemo(() => {
-    if (!searchQuery.trim()) return savedContext;
-
-    const query = searchQuery.toLowerCase();
-    return savedContext.filter(
-      (item) =>
-        item.title.toLowerCase().includes(query) ||
-        item.subtitle.toLowerCase().includes(query) ||
-        item.type.toLowerCase().includes(query)
-    );
-  }, [searchQuery, savedContext]);
-
-  // AI action for querying the user's memory
   const aiAction = {
     id: "ask-urmind-ai",
     title: "Ask UrMind AI",
@@ -337,58 +282,27 @@ export default function SpotlightSearch({
         </div>
 
         {/* Show Chat Messages or Saved Context */}
-        {false ? (
-          // <ChatSessionMessages
-          //   messages={messages}
-          //   isStreaming={isStreaming}
-          //   streamingText={streamingText}
-          // />
-          <DeepResearchResult />
-        ) : (
-          /* Saved Context Section */
-          <div className="px-4 py-3">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium text-white">
-                Your saved context
-              </h3>
-              <button className="text-xs text-white/60 hover:text-white underline">
-                View all
-              </button>
-            </div>
-
-            <div className="space-y-1">
-              {filteredContext.map((item) => {
-                const IconComponent = getContentIcon(item.type);
-                return (
-                  <div
-                    key={item.id}
-                    className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/10 cursor-pointer group"
-                  >
-                    <div className="w-8 h-8 rounded bg-white/10 flex items-center justify-center">
-                      <IconComponent size={16} className="text-white/80" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-white truncate">
-                        {item.title}
-                      </div>
-                      <div className="text-xs text-white/60 truncate">
-                        {item.subtitle}
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="text-xs text-white/40 bg-white/10 px-2 py-1 rounded">
-                        {item.type}
-                      </div>
-                      <div className="text-xs text-white/50">
-                        {item.timestamp}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+        <section className="w-full min-h-[350px] relative overflow-hidden">
+          {/* SavedContext - slides out to left when toggled */}
+          <div
+            className={cn(
+              "absolute inset-0 transition-transform duration-300 ease-in-out",
+              showDeepResearch ? "-translate-x-full" : "translate-x-0"
+            )}
+          >
+            <SavedContext query={searchQuery} />
           </div>
-        )}
+
+          {/* DeepResearch - slides in from right when toggled */}
+          <div
+            className={cn(
+              "absolute inset-0 transition-transform duration-300 ease-in-out",
+              showDeepResearch ? "translate-x-0" : "translate-x-full"
+            )}
+          >
+            <DeepResearchResult />
+          </div>
+        </section>
       </div>
 
       {/* Bottom Navigation */}
@@ -407,6 +321,14 @@ export default function SpotlightSearch({
             <div className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md">
               <CornerDownLeft size={12} className="text-white/80" />
               <span className="text-white/80 ml-1">open</span>
+            </div>
+            <div className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md">
+              <span className="text-white/80 bg-white/20 px-1.5 py-0.5 rounded text-xs font-mono">
+                ⌘↵
+              </span>
+              <span className="text-white/80 ml-1">
+                {showDeepResearch ? "saved" : "research"}
+              </span>
             </div>
             <div className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md">
               <span className="text-white/80 bg-white/20 px-1.5 py-0.5 rounded text-xs font-mono">

@@ -70,7 +70,7 @@ function ResearchMessage() {
   };
 
   return (
-    <div className="w-full h-full flex flex-col relative py-4 overflow-y-auto">
+    <div className="w-full h-full flex flex-col relative top-0 left-0 py-4 overflow-y-auto">
       {activeConversation &&
         activeConversation?.messages.map((msg) => (
           <div key={msg.id}>
