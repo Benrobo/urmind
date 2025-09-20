@@ -1,5 +1,18 @@
-import { batchPageContentByByteLength } from "@/helpers/page-indexing.helpers";
+import {
+  ContextualTextElementTypes,
+  InvalidContextualTextElementText,
+  InvalidContextualTextElementSelectors,
+} from "@/constant/page-extraction";
+import {
+  batchContextualTextElementsByCount,
+  batchPageContentByByteLength,
+} from "@/helpers/page-indexing.helpers";
+import { GEMINI_NANO_MAX_TOKENS_PER_PROMPT } from "@/constant/internal";
+import { md5Hash } from "@/lib/utils";
+import { ContextualTextElement } from "@/types/page-extraction";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+import getXPath from "get-xpath";
+import shortUUID from "short-uuid";
 
 export type PageMetadata = {
   title: string;
@@ -12,9 +25,12 @@ export type PageMetadata = {
   pageContent: string;
   pageUrl: string;
   pageContentBatches: string[];
+  pageContextualTextElementBatches: ContextualTextElement[][];
 };
 
 class PageExtractionService {
+  private readonly MAX_DUPLICATE_ELEMENTS = 1; // Maximum number of elements with same value to keep
+
   async extractPageMetadata(): Promise<PageMetadata> {
     if (!document || !document.head || !document.body) {
       console.log("No document or head or body");
@@ -29,6 +45,7 @@ class PageExtractionService {
         pageContent: "",
         pageUrl: "",
         pageContentBatches: [],
+        pageContextualTextElementBatches: [],
       };
     }
 
@@ -42,10 +59,17 @@ class PageExtractionService {
 
     // Split content into batches for LLM processing
     const textSplitter = new RecursiveCharacterTextSplitter({
-      chunkSize: 20000,
+      chunkSize: 15000,
       chunkOverlap: 600,
     });
     const pageContentBatches = await textSplitter.splitText(pageContent ?? "");
+
+    const pageContextualTextElementBatches =
+      await batchContextualTextElementsByCount(
+        this.extractContextualPageTextElements(),
+        5, // maxElementsPerBatch - reduced for Gemini Nano
+        GEMINI_NANO_MAX_TOKENS_PER_PROMPT * 4 // ~4096 bytes for 1024 tokens
+      );
 
     return {
       title: _title,
@@ -58,6 +82,7 @@ class PageExtractionService {
       pageContent: pageContent ?? "",
       pageUrl: pageUrl,
       pageContentBatches,
+      pageContextualTextElementBatches,
     };
   }
 
@@ -146,6 +171,167 @@ class PageExtractionService {
     return {
       ogImage,
       ogTitle,
+    };
+  }
+
+  private generateSelectorsArray(
+    element: Element
+  ): ContextualTextElement["selectors"] {
+    const selectors: Array<{
+      type: "id" | "xpath" | "tag";
+      value: string;
+    }> = [];
+
+    // ID selector
+    if (element.id) {
+      selectors.push({ type: "id", value: element.id });
+    }
+
+    // Tag selector
+    selectors.push({ type: "tag", value: element.tagName.toLowerCase()! });
+
+    // XPath selector
+    try {
+      const xpath = getXPath(element);
+      if (xpath) {
+        selectors.push({ type: "xpath", value: xpath });
+      }
+    } catch (error) {
+      // XPath generation failed, skip it
+    }
+
+    return selectors;
+  }
+
+  private extractContextualPageTextElements(): ContextualTextElement[] {
+    const elements: ContextualTextElement[] = [];
+    const seenValues = new Map<string, number>();
+    const allElements = document.querySelectorAll("*");
+
+    for (let i = 0; i < allElements.length; i++) {
+      const element = allElements[i] as HTMLElement;
+      if (
+        element &&
+        this.isContextualTextElement(element) &&
+        this.isElementVisible(element)
+        // &&
+        // !this.hasInvalidSelector(element)
+      ) {
+        const contextualTextElement =
+          this.convertToContextualTextElement(element);
+        if (
+          contextualTextElement &&
+          contextualTextElement.text
+          // &&
+          // this.isValidContextualText(contextualTextElement.text)
+        ) {
+          const normalizedValue = contextualTextElement.text
+            .toLowerCase()
+            .trim();
+          const currentCount = seenValues.get(normalizedValue) || 0;
+
+          // Only add if we haven't seen this value too many times
+          if (currentCount < this.MAX_DUPLICATE_ELEMENTS) {
+            elements.push(contextualTextElement);
+            seenValues.set(normalizedValue, currentCount + 1);
+          }
+        }
+      }
+    }
+
+    return elements;
+  }
+
+  private isContextualTextElement(element: Element): boolean {
+    return ContextualTextElementTypes.includes(
+      element.tagName.toLowerCase() as ContextualTextElement["type"]
+    );
+  }
+
+  private isValidContextualText(text: string): boolean {
+    if (!text || text.trim().length === 0) {
+      return false;
+    }
+
+    const normalizedText = text.toLowerCase().trim();
+
+    // Check if the text matches any of the invalid patterns
+    return !InvalidContextualTextElementText.some(
+      (invalidText) =>
+        normalizedText === invalidText.toLowerCase() ||
+        normalizedText.includes(invalidText.toLowerCase())
+    );
+  }
+
+  private isElementVisible(element: HTMLElement): boolean {
+    // Check if element is hidden via CSS
+    const style = window.getComputedStyle(element);
+
+    // Element is not visible if:
+    if (
+      style.display === "none" ||
+      style.visibility === "hidden" ||
+      style.opacity === "0" ||
+      parseFloat(style.opacity) === 0
+    ) {
+      return false;
+    }
+
+    // Check if element has zero dimensions
+    const rect = element.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) {
+      return false;
+    }
+
+    // Check if element is positioned off-screen
+    if (
+      rect.bottom < 0 ||
+      rect.right < 0 ||
+      rect.left > window.innerWidth ||
+      rect.top > window.innerHeight
+    ) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private hasInvalidSelector(element: HTMLElement): boolean {
+    return InvalidContextualTextElementSelectors.some((selector) => {
+      switch (selector.type) {
+        case "class":
+          return element.classList.contains(selector.value);
+        case "id":
+          return element.id === selector.value;
+        default:
+          return false;
+      }
+    });
+  }
+
+  private sanitizeInvalidElementsValues(text: string) {
+    return text
+      .replace(/[\n\r\t]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  private convertToContextualTextElement(
+    element: HTMLElement
+  ): ContextualTextElement {
+    return {
+      id: shortUUID.generate(), // this would be useed by the llm to suggest element for page anchoring
+      type: element.tagName.toLowerCase() as ContextualTextElement["type"],
+      text: this.sanitizeInvalidElementsValues(
+        element?.innerText ?? element?.textContent ?? ""
+      ),
+      position: {
+        x: element.getBoundingClientRect().x,
+        y: element.getBoundingClientRect().y,
+        width: element.getBoundingClientRect().width,
+        height: element.getBoundingClientRect().height,
+      },
+      selectors: this.generateSelectorsArray(element),
     };
   }
 }

@@ -15,6 +15,7 @@ import pageExtractionService from "@/services/page-extraction/extraction";
 import { sendMessageToBackgroundScript } from "@/helpers/messaging";
 import NavigationMonitor from "@/helpers/navigation-monitor";
 import { useDatabaseMessageHandler } from "@/services/db-message-handler";
+import { contextNavigationService } from "@/services/context-navigation.service";
 
 let currentUrl = location.href;
 let navigationMonitor: NavigationMonitor | null = null;
@@ -63,6 +64,11 @@ export default defineContentScript({
     // Set up database message handler
     const dbMessageHandler = useDatabaseMessageHandler();
     dbMessageHandler.setupListener();
+
+    // Check for context navigation on page load
+    setTimeout(async () => {
+      await contextNavigationService.handleContextNavigation();
+    }, 1000);
 
     // Signal to background script that content script is ready
     sendMessageToBackgroundScript({

@@ -13,7 +13,11 @@ export type Context = {
   type: ContextType;
   title: string;
   description: string;
-  highlightText: string;
+  highlightText: string; // Legacy field for backwards compatibility
+  highlightElements: Array<{
+    xpath: string;
+    position: { x: number; y: number; width: number; height: number };
+  }>; // New field: Array of DOM elements with XPath and position for precise highlighting
   summary: string;
   url: string | null;
   image: string | null;
