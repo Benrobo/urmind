@@ -14,7 +14,11 @@ export interface UrmindDB extends DBSchema {
       title: string;
       description: string;
       summary: string;
-      highlightText: string;
+      highlightText: string; // Legacy field for backwards compatibility
+      highlightElements: Array<{
+        xpath: string;
+        position: { x: number; y: number; width: number; height: number };
+      }>; // New field: Array of DOM elements with XPath and position for precise highlighting
       url: string | null;
       image: string | null;
       favicon: string | null;

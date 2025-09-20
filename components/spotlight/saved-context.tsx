@@ -6,6 +6,7 @@ import { constructUrlTextFragment } from "@/lib/utils";
 import { Context } from "@/types/context";
 import logger from "@/lib/logger";
 import { contextSpotlightVisibilityStore } from "@/store/context.store";
+import { contextNavigationService } from "@/services/context-navigation.service";
 
 dayjs.extend(relativeTime);
 
@@ -39,14 +40,7 @@ export default function SavedContext({ query }: SavedContextProps) {
   };
 
   const handleClick = async (item: Context) => {
-    if (item.highlightText?.length > 0) {
-      window.open(
-        constructUrlTextFragment(item.url! ?? "", item.highlightText),
-        "_blank"
-      );
-    } else {
-      logger.warn("🚨 Unsupported context type:", item.type);
-    }
+    contextNavigationService.navigateToContext(item);
   };
 
   return (
