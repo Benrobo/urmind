@@ -48,7 +48,7 @@ export default function SpotlightSearch({
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [showDeepResearch, setShowDeepResearch] = useState(false);
+  const [showDeepResearch, setShowDeepResearch] = useState(true);
   const [streamingText, setStreamingText] = useState("");
   const [showChat, setShowChat] = useState(false);
   const { value: isVisible } = useStorageStore(contextSpotlightVisibilityStore);

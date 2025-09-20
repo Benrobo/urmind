@@ -1,6 +1,9 @@
 import { SearchResult } from "@/types/search";
 import { MessageCircle, Star, Sparkles } from "lucide-react";
-import { SpotlightConversations } from "@/types/spotlight";
+import {
+  SpotlightConversations,
+  SpotlightConversationsV1,
+} from "@/types/spotlight";
 import { Context } from "@/types/context";
 
 // Mock search results with different types
@@ -109,7 +112,7 @@ export const mockActions = [
   },
 ];
 
-export const mockSpotlightConversations: SpotlightConversations[] = [
+export const mockSpotlightConversations: SpotlightConversationsV1[] = [
   {
     id: "conv-1",
     messages: [
@@ -187,6 +190,104 @@ export const mockSpotlightConversations: SpotlightConversations[] = [
             state: "done",
           },
         ],
+      },
+    ],
+  },
+  {
+    id: "conv-1",
+    messages: [
+      {
+        id: "msg-1",
+        role: "user",
+        parts: [
+          {
+            type: "text",
+            text: "How do I implement authentication in a Next.js application with TypeScript?",
+          },
+        ],
+      },
+      {
+        id: "msg-2",
+        role: "assistant",
+        parts: [
+          {
+            type: "step-start",
+          },
+          {
+            type: "text",
+            text: "I'll help you implement authentication in Next.js with TypeScript. Let me search through your saved contexts for relevant information.",
+            state: "done",
+          },
+          {
+            type: "tool-searchContexts",
+            toolId: "search-contexts-1",
+            state: "output-available",
+            input: {
+              queries: [
+                "Next.js authentication TypeScript",
+                "JWT authentication Next.js",
+                "NextAuth.js implementation",
+                "TypeScript auth middleware",
+                "Next.js auth providers",
+              ],
+            },
+            output: {
+              results: [
+                {
+                  contextId: "ctx-1",
+                  relevance: 0.95,
+                },
+                {
+                  contextId: "ctx-2",
+                  relevance: 0.92,
+                },
+                {
+                  contextId: "ctx-3",
+                  relevance: 0.88,
+                },
+                {
+                  contextId: "ctx-4",
+                  relevance: 0.85,
+                },
+                {
+                  contextId: "ctx-5",
+                  relevance: 0.82,
+                },
+                {
+                  contextId: "ctx-6",
+                  relevance: 0.78,
+                },
+              ],
+              count: 6,
+            },
+          },
+          {
+            type: "step-start",
+          },
+          {
+            type: "text",
+            text: "# Next.js Authentication with TypeScript: Complete Implementation Guide\n\nImplementing authentication in Next.js with TypeScript involves several key components. Here's a comprehensive approach:\n\n## 1. Setting Up NextAuth.js\n\nNextAuth.js is the most popular authentication library for Next.js applications:\n\n```typescript\n// pages/api/auth/[...nextauth].ts\nimport NextAuth from 'next-auth'\nimport { NextAuthOptions } from 'next-auth'\nimport CredentialsProvider from 'next-auth/providers/credentials'\nimport JWT from 'jsonwebtoken'\n\nconst authOptions: NextAuthOptions = {\n  providers: [\n    CredentialsProvider({\n      name: 'credentials',\n      credentials: {\n        email: { label: 'Email', type: 'email' },\n        password: { label: 'Password', type: 'password' }\n      },\n      async authorize(credentials) {\n        // Your authentication logic here\n        const user = await authenticateUser(credentials)\n        return user ? { id: user.id, email: user.email, name: user.name } : null\n      }\n    })\n  ],\n  session: {\n    strategy: 'jwt',\n  },\n  callbacks: {\n    async jwt({ token, user }) {\n      if (user) {\n        token.id = user.id\n      }\n      return token\n    },\n    async session({ session, token }) {\n      if (token) {\n        session.user.id = token.id as string\n      }\n      return session\n    }\n  },\n  pages: {\n    signIn: '/auth/signin',\n    error: '/auth/error',\n  }\n}\n\nexport default NextAuth(authOptions)\n```\n\n## 2. TypeScript Configuration\n\nCreate proper TypeScript definitions for your auth types:\n\n```typescript\n// types/next-auth.d.ts\nimport NextAuth from 'next-auth'\n\ndeclare module 'next-auth' {\n  interface Session {\n    user: {\n      id: string\n      email: string\n      name: string\n    }\n  }\n\n  interface JWT {\n    id: string\n  }\n}\n```\n\n## 3. Middleware for Route Protection\n\nUse Next.js middleware to protect routes:\n\n```typescript\n// middleware.ts\nimport { withAuth } from 'next-auth/middleware'\n\nexport default withAuth(\n  function middleware(req) {\n    // Additional middleware logic\n  },\n  {\n    callbacks: {\n      authorized: ({ token }) => !!token\n    }\n  }\n)\n\nexport const config = {\n  matcher: ['/dashboard/:path*', '/profile/:path*']\n}\n```\n\n## 4. Client-Side Usage\n\n```typescript\n// components/AuthButton.tsx\nimport { useSession, signIn, signOut } from 'next-auth/react'\n\nexport default function AuthButton() {\n  const { data: session, status } = useSession()\n\n  if (status === 'loading') return <p>Loading...</p>\n\n  if (session) {\n    return (\n      <div>\n        <p>Signed in as {session.user.email}</p>\n        <button onClick={() => signOut()}>Sign out</button>\n      </div>\n    )\n  }\n\n  return <button onClick={() => signIn()}>Sign in</button>\n}\n```\n\n## 5. Server-Side Protection\n\n```typescript\n// pages/dashboard.tsx\nimport { getServerSession } from 'next-auth/next'\nimport { authOptions } from './api/auth/[...nextauth]'\nimport { redirect } from 'next/navigation'\n\nexport default async function Dashboard() {\n  const session = await getServerSession(authOptions)\n\n  if (!session) {\n    redirect('/auth/signin')\n  }\n\n  return <div>Protected content for {session.user.email}</div>\n}\n```\n\n## Key Benefits of This Approach\n\n- **Type Safety**: Full TypeScript support with proper type definitions\n- **Flexibility**: Multiple authentication providers supported\n- **Security**: Built-in CSRF protection and secure session handling\n- **Performance**: Optimized for Next.js with minimal bundle impact\n- **Developer Experience**: Excellent debugging tools and documentation\n\nThis implementation provides a solid foundation for authentication in your Next.js TypeScript application.",
+            state: "done",
+          },
+        ],
+      },
+    ],
+  },
+];
+
+export const mockSpotlightConversationsV2: SpotlightConversations[] = [
+  {
+    id: "conv-1",
+    messages: [
+      {
+        id: "msg-1",
+        role: "user",
+        text: "How do I implement authentication in a Next.js application with TypeScript?",
+      },
+      {
+        id: "msg-2",
+        role: "assistant",
+        text: "# Next.js Authentication with TypeScript: Complete Implementation Guide\n\nImplementing authentication in Next.js with TypeScript involves several key components. Here's a comprehensive approach:\n\n## 1. Setting Up NextAuth.js\n\nNextAuth.js is the most popular authentication library for Next.js applications:\n\n```typescript\n// pages/api/auth/[...nextauth].ts\nimport NextAuth from 'next-auth'\nimport { NextAuthOptions } from 'next-auth'\nimport CredentialsProvider from 'next-auth/providers/credentials'\nimport JWT from 'jsonwebtoken'\n\nconst authOptions: NextAuthOptions = {\n  providers: [\n    CredentialsProvider({\n      name: 'credentials',\n      credentials: {\n        email: { label: 'Email', type: 'email' },\n        password: { label: 'Password', type: 'password' }\n      },\n      async authorize(credentials) {\n        // Your authentication logic here\n        const user = await authenticateUser(credentials)\n        return user ? { id: user.id, email: user.email, name: user.name } : null\n      }\n    })\n  ],\n  session: {\n    strategy: 'jwt',\n  },\n  callbacks: {\n    async jwt({ token, user }) {\n      if (user) {\n        token.id = user.id\n      }\n      return token\n    },\n    async session({ session, token }) {\n      if (token) {\n        session.user.id = token.id as string\n      }\n      return session\n    }\n  },\n  pages: {\n    signIn: '/auth/signin',\n    error: '/auth/error',\n  }\n}\n\nexport default NextAuth(authOptions)\n```\n\n## 2. TypeScript Configuration\n\nCreate proper TypeScript definitions for your auth types:\n\n```typescript\n// types/next-auth.d.ts\nimport NextAuth from 'next-auth'\n\ndeclare module 'next-auth' {\n  interface Session {\n    user: {\n      id: string\n      email: string\n      name: string\n    }\n  }\n\n  interface JWT {\n    id: string\n  }\n}\n```\n\n## 3. Middleware for Route Protection\n\nUse Next.js middleware to protect routes:\n\n```typescript\n// middleware.ts\nimport { withAuth } from 'next-auth/middleware'\n\nexport default withAuth(\n  function middleware(req) {\n    // Additional middleware logic\n  },\n  {\n    callbacks: {\n      authorized: ({ token }) => !!token\n    }\n  }\n)\n\nexport const config = {\n  matcher: ['/dashboard/:path*', '/profile/:path*']\n}\n```\n\n## 4. Client-Side Usage\n\n```typescript\n// components/AuthButton.tsx\nimport { useSession, signIn, signOut } from 'next-auth/react'\n\nexport default function AuthButton() {\n  const { data: session, status } = useSession()\n\n  if (status === 'loading') return <p>Loading...</p>\n\n  if (session) {\n    return (\n      <div>\n        <p>Signed in as {session.user.email}</p>\n        <button onClick={() => signOut()}>Sign out</button>\n      </div>\n    )\n  }\n\n  return <button onClick={() => signIn()}>Sign in</button>\n}\n```\n\n## 5. Server-Side Protection\n\n```typescript\n// pages/dashboard.tsx\nimport { getServerSession } from 'next-auth/next'\nimport { authOptions } from './api/auth/[...nextauth]'\nimport { redirect } from 'next/navigation'\n\nexport default async function Dashboard() {\n  const session = await getServerSession(authOptions)\n\n  if (!session) {\n    redirect('/auth/signin')\n  }\n\n  return <div>Protected content for {session.user.email}</div>\n}\n```\n\n## Key Benefits of This Approach\n\n- **Type Safety**: Full TypeScript support with proper type definitions\n- **Flexibility**: Multiple authentication providers supported\n- **Security**: Built-in CSRF protection and secure session handling\n- **Performance**: Optimized for Next.js with minimal bundle impact\n- **Developer Experience**: Excellent debugging tools and documentation\n\nThis implementation provides a solid foundation for authentication in your Next.js TypeScript application.",
       },
     ],
   },

@@ -4,7 +4,7 @@ import pageExtractionService, {
 import { Task, task } from "./task";
 import { chromeAi } from "@/helpers/agent/utils";
 import { md5Hash, cleanUrlForFingerprint } from "@/lib/utils";
-import { dbProxy } from "@/services/db-proxy";
+import { DatabaseProxy, dbProxy } from "@/services/db-proxy";
 import {
   InitialContextCreatorPrompt,
   DOMContextCreatorPrompt,
@@ -19,6 +19,7 @@ import shortId from "short-uuid";
 import logger from "@/lib/logger";
 import { UrmindDB } from "@/types/database";
 import { InvalidContextualTextElementText } from "@/constant/page-extraction";
+import { SemanticSearchThreshold } from "@/constant/internal";
 
 // Types
 type PageIndexerPayload = {
@@ -41,7 +42,6 @@ const pageIndexerJob: Task<PageIndexerPayload> = task<PageIndexerPayload>({
     logger.log("🔗 Clean URL for fingerprint:", cleanUrl);
     logger.log("🔑 Fingerprint:", fingerprint);
 
-    // Get existing context for comparison
     const existingContext = await getExistingContext(tabProxy, fingerprint);
 
     // Process text content batches using text-based approach
@@ -78,7 +78,7 @@ async function processTextBatch(
   pageMetadata: PageMetadata,
   fingerprint: string,
   cleanUrl: string,
-  tabProxy: any,
+  tabProxy: DatabaseProxy,
   existingContext?: ExistingContext
 ): Promise<void> {
   logger.info(`📄 Processing text batch ${batchIndex + 1}/${totalBatches}`);
@@ -91,7 +91,7 @@ async function processTextBatch(
     contentFingerprint
   );
   if (existingContentContext) {
-    logger.info(
+    logger.warn(
       `⏭️ Skipping text batch ${
         batchIndex + 1
       } - content already processed as context:`,
@@ -106,6 +106,30 @@ async function processTextBatch(
     existingContext
   );
 
+  const semanticSearchResults = await tabProxy.cosineSimilarity(
+    `${contextResponse.context?.title} ${contextResponse.context?.description} ${contextResponse.context?.summary}`,
+    {
+      limit: 5,
+    }
+  );
+
+  const similarContexts = semanticSearchResults?.filter(
+    (c) => c.score >= SemanticSearchThreshold
+  );
+
+  logger.info(`🔍 Semantic search results:`, semanticSearchResults);
+  logger.info(`🔍 Closely similar contexts:`, similarContexts);
+
+  let matchedCategory: string | null = null;
+  if (similarContexts?.length > 0) {
+    if (similarContexts?.length > 0) {
+      matchedCategory = similarContexts?.[0]?.metadata.category;
+      logger.info(
+        `🔍 Matched context: ${similarContexts?.[0]?.metadata.category} with score: ${similarContexts?.[0]?.score}`
+      );
+    }
+  }
+
   if (contextResponse.retentionDecision.keep && contextResponse.context) {
     const contextId = shortId.generate();
 
@@ -116,7 +140,9 @@ async function processTextBatch(
       id: contextId,
       fingerprint,
       contentFingerprint,
-      category: contextResponse.context.category.toLowerCase(),
+      category: (
+        matchedCategory || contextResponse.context.category.toLowerCase()
+      ).replace(/\s/g, "-"),
       type: "artifact:web-page",
       title: contextResponse.context.title,
       description: contextResponse.context.description,
@@ -234,23 +260,25 @@ async function processElementBatch(
 type ExistingContext = {
   title: string;
   description: string;
-  summary: string;
+  category: string;
 };
 
 async function getExistingContext(
-  tabProxy: any,
+  tabProxy: DatabaseProxy,
   fingerprint: string
 ): Promise<ExistingContext | undefined> {
   const existingUrlContext = await tabProxy.getContextByFingerprint(
     fingerprint
   );
-  return existingUrlContext
-    ? {
-        title: existingUrlContext.title,
-        description: existingUrlContext.description,
-        summary: existingUrlContext.summary,
-      }
-    : undefined;
+  if (existingUrlContext) {
+    return {
+      title: existingUrlContext.title,
+      description: existingUrlContext.description,
+      category: existingUrlContext.category,
+    };
+  }
+
+  return undefined;
 }
 
 function countInvalidTextOccurrences(elementBatch: any[]): Map<string, number> {
@@ -327,11 +355,11 @@ function selectHighlightElements(
 
 async function createContextWithEmbedding(
   contextData: Omit<UrmindDB["contexts"]["value"], "createdAt" | "updatedAt">,
-  tabProxy: any,
+  tabProxy: DatabaseProxy,
   cleanUrl: string
 ): Promise<string> {
   const newContextId = await tabProxy.createContext(contextData);
-  logger.info("✅ DOM Context created with ID:", newContextId);
+  logger.info("✅ Context created with ID:", newContextId);
 
   try {
     const embeddingText = `${contextData.title} ${contextData.description} ${contextData.summary}`;
@@ -349,7 +377,7 @@ async function createContextWithEmbedding(
         url: cleanUrl,
       },
     });
-    logger.info("🔮 Embedding created for DOM context:", newContextId);
+    logger.info("🔮 Embedding created for context:", newContextId);
   } catch (embeddingError) {
     logger.error("⚠️ Failed to create embedding:", embeddingError);
   }
@@ -418,6 +446,7 @@ async function generateContext(
               position: el.position,
             })),
           metadata: pageMetadata,
+          // @ts-ignore
           existingContext,
         })
       );

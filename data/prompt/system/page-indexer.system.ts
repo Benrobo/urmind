@@ -7,85 +7,55 @@ export const InitialContextCreatorPrompt = (input: {
   existingContext?: {
     title: string;
     description: string;
-    summary: string;
+    category?: string;
   };
 }) => `
-Analyze content batch for valuable information, comparing against existing context if available.
+Analyze content for valuable information. Generate unique context based on current content.
 
 **Page:** ${input.metadata.title} (${input.metadata.pageUrl})
-
-**Content:**
-${input.pageContent.substring(0, 2000)}${
+**Content:** ${input.pageContent.substring(0, 2000)}${
   input.pageContent.length > 2000 ? "..." : ""
 }
 
 ${
   input.existingContext
-    ? `
-**Existing Context:**
-- Title: ${input.existingContext.title}
-- Description: ${input.existingContext.description}
-- Summary: ${input.existingContext.summary}
-`
-    : "NO EXISTING CONTEXT PROVIDED"
+    ? `**Existing Context Reference:** ${input.existingContext.title} | ${
+        input.existingContext.description
+      }${
+        input.existingContext.category
+          ? ` | ${input.existingContext.category}`
+          : ""
+      }`
+    : ""
 }
 
-**Output (JSON):**
+**Output JSON:**
 {
   "context": {
     "category": "string",
     "title": "string", 
     "description": "string",
-    "summary": "string" // Detailed, well-structured markdown with headers, lists, and formatting
+    "summary": "string" // Detailed markdown with headers, lists, key facts
   } | null,
   "retentionDecision": {"keep": boolean, "reason": "string"}
 }
 
-**SUMMARY FORMATTING REQUIREMENTS:**
-- Write the summary in detailed, well-structured markdown
-- Use headers (##, ###) to organize information
-- Use bullet points and numbered lists for clarity
-- Include key facts, dates, names, and important details
-- Structure information logically with proper markdown formatting
-- Make it comprehensive and easy to read
+**KEEP ONLY IF:**
+- Provides substantial, valuable information about the main topic
+- Contains meaningful factual content worth preserving
+- Genuinely useful for research/reference
 
-**STRICT CONTENT EVALUATION:**
-- Does this content provide SUBSTANTIAL, VALUABLE information about the main topic?
-- Is this content worth preserving for future reference and research?
-- Does this content contain meaningful factual information, not just metadata?
-- Would this content be genuinely useful to someone researching the topic?
+**MANDATORY REJECT:**
+Legal disclaimers, ToS, privacy policies, copyright notices, navigation menus, breadcrumbs, pagination, footers, sidebars, ads, UI elements, boilerplate text
 
-**MANDATORY REJECTION CRITERIA (keep: false):**
-- Legal disclaimers, terms of service, privacy policies
-- Copyright notices, licensing information, trademark notices
-- Navigation menus, breadcrumbs, pagination
-- Footer content, sidebars, advertisements
-- Generic UI elements, buttons, form labels
-- Low-value metadata or boilerplate text
-- Content that doesn't add meaningful value to the main topic
+**CONTEXT RULES:**
+- Generate NEW, UNIQUE context (never copy existing)
+- Use same category as existing if content is related
+- Reject if unrelated to page's main theme
+- Summary: detailed markdown with ##headers, bullets, key facts
+- Be extremely strict - better to reject than save worthless content
 
-**EXISTING CONTEXT REFERENCE:**
-${
-  input.existingContext
-    ? `
-- Use existing context ONLY as reference to understand the page's main theme
-- Generate NEW, UNIQUE context based on the current content
-- Do NOT copy or reuse existing context title/description/summary
-- If new content is unrelated to the page's main theme, reject it (keep: false)
-- If new content adds value to the page's theme, create fresh context for it
-`
-    : ""
-}
-
-**DECISION LOGIC:**
-- Only keep content that provides SUBSTANTIAL, MEANINGFUL information
-- Reject any content that is legal boilerplate, navigation, or low-value
-- Be extremely strict - better to reject than to save worthless content
-- Focus on content that would be genuinely useful for research or reference
-- Generate UNIQUE context based on current content - do NOT copy existing context
-- Each context should be distinct and valuable on its own
-
-Generate focused context only if content is truly valuable.
+Focus on genuinely valuable content only.
 `;
 
 // Enhanced context creator for DOM elements with existing context comparison

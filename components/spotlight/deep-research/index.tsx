@@ -1,21 +1,17 @@
 import { cn } from "@/lib/utils";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   MessageSquare,
   FileText,
-  Loader,
-  Check,
-  CheckCheck,
-  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
-import {
-  AssistantResponseState,
-  SpotlightConversations,
-} from "@/types/spotlight";
-import { mockSpotlightConversations } from "@/mock-data/mock-spotlight";
+import { SpotlightConversations } from "@/types/spotlight";
+import { mockSpotlightConversationsV2 } from "@/mock-data/mock-spotlight";
 import MarkdownRenderer from "@/components/markdown";
-import { Collapsible } from "@/components/collapsible";
-import { UrmindTools } from "@/types/context";
+import { activeConversationStore } from "@/store/conversation.store";
+import useStorageStore from "@/hooks/useStorageStore";
+import useConversations from "@/hooks/useConversations";
 
 export default function DeepResearchResult() {
   return (
@@ -38,20 +34,63 @@ const researchMessageTabs = [
   },
 ];
 
+const conversationControls = [
+  {
+    id: "left",
+    icon: ChevronLeft,
+  },
+  {
+    id: "right",
+    icon: ChevronRight,
+  },
+];
+
 function ResearchMessage() {
+  const { value: activeConversationId, setValue: setActiveConversationId } =
+    useStorageStore(activeConversationStore);
   const [activeTab, setActiveTab] = useState("answer");
   const [contextLength, setContextLength] = useState(3);
   const [queryText, setQueryText] = useState("user query goes here");
   const [activeTabRef, setActiveTabRef] = useState<HTMLButtonElement | null>(
     null
   );
-  const [conversations, setConversations] = useState<SpotlightConversations[]>(
-    mockSpotlightConversations
-  );
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [activeConversationIndex, setActiveConversationIndex] = useState(0);
   const [activeConversation, setActiveConversation] =
-    useState<SpotlightConversations | null>(
-      mockSpotlightConversations[0] ?? null
-    );
+    useState<SpotlightConversations | null>(null);
+
+  // Use the new useConversations hook
+  const { conversations, loading: conversationsLoading } = useConversations({
+    isStreaming,
+    limit: 10,
+  });
+
+  const hasMoreConversations = conversations.length > 1;
+
+  useEffect(() => {
+    // Use mock data as fallback when no real conversations are available
+    const availableConversations =
+      conversations.length > 0 ? conversations : mockSpotlightConversationsV2;
+
+    if (!activeConversationId) {
+      const firstConversation = availableConversations[0];
+      if (firstConversation) {
+        setActiveConversationId(firstConversation.id);
+        setActiveConversation(firstConversation);
+        setActiveConversationIndex(0);
+      }
+    } else {
+      const conversation = availableConversations.find(
+        (c) => c.id === activeConversationId
+      );
+      if (conversation) {
+        setActiveConversation(conversation);
+        setActiveConversationIndex(
+          availableConversations.indexOf(conversation)
+        );
+      }
+    }
+  }, [activeConversationId, conversations]);
 
   // Dynamic font size based on text length
   const getQueryFontSize = (text: string) => {
@@ -69,8 +108,66 @@ function ResearchMessage() {
     return "text-[9px]";
   };
 
+  // Loading state
+  if (conversationsLoading) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center py-8 px-4">
+        <div className="text-center">
+          <MessageSquare className="w-12 h-12 text-white/40 mx-auto mb-4 animate-pulse" />
+          <h3 className="text-white/80 text-lg font-medium mb-2">
+            Loading conversations...
+          </h3>
+          <p className="text-white/60 text-sm">
+            Please wait while we fetch your research results
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state when no conversations
+  if (conversations.length === 0 || !activeConversation) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center py-8 px-4">
+        <div className="text-center">
+          <MessageSquare className="w-12 h-12 text-white/40 mx-auto mb-4" />
+          <h3 className="text-white/80 text-lg font-medium mb-2">
+            No conversations yet
+          </h3>
+          <p className="text-white/60 text-sm">
+            Start a conversation to see your research results here
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full h-full flex flex-col relative top-0 left-0 py-4 pb-[10em]">
+      <div className="w-full flex items-center justify-end pr-1 mb-4">
+        {/* left and right arrow paginated button to switch between conversations */}
+        {hasMoreConversations &&
+          conversationControls.map((control, idx) => (
+            <button
+              key={control.id}
+              className={cn(
+                "w-6 h-6 border border-white/10 rounded-full mr-2 mb-2 bg-white/20 text-white-100 flex flex-center",
+                activeConversationIndex === 0 &&
+                  control.id === "left" &&
+                  "opacity-50 cursor-not-allowed",
+                activeConversationIndex === conversations.length - 1 &&
+                  control.id === "right" &&
+                  "opacity-50 cursor-not-allowed"
+              )}
+            >
+              <control.icon
+                size={16}
+                strokeWidth={2}
+                onClick={() => setActiveConversationIndex(idx)}
+              />
+            </button>
+          ))}
+      </div>
       {activeConversation &&
         activeConversation?.messages.map((msg, idx) => (
           <div
@@ -86,10 +183,10 @@ function ResearchMessage() {
                   <p
                     className={cn(
                       "text-white font-geistmono",
-                      getQueryFontSize(msg?.parts[0]?.text! ?? "")
+                      getQueryFontSize(msg?.text ?? "")
                     )}
                   >
-                    {msg?.parts[0]?.text ?? ""}
+                    {msg?.text ?? ""}
                   </p>
                 </div>
 
@@ -143,7 +240,8 @@ function ResearchMessage() {
 
             {msg?.role === "assistant" && (
               <section className="w-full overflow-y-auto px-4">
-                {msg?.parts.map((part, idx) => {
+                {/* V1.0 */}
+                {/* {msg?.parts.map((part, idx) => {
                   switch (part.type) {
                     case "text":
                       return (
@@ -166,68 +264,16 @@ function ResearchMessage() {
                     default:
                       return null;
                   }
-                })}
+                })} */}
+
+                <MarkdownRenderer
+                  markdownString={msg?.text ?? ""}
+                  className="text-white"
+                />
               </section>
             )}
           </div>
         ))}
-    </div>
-  );
-}
-
-type ExpandableToolCardProps = {
-  type: UrmindTools;
-  state: AssistantResponseState;
-  input: Record<string, any>;
-  output: Record<string, any>;
-};
-
-function ExpandableToolCard({
-  type,
-  state,
-  input,
-  output,
-}: ExpandableToolCardProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const toolTypeTitleMap = {
-    "tool-searchContexts": "Searching Contexts",
-    "tool-addToContexts": "Add to Contexts",
-  } as const;
-
-  return (
-    <div className="w-full h-auto border border-white/10 rounded-lg mb-2 bg-white/20 px-2 text-white-100">
-      <button
-        className="w-full h-auto flex items-center justify-between gap-2 relative overflow-y-auto py-1"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <div className="w-full flex items-center justify-start gap-2">
-          {state === "output-streaming" && (
-            <Loader className="w-4 h-4 text-white/80 animate-spin" />
-          )}
-          {state === "output-available" && (
-            <CheckCheck className="w-4 h-4 text-white/80" />
-          )}
-          <span className="text-white/80 text-sm font-medium">
-            {toolTypeTitleMap[type]}
-          </span>
-        </div>
-        <div className="w-full flex items-center justify-end gap-2">
-          <div className="text-white/80 text-sm font-medium">
-            <ChevronDown
-              className={cn("w-4 h-4 text-white/80", isOpen && "rotate-180")}
-            />
-          </div>
-        </div>
-      </button>
-      <Collapsible isOpen={isOpen}>
-        <div className="w-full h-auto flex flex-col relative overflow-y-auto py-1 pl-7">
-          <div className="w-full h-auto flex items-center justify-start gap-2">
-            <span className="text-white/80 text-sm font-medium">
-              {toolTypeTitleMap[type]}
-            </span>
-          </div>
-        </div>
-      </Collapsible>
     </div>
   );
 }

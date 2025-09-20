@@ -22,11 +22,20 @@ type ResponseMessage = {
   input?: Record<string, any>;
 };
 
-export type SpotlightConversations = {
+export type SpotlightConversationsV1 = {
   id: string;
   messages: Array<{
     id: string;
     role: "assistant" | "user";
     parts: ResponseMessage[];
+  }>;
+};
+
+export type SpotlightConversations = {
+  id: string;
+  messages: Array<{
+    id: string;
+    role: "assistant" | "user";
+    text: string;
   }>;
 };
