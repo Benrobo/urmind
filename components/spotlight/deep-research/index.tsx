@@ -59,7 +59,6 @@ function ResearchMessage() {
   const [activeConversation, setActiveConversation] =
     useState<SpotlightConversations | null>(null);
 
-  // Use the new useConversations hook
   const { conversations, loading: conversationsLoading } = useConversations({
     isStreaming,
     limit: 10,
@@ -68,7 +67,6 @@ function ResearchMessage() {
   const hasMoreConversations = conversations.length > 1;
 
   useEffect(() => {
-    // Use mock data as fallback when no real conversations are available
     const availableConversations =
       conversations.length > 0 ? conversations : mockSpotlightConversationsV2;
 
@@ -92,7 +90,6 @@ function ResearchMessage() {
     }
   }, [activeConversationId, conversations]);
 
-  // Dynamic font size based on text length
   const getQueryFontSize = (text: string) => {
     const length = text.length;
     if (length <= 20) return "text-xl";
@@ -125,10 +122,9 @@ function ResearchMessage() {
     );
   }
 
-  // Empty state when no conversations
   if (conversations.length === 0 || !activeConversation) {
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center py-8 px-4">
+      <div className="w-full min-h-[350px] flex flex-col items-center justify-center py-8 px-4">
         <div className="text-center">
           <MessageSquare className="w-12 h-12 text-white/40 mx-auto mb-4" />
           <h3 className="text-white/80 text-lg font-medium mb-2">
