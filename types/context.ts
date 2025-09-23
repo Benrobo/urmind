@@ -20,6 +20,7 @@ export type Context = {
   }>; // New field: Array of DOM elements with XPath and position for precise highlighting
   summary: string;
   url: string | null;
+  fullUrl: string | null;
   image: string | null;
   favicon: string | null;
 };

@@ -1,15 +1,20 @@
-import urmindDb from "@/services/db";
 import { Context } from "@/types/context";
 import { useQuery } from "@tanstack/react-query";
+import { sendMessageToBackgroundScriptWithResponse } from "@/helpers/messaging";
 
 type SavedContext = Context & { createdAt: number };
 
 type SavedContextProps = {
   query?: string;
   limit?: number;
+  mounted?: boolean;
 };
 
-export default function useSavedContext({ query, limit }: SavedContextProps) {
+export default function useSavedContext({
+  query,
+  limit,
+  mounted,
+}: SavedContextProps) {
   const {
     data: contexts = [],
     isLoading: loading,
@@ -19,40 +24,41 @@ export default function useSavedContext({ query, limit }: SavedContextProps) {
     queryKey: ["saved-contexts", query, limit],
     queryFn: async () => {
       if (query && query?.length > 0) {
-        const semanticSearchResult =
-          await urmindDb.embeddings?.cosineSimilarity(query, {
-            limit: limit ?? 5,
-          });
-
-        const contexts = await Promise.all(
-          semanticSearchResult?.map((result) =>
-            urmindDb.contexts?.getContext(result.id)
-          ) ?? []
-        );
-
-        const filteredContexts = contexts?.filter(
-          (context) => context !== undefined
-        );
-
-        return filteredContexts ?? [];
+        const response = await sendMessageToBackgroundScriptWithResponse({
+          action: "db-operation",
+          payload: {
+            operation: "semanticSearch",
+            data: { query, limit: limit ?? 5 },
+          },
+        });
+        return (response?.result as SavedContext[]) || [];
       } else {
-        const contexts = await urmindDb.contexts?.getAllContexts();
-        const filteredContexts = contexts
-          ?.filter((context) => context !== undefined)
-          .slice(0, limit ?? 5);
-        return filteredContexts ?? [];
+        const response = await sendMessageToBackgroundScriptWithResponse({
+          action: "db-operation",
+          payload: {
+            operation: "getAllContexts",
+            data: { limit: limit ?? 5 },
+          },
+        });
+        return (response?.result as SavedContext[]) || [];
       }
     },
-    refetchInterval: 5000, // Refetch every 5 seconds
-    refetchIntervalInBackground: true, // Keep refetching even when tab is not active
-    staleTime: 2000, // Consider data stale after 2 seconds
-    gcTime: 10000, // Keep in cache for 10 seconds
+    enabled: mounted,
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    // refetchInterval: 5000,
+    refetchIntervalInBackground: true,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    staleTime: 2000,
+    gcTime: 10000,
   });
 
   return {
     contexts,
     loading,
-    error: error?.message || null,
+    error: error instanceof Error ? error.message : null,
     refetch,
   };
 }

@@ -35,7 +35,7 @@ ${
     "category": "string",
     "title": "string", 
     "description": "string",
-    "summary": "string" // Detailed markdown with headers, lists, key facts
+    "summary": "string" // Minimal, accessible markdown - simple formatting only
   } | null,
   "retentionDecision": {"keep": boolean, "reason": "string"}
 }
@@ -52,7 +52,7 @@ Legal disclaimers, ToS, privacy policies, copyright notices, navigation menus, b
 - Generate NEW, UNIQUE context (never copy existing)
 - Use same category as existing if content is related
 - Reject if unrelated to page's main theme
-- Summary: detailed markdown with ##headers, bullets, key facts
+- Summary: minimal, accessible markdown - use simple formatting only
 - Be extremely strict - better to reject than save worthless content
 
 Focus on genuinely valuable content only.
@@ -99,18 +99,19 @@ ${
     "category": "string",
     "title": "string", 
     "description": "string",
-    "summary": "string" // Detailed, well-structured markdown with headers, lists, and formatting
+    "summary": "string" // Minimal, accessible markdown - simple formatting only
   } | null,
   "retentionDecision": {"keep": boolean, "reason": "string"}
 }
 
 **SUMMARY FORMATTING REQUIREMENTS:**
-- Write the summary in detailed, well-structured markdown
-- Use headers (##, ###) to organize information
-- Use bullet points and numbered lists for clarity
-- Include key facts, dates, names, and important details
-- Structure information logically with proper markdown formatting
-- Make it comprehensive and easy to read
+- Write the summary in minimal, accessible markdown
+- Use simple formatting: **bold** for emphasis, *italics* sparingly
+- Use simple bullet points (-) for lists, avoid complex nesting
+- Keep headers simple (## only, avoid deep nesting)
+- Focus on readability and accessibility
+- Avoid complex markdown features like tables, code blocks, or complex lists
+- Make it easy to read for people with visual impairments
 
 **STRICT CONTENT EVALUATION:**
 - Does this content provide SUBSTANTIAL, VALUABLE information about the main topic?

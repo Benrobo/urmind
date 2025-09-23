@@ -10,6 +10,10 @@ export const md5Hash = (text: string) => {
   return md5(text);
 };
 
+export const sleep = (ms: number) => {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+};
+
 /**
  * Cleans a URL for fingerprinting by removing query parameters and fragments
  * to ensure the same page gets the same fingerprint regardless of URL params.

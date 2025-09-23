@@ -14,9 +14,6 @@ export class ContextService {
       updatedAt: now,
     };
 
-    console.log("Creating context:", contextData);
-    console.log("Database instance:", this.db);
-
     try {
       const result = await this.db.put("contexts", contextData);
       console.log("Context creation result:", result);
@@ -32,6 +29,11 @@ export class ContextService {
     }
   }
 
+  /**
+   * Get a context by ID
+   * @param id - The ID of the context
+   * @returns The context
+   */
   async getContext(
     id: string
   ): Promise<UrmindDB["contexts"]["value"] | undefined> {

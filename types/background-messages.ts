@@ -16,6 +16,7 @@ export interface NavigationDetectedPayload {
 export interface MessageResponse {
   success: boolean;
   error?: string;
+  result?: unknown;
 }
 
 export interface PendingPageIndexingJob {

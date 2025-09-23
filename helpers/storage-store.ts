@@ -35,6 +35,13 @@ export class StorageStore<T = any> {
   // Set value
   async set(value: T): Promise<void> {
     await storage.setItem(this.key, value);
+
+    // Manually trigger watchers as a fallback
+    setTimeout(() => {
+      this.watchers.forEach((callback) => {
+        callback(value, null);
+      });
+    }, 0);
   }
 
   // Delete value
@@ -65,7 +72,9 @@ export class StorageStore<T = any> {
     this.watchers.add(callback);
 
     // Immediately call with current value
-    this.get().then((value) => callback(value, null));
+    this.get().then((value) => {
+      callback(value, null);
+    });
 
     // Return unsubscribe function
     return () => {

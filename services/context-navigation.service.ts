@@ -143,7 +143,7 @@ export class ContextNavigationService {
       return;
     }
 
-    const url = new URL(context.url);
+    const url = new URL(context.fullUrl || context.url);
     if (context?.highlightElements?.length > 0) {
       url.searchParams.set("ctx", context.id);
     }

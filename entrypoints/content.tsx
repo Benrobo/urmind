@@ -5,35 +5,24 @@ import { defineContentScript } from "wxt/utils/define-content-script";
 import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
 import ReactDOM from "react-dom/client";
 import Root from "@/components/Root.tsx";
-import urmindDb, { initDb } from "@/services/db";
 
 import "../assets/main.css";
 import { SUPPORTED_DOMAINS } from "@/config";
-import { chromeAi } from "@/helpers/agent/utils";
-import aiService from "@/services/ai.service";
 import pageExtractionService from "@/services/page-extraction/extraction";
-import { sendMessageToBackgroundScript } from "@/helpers/messaging";
+import {
+  sendMessageToBackgroundScript,
+  sendMessageToBackgroundScriptWithResponse,
+} from "@/helpers/messaging";
 import NavigationMonitor from "@/helpers/navigation-monitor";
 import { useDatabaseMessageHandler } from "@/services/db-message-handler";
 import { contextNavigationService } from "@/services/context-navigation.service";
 
+// initialize embedding model in content script
+import { embeddingHelper } from "@/services/embedding-helper";
+import { sleep } from "@/lib/utils";
+
 let currentUrl = location.href;
 let navigationMonitor: NavigationMonitor | null = null;
-
-async function aiConfig() {
-  await aiService.init();
-
-  // const embeddingFactory = new EmbeddingFactory();
-
-  // const vectorSearch = await urmindDb.embeddings?.cosineSimilarity(
-  //   "Hello, world!",
-  //   {
-  //     limit: 10,
-  //   }
-  // );
-
-  // console.log({ vectorSearch });
-}
 
 function monitorUrlChanges(cb?: () => void) {
   const observer = new MutationObserver(() => {
@@ -59,9 +48,7 @@ export default defineContentScript({
   cssInjectionMode: "ui",
   runAt: "document_start",
   async main(ctx) {
-    await initDb();
-
-    // Set up database message handler
+    // Set up database message handler (includes embedding operations)
     const dbMessageHandler = useDatabaseMessageHandler();
     dbMessageHandler.setupListener();
 
@@ -79,19 +66,18 @@ export default defineContentScript({
       },
     });
 
-    const pageMetadata = await pageExtractionService.extractPageMetadata();
-
-    // monitorUrlChanges(async () => {
-    //   sendMessageToBackgroundScript({
-    //     action: "navigation-detected",
-    //     payload: {
-    //       url: location.href,
-    //       pageMetadata,
-    //     },
-    //   });
+    // DEBUG: testing message handler CS->BS BS->CS
+    // const response = await sendMessageToBackgroundScriptWithResponse({
+    //   action: "db-operation",
+    //   payload: { operation: "getAllContexts" },
     // });
 
-    await aiConfig();
+    // console.log("🔍 getAllConversations response:", response);
+
+    // wait for dom to get settled
+    await sleep(1000);
+
+    const pageMetadata = await pageExtractionService.extractPageMetadata();
 
     navigationMonitor = new NavigationMonitor({
       onNavigationChange: (newUrl, oldUrl) => {
@@ -107,7 +93,6 @@ export default defineContentScript({
     await navigationMonitor.startMonitoring();
 
     window.addEventListener("DOMContentLoaded", () => {
-      console.log("DOMContentLoaded");
       sendMessageToBackgroundScript({
         action: "navigation-detected",
         payload: {

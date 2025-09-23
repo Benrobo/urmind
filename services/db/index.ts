@@ -1,19 +1,19 @@
 import { openDB, IDBPDatabase } from "idb";
 import { UrmindDB } from "@/types/database";
 import { ContextService } from "./context";
-import { EmbeddingService } from "./embedding";
 import { ConversationService } from "./conversation";
+import { EmbeddingsStore } from "@/services/embeddings-store";
 
 class UrmindDatabase {
   private db: IDBPDatabase<UrmindDB> | null = null;
   private dbName = "urmind-db";
-  private version = 3.4;
+  private version = 3.5;
   private initPromise: Promise<void> | null = null;
 
   // Service instances
   public contexts: ContextService | null = null;
-  public embeddings: EmbeddingService | null = null;
   public conversations: ConversationService | null = null;
+  public embeddings: EmbeddingsStore | null = null;
 
   getDb(): IDBPDatabase<UrmindDB> {
     if (!this.db) throw new Error("Database not initialized");
@@ -85,33 +85,10 @@ class UrmindDatabase {
 
     // Initialize service instances
     this.contexts = new ContextService(this.db);
-    this.embeddings = new EmbeddingService(this.db);
     this.conversations = new ConversationService(this.db);
-
-    await this.embeddings.init();
+    this.embeddings = new EmbeddingsStore(this.db);
 
     console.log("Database services initialized");
-
-    // Only initialize embedding service in background script
-    // const isBackgroundScript =
-    //   typeof window === "undefined" || !window.document;
-    // if (isBackgroundScript) {
-    //   // We're in background script context
-    //   try {
-    //     console.log("Initializing embedding service in background...");
-    //     await this.embeddings.init();
-    //     console.log("Embedding service initialized successfully");
-    //   } catch (error) {
-    //     console.error(
-    //       "Warning: Embedding service initialization failed. Semantic search will not be available:",
-    //       error
-    //     );
-    //   }
-    // } else {
-    //   console.log(
-    //     "Skipping embedding service initialization in content script"
-    //   );
-    // }
   }
 
   async clearAllData(): Promise<void> {
@@ -127,6 +104,27 @@ class UrmindDatabase {
       tx.objectStore("conversations").clear(),
       tx.done,
     ]);
+  }
+
+  async clearContexts(): Promise<void> {
+    if (!this.db) throw new Error("Database not initialized");
+    const tx = this.db.transaction("contexts", "readwrite");
+    await tx.objectStore("contexts").clear();
+    await tx.done;
+  }
+
+  async clearEmbeddings(): Promise<void> {
+    if (!this.db) throw new Error("Database not initialized");
+    const tx = this.db.transaction("embeddings", "readwrite");
+    await tx.objectStore("embeddings").clear();
+    await tx.done;
+  }
+
+  async clearConversations(): Promise<void> {
+    if (!this.db) throw new Error("Database not initialized");
+    const tx = this.db.transaction("conversations", "readwrite");
+    await tx.objectStore("conversations").clear();
+    await tx.done;
   }
 
   async close(): Promise<void> {

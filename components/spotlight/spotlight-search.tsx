@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import {
   Sparkles,
@@ -11,13 +11,16 @@ import {
 import { SearchResult, SpotlightProps, SearchResultType } from "@/types/search";
 import { useHotkeys } from "react-hotkeys-hook";
 import { contextSpotlightVisibilityStore } from "@/store/context.store";
+import { uiStore } from "@/store/ui.store";
 import useStorageStore from "@/hooks/useStorageStore";
-import DeepResearchResult from "./deep-research";
+import DeepResearchResult, { DeepResearchResultProps } from "./deep-research";
 import useSavedContext from "@/hooks/useContext";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import SavedContext from "./saved-context";
 import { ContextType } from "@/types/context";
+import urmindDb from "@/services/db";
+import shortUUID from "short-uuid";
 
 dayjs.extend(relativeTime);
 
@@ -48,10 +51,12 @@ export default function SpotlightSearch({
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [showDeepResearch, setShowDeepResearch] = useState(true);
   const [streamingText, setStreamingText] = useState("");
-  const [showChat, setShowChat] = useState(false);
+  const [deepResearchState, setDeepResearchState] =
+    useState<DeepResearchResultProps["deepResearchState"]>(null);
+  const [disableInput, setDisableInput] = useState(false);
   const { value: isVisible } = useStorageStore(contextSpotlightVisibilityStore);
+  const { value: uiState } = useStorageStore(uiStore);
 
   // Hotkey configuration
   const hotKeysConfigOptions = {
@@ -84,9 +89,22 @@ export default function SpotlightSearch({
   // Toggle between SavedContext and DeepResearch on Cmd+Enter
   useHotkeys(
     "meta+enter, ctrl+enter",
-    (e) => {
+    async (e) => {
       e.preventDefault();
-      setShowDeepResearch(!showDeepResearch);
+
+      if (searchQuery.trim().length > 0) {
+        if (uiState.showDeepResearch) {
+          setDeepResearchState("follow-up");
+        } else {
+          setDeepResearchState("new");
+        }
+
+        await uiStore.setShowDeepResearch(true);
+        await uiStore.setShowChat(false);
+      } else {
+        await uiStore.setShowDeepResearch(false);
+        await uiStore.setShowChat(false);
+      }
     },
     hotKeysConfigOptions
   );
@@ -105,16 +123,6 @@ export default function SpotlightSearch({
   );
 
   useHotkeys(
-    "ctrl+enter, meta+enter",
-    () => {
-      if (isVisible && searchQuery.trim()) {
-        handleAskUrMind();
-      }
-    },
-    hotKeysConfigOptions
-  );
-
-  useHotkeys(
     "ctrl+shift+m, meta+shift+m",
     () => {
       if (isVisible) {
@@ -123,6 +131,14 @@ export default function SpotlightSearch({
     },
     hotKeysConfigOptions
   );
+
+  useEffect(() => {
+    if (uiState.showDeepResearch) {
+      setDeepResearchState("follow-up");
+    } else {
+      setDeepResearchState(null);
+    }
+  }, [uiState]);
 
   const aiAction = {
     id: "ask-urmind-ai",
@@ -146,7 +162,7 @@ export default function SpotlightSearch({
     };
 
     setMessages((prev) => [...prev, userMessage]);
-    setShowChat(true);
+    uiStore.setShowChat(true);
     setIsStreaming(true);
     setStreamingText("");
 
@@ -219,6 +235,14 @@ export default function SpotlightSearch({
     }
   };
 
+  // const startNewConversation = () => {
+  //   const query = searchQuery.trim();
+  //   urmindDb.conversations?.createConversation({
+  //     id: shortUUID.generate(),
+  //     messages: [{ id: shortUUID.generate(), role: "user", content: query }],
+  //   });
+  // };
+
   // Don't render if not visible
   if (!isVisible) {
     return null;
@@ -242,15 +266,24 @@ export default function SpotlightSearch({
     >
       {/* Search Header */}
       <div className="px-4 py-3 border-b border-white-400/60">
-        <div className="flex items-center space-x-3">
+        <div
+          className={cn(
+            "flex items-center space-x-3",
+            disableInput && "opacity-50 cursor-not-allowed grayscale"
+          )}
+        >
           <Search size={18} className="text-white/60" />
           <input
             type="text"
             placeholder="Ask your mind... or search your memory"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 bg-transparent text-white placeholder-white/60 text-sm outline-none"
+            className={cn(
+              "flex-1 bg-transparent text-white placeholder-white/60 text-sm outline-none",
+              disableInput && "opacity-50 cursor-not-allowed grayscale"
+            )}
             autoFocus={true}
+            disabled={disableInput}
           />
           <div className="flex items-center space-x-1 text-white/60 text-xs">
             <span className="bg-white/10 px-2 py-1 rounded text-xs">⌘</span>
@@ -261,7 +294,7 @@ export default function SpotlightSearch({
 
       <div className="max-h-[500px] overflow-y-auto customScrollbar">
         {/* Ask UrMind AI Action */}
-        {!showDeepResearch && (
+        {!uiState.showDeepResearch && (
           <div className="px-4 py-3 border-b border-gray-102/20">
             <div
               className="flex items-center space-x-3 p-3 rounded-lg bg-white/15 hover:bg-white/20 cursor-pointer group border border-white/20"
@@ -288,19 +321,26 @@ export default function SpotlightSearch({
           <div
             className={cn(
               "absolute inset-0 transition-transform duration-300 ease-in-out overflow-y-auto customScrollbar",
-              showDeepResearch ? "-translate-x-full" : "translate-x-0"
+              uiState.showDeepResearch ? "-translate-x-full" : "translate-x-0"
             )}
           >
-            <SavedContext query={searchQuery} />
+            <SavedContext query={searchQuery} uiState={uiState} />
           </div>
 
           <div
             className={cn(
               "absolute inset-0 transition-transform duration-300 ease-in-out overflow-y-auto customScrollbar pl-[2px]",
-              showDeepResearch ? "translate-x-0" : "translate-x-full"
+              uiState.showDeepResearch ? "translate-x-0" : "translate-x-full"
             )}
           >
-            <DeepResearchResult />
+            <DeepResearchResult
+              deepResearchState={deepResearchState}
+              query={searchQuery}
+              resetState={() => setDeepResearchState(null)}
+              disableInput={() => {
+                setDisableInput(true);
+              }}
+            />
           </div>
         </section>
       </div>
@@ -327,7 +367,7 @@ export default function SpotlightSearch({
                 ⌘↵
               </span>
               <span className="text-white/80 ml-1">
-                {showDeepResearch ? "saved" : "research"}
+                {uiState.showDeepResearch ? "saved" : "research"}
               </span>
             </div>
             <div className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md">

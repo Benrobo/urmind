@@ -1,5 +1,6 @@
 import logger from "@/lib/logger";
 import pageIndexerJob from "@/triggers/page-indexer";
+import urmindDb from "@/services/db";
 import type {
   ContentScriptReadyPayload,
   NavigationDetectedPayload,
@@ -116,6 +117,95 @@ export class BackgroundMessageHandler {
   }
 
   /**
+   * Handle database operations
+   */
+  async handleDatabaseOperation(
+    payload: any,
+    tabId: number
+  ): Promise<MessageResponse> {
+    try {
+      const { operation, data } = payload;
+      logger.log("🔍 Handling database operation:", { operation, data });
+
+      let result;
+
+      switch (operation) {
+        case "getAllConversations":
+          if (!urmindDb.conversations) {
+            throw new Error("Conversations service not available");
+          }
+          result = await urmindDb.conversations.getAllConversations();
+          break;
+
+        case "getAllContexts":
+          if (!urmindDb.contexts) {
+            throw new Error("Contexts service not available");
+          }
+          const contexts = await urmindDb.contexts.getAllContexts();
+          result = data?.limit ? contexts.slice(0, data.limit) : contexts;
+          break;
+
+        case "semanticSearch":
+          if (!urmindDb.embeddings) {
+            throw new Error("Embeddings service not available");
+          }
+          result = await urmindDb.embeddings.semanticSearch(
+            data.query,
+            tabId,
+            data.limit
+          );
+          break;
+
+        case "createConversation":
+          if (!urmindDb.conversations) {
+            throw new Error("Conversations service not available");
+          }
+          result = await urmindDb.conversations.createConversation(data);
+          break;
+
+        case "appendMessageToConversation":
+          if (!urmindDb.conversations) {
+            throw new Error("Conversations service not available");
+          }
+          result = await urmindDb.conversations.appendMessageToConversation(
+            data.conversationId,
+            data.message
+          );
+          break;
+
+        case "clearContexts":
+          result = await urmindDb.clearContexts();
+          break;
+
+        case "clearEmbeddings":
+          result = await urmindDb.clearEmbeddings();
+          break;
+
+        case "clearConversations":
+          logger.log("🧹 Clearing conversations...");
+          result = await urmindDb.clearConversations();
+          logger.log("✅ Conversations cleared successfully");
+          break;
+
+        case "clearAllData":
+          result = await urmindDb.clearAllData();
+          break;
+
+        default:
+          throw new Error(`Unknown database operation: ${operation}`);
+      }
+
+      return { success: true, result };
+    } catch (error) {
+      logger.error("Database operation failed:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  /**
    * Clean up when a tab is closed
    */
   cleanupTab(tabId: number): void {
@@ -128,48 +218,58 @@ export class BackgroundMessageHandler {
    * Create the main message listener
    */
   createMessageListener() {
-    return async (
+    return (
       request: any,
       sender: chrome.runtime.MessageSender,
       sendResponse: (response?: any) => void
     ) => {
-      try {
-        let result: MessageResponse = { success: false };
+      (async () => {
+        try {
+          logger.log("📨 Received message:", request.action, request.payload);
+          const tabId = sender.tab?.id!;
+          let result: MessageResponse = { success: false };
 
-        switch (request.action) {
-          case "content-script-ready":
-            result = await this.handleContentScriptReady(
-              request.payload,
-              sender
-            );
-            break;
+          switch (request.action) {
+            case "content-script-ready":
+              result = await this.handleContentScriptReady(
+                request.payload,
+                sender
+              );
+              break;
 
-          case "navigation-detected":
-            result = await this.handleNavigationDetected(
-              request.payload,
-              sender
-            );
-            break;
+            case "navigation-detected":
+              result = await this.handleNavigationDetected(
+                request.payload,
+                sender
+              );
+              break;
 
-          case "openOptionsPage":
-            result = await this.handleOpenOptionsPage();
-            break;
+            case "openOptionsPage":
+              result = await this.handleOpenOptionsPage();
+              break;
 
-          default:
-            logger.warn("🤷‍♂️ Unknown action:", request.action);
-            break;
+            case "db-operation":
+              logger.log("📊 Processing db-operation:", request.payload);
+              result = await this.handleDatabaseOperation(
+                request.payload,
+                tabId!
+              );
+              break;
+
+            default:
+              logger.warn("🤷‍♂️ Unknown action:", request.action);
+              break;
+          }
+          sendResponse(result);
+        } catch (error) {
+          logger.error("❌ Background message handler error:", error);
+          sendResponse({
+            success: false,
+            error: error instanceof Error ? error.message : String(error),
+          });
         }
-
-        sendResponse(result);
-      } catch (error) {
-        logger.error("❌ Background message handler error:", error);
-        sendResponse({
-          success: false,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-
-      return true; // Keep message channel open for async response
+      })();
+      return true;
     };
   }
 }

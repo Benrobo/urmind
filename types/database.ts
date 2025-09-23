@@ -20,6 +20,7 @@ export interface UrmindDB extends DBSchema {
         position: { x: number; y: number; width: number; height: number };
       }>; // New field: Array of DOM elements with XPath and position for precise highlighting
       url: string | null;
+      fullUrl: string | null;
       image: string | null;
       favicon: string | null;
       createdAt: number;
@@ -53,15 +54,20 @@ export interface UrmindDB extends DBSchema {
       messages: Array<{
         id: string;
         role: "assistant" | "user";
-        parts: Array<{
-          type: string;
-          text?: string;
-          output?: Record<string, any>;
-          toolId?: string;
-          content?: string;
-          state?: string;
-          input?: Record<string, any>;
-        }>;
+
+        // V1.0
+        // parts: Array<{
+        //   type: string;
+        //   text?: string;
+        //   output?: Record<string, any>;
+        //   toolId?: string;
+        //   content?: string;
+        //   state?: string;
+        //   input?: Record<string, any>;
+        // }>;
+
+        // V2.0
+        content: string;
       }>;
       createdAt: number;
       updatedAt: number;

@@ -1,5 +1,6 @@
 import { DatabaseOperations } from "@/services/db-message-handler";
 import { PageMetadata } from "@/services/page-extraction/extraction";
+import { MessageResponse } from "@/types/background-messages";
 import retry from "async-retry";
 
 interface BaseProps {
@@ -48,6 +49,23 @@ export function sendMessageToBackgroundScript(
     | ContentScriptReadyMessage
 ) {
   chrome.runtime.sendMessage(message);
+}
+
+/**
+ * Send message to background script and wait for response
+ */
+export function sendMessageToBackgroundScriptWithResponse(
+  message: DBOperationMessage
+): Promise<MessageResponse> {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage(message, (response) => {
+      if (chrome.runtime.lastError) {
+        reject(chrome.runtime.lastError);
+      } else {
+        resolve(response);
+      }
+    });
+  });
 }
 
 /**

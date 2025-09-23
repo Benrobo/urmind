@@ -1,36 +1,60 @@
 import { IDBPDatabase } from "idb";
 import { UrmindDB } from "@/types/database";
-import { pipeline, cos_sim } from "@xenova/transformers";
+import { pipeline, cos_sim, env } from "@xenova/transformers";
 
 export class EmbeddingService {
-  private embeddingFactory: EmbeddingFactory;
+  private embeddingFactory: EmbeddingFactory | null = null;
   constructor(private db: IDBPDatabase<UrmindDB>) {
-    this.embeddingFactory = new EmbeddingFactory();
+    // Only initialize embedding factory in content script context
+    if (typeof window !== "undefined") {
+      this.embeddingFactory = new EmbeddingFactory();
+    }
   }
 
   async init(): Promise<void> {
     console.log("Initializing embedding service");
     try {
-      await this.embeddingFactory.init();
-      console.log("Embedding service initialized successfully");
+      // Only initialize model in content script context
+      if (typeof window !== "undefined") {
+        if (!this.embeddingFactory)
+          throw new Error("Embedding factory not initialized");
+        await this.embeddingFactory.init();
+        console.log("Embedding service initialized successfully");
+      } else {
+        console.log(
+          "Skipping embedding model initialization in background script"
+        );
+      }
     } catch (error) {
       console.error("Failed to initialize embedding service:", error);
       throw new Error(`Embedding service initialization failed: ${error}`);
     }
   }
 
+  // Model operations - only available in content script
   async generateEmbeddingFromText(text: string) {
+    if (typeof window === "undefined") {
+      throw new Error("Model operations not available in background script");
+    }
+    if (!this.embeddingFactory)
+      throw new Error("Embedding factory not initialized");
     const embedding = await this.embeddingFactory.getEmbeddingFromText(text);
     return embedding;
   }
 
+  // Similarity calculations - only available in content script
   async cosineSimilarity(
     query: string,
     options: {
       limit?: number;
     }
   ) {
+    if (typeof window === "undefined") {
+      throw new Error("Model operations not available in background script");
+    }
     const { limit = 10 } = options;
+    if (!this.embeddingFactory)
+      throw new Error("Embedding factory not initialized");
     const queryEmbedding = await this.embeddingFactory.getEmbeddingFromText(
       query
     );

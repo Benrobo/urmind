@@ -1,8 +1,9 @@
 import { defineBackground } from "wxt/utils/define-background";
 import { BackgroundMessageHandler } from "@/services/bgs-services/bg-message-handler";
 import { OmniboxHandler } from "@/services/bgs-services/omnibox-handler";
+import { initDb } from "@/services/db";
 
-export default defineBackground(() => {
+export default defineBackground(async () => {
   console.log("🚀 Background script loaded");
 
   // * Leaving this here for future reference when we need to track how long users spent on a tab to further decide if that page is worth indexing or not.
@@ -19,6 +20,8 @@ export default defineBackground(() => {
   //     console.log("Tab updated:", tabId, tab.url);
   //   }
   // });
+
+  await initDb();
 
   // Initialize services
   const messageHandler = new BackgroundMessageHandler();

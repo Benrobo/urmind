@@ -36,6 +36,6 @@ export type SpotlightConversations = {
   messages: Array<{
     id: string;
     role: "assistant" | "user";
-    text: string;
+    content: string;
   }>;
 };

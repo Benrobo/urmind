@@ -1,28 +1,22 @@
+//============== CONTENT SCRIPT ONLY =============//
+/**To be used in content script only */
+
 import logger from "@/lib/logger";
-import urmindDb from "@/services/db";
+import { embeddingHelper } from "@/services/embedding-helper";
 
 export type DatabaseOperations =
-  // context operations
-  | "createContext"
-  | "getContext"
+  // embedding model operations (content script only)
+  | "generateEmbedding"
+  | "semanticSearch"
+  // database operations (background script only)
+  | "getAllConversations"
   | "getAllContexts"
-  | "updateContext"
-  | "deleteContext"
-  | "getAllContextCategories"
-  | "getContextsByType"
-  | "getContextByFingerprint"
-  | "getContextByContentFingerprint"
-  // embedding operations
-  | "generateEmbeddingFromText"
-  | "cosineSimilarity"
-  | "createEmbedding"
-  | "getEmbedding"
-  | "getEmbeddingsByMetadata"
-  | "updateEmbedding";
+  | "createConversation"
+  | "appendMessageToConversation";
 
 /**
  * Database operation handler for content script message listeners
- * Handles all database operations requested by background script via messaging
+ * Handles embedding model operations that require content script access
  */
 export class DatabaseMessageHandler {
   /**
@@ -33,111 +27,30 @@ export class DatabaseMessageHandler {
     data?: any,
     contextId?: string
   ): Promise<any> {
-    logger.log("🎯 Content script handling DB operation:", operation, {
-      data,
-      contextId,
-    });
-
-    if (!urmindDb.contexts) {
-      throw new Error("Database contexts service not available");
-    }
-
     let result;
-
     switch (operation) {
-      case "createContext":
-        result = await urmindDb.contexts.createContext(data);
+      case "generateEmbedding":
+        if (!data?.text) throw new Error("text required for generateEmbedding");
+        result = await embeddingHelper.generate(data.text);
         break;
 
-      case "getContext":
-        if (!contextId) throw new Error("contextId required for getContext");
-        result = await urmindDb.contexts.getContext(contextId);
-        break;
+      case "semanticSearch":
+        if (!data?.query) throw new Error("query required for semanticSearch");
+        if (!data?.embeddings)
+          throw new Error("embeddings required for semanticSearch");
 
-      case "getAllContexts":
-        result = await urmindDb.contexts.getAllContexts();
-        break;
-
-      case "updateContext":
-        if (!contextId) throw new Error("contextId required for updateContext");
-        await urmindDb.contexts.updateContext(contextId, data);
-        result = "success";
-        break;
-
-      case "deleteContext":
-        if (!contextId) throw new Error("contextId required for deleteContext");
-        await urmindDb.contexts.deleteContext(contextId);
-        result = "success";
-        break;
-
-      // Additional context queries
-      case "getAllContextCategories":
-        result = await urmindDb.contexts.getAllContextCategories();
-        break;
-
-      case "getContextsByType":
-        if (!data?.type) throw new Error("type required for getContextsByType");
-        result = await urmindDb.contexts.getContextsByType(data.type);
-        break;
-
-      case "getContextByFingerprint":
-        if (!data?.fingerprint)
-          throw new Error("fingerprint required for getContextByFingerprint");
-        result = await urmindDb.contexts.getContextByFingerprint(
-          data.fingerprint
-        );
-        break;
-
-      case "getContextByContentFingerprint":
-        if (!data?.contentFingerprint)
-          throw new Error(
-            "contentFingerprint required for getContextByContentFingerprint"
-          );
-        result = await urmindDb.contexts.getContextByContentFingerprint(
-          data.contentFingerprint
-        );
-        break;
-
-      case "generateEmbeddingFromText":
-        result = await urmindDb.embeddings?.generateEmbeddingFromText(
-          data.text
-        );
-        break;
-
-      case "cosineSimilarity":
-        result = await urmindDb.embeddings?.cosineSimilarity(
-          data.text,
-          data.options
-        );
-        break;
-
-      case "createEmbedding":
-        result = await urmindDb.embeddings?.createEmbedding(data);
-        break;
-
-      case "getEmbedding":
-        result = await urmindDb.embeddings?.getEmbedding(data.id);
-        break;
-
-      case "getEmbeddingsByMetadata":
-        result = await urmindDb.embeddings?.getEmbeddingsByMetadata(
-          data.metadataKey,
-          data.metadataValue
-        );
-        break;
-
-      case "updateEmbedding":
-        result = await urmindDb.embeddings?.updateEmbedding(
-          data.id,
-          data.updates
+        const queryEmbedding = await embeddingHelper.generate(data.query);
+        result = embeddingHelper.cosineSimilarity(
+          queryEmbedding,
+          data.embeddings,
+          data.limit || 10
         );
         break;
 
       default:
-        throw new Error(`Unknown DB operation: ${operation}`);
+        throw new Error(`Unknown embedding operation: ${operation}`);
     }
 
-    logger.log("✅ DB operation completed:", operation);
     return result;
   }
 
@@ -151,27 +64,46 @@ export class DatabaseMessageHandler {
       sendResponse: (response?: any) => void
     ) => {
       if (request.action === "db-operation") {
-        (async () => {
-          try {
-            const { operation, data, contextId } = request.payload;
+        const { operation } = request.payload;
+        console.log("🔍 Content script received db-operation:", operation);
 
-            console.log("🔍 DB operation:", operation, { data, contextId });
+        // Only handle embedding operations in content script
+        const embeddingOperations = ["generateEmbedding", "semanticSearch"];
 
-            const result = await this.handleOperation(
-              operation,
-              data,
-              contextId
-            );
-            sendResponse({ result });
-          } catch (error) {
-            logger.error("❌ DB operation failed:", error);
-            sendResponse({
-              error: error instanceof Error ? error.message : String(error),
-            });
-          }
-        })();
+        if (embeddingOperations.includes(operation)) {
+          console.log(
+            "📝 Content script handling embedding operation:",
+            operation
+          );
+          (async () => {
+            try {
+              const { operation, data, contextId } = request.payload;
 
-        return true; // Keep message channel open for async response
+              // console.log("🔍 DB operation:", operation, { data, contextId });
+
+              const result = await this.handleOperation(
+                operation,
+                data,
+                contextId
+              );
+              sendResponse({ result });
+            } catch (error) {
+              logger.error("❌ DB operation failed:", error);
+              sendResponse({
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+          })();
+
+          return true; // Keep message channel open for async response
+        } else {
+          // Let other db operations pass through to background script
+          console.log(
+            "🔄 Content script passing through to background script:",
+            operation
+          );
+          return false;
+        }
       }
       return false; // Let other listeners handle non-db messages
     };

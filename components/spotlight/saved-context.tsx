@@ -12,16 +12,22 @@ dayjs.extend(relativeTime);
 
 type SavedContextProps = {
   query: string;
+  uiState: {
+    showDeepResearch: boolean;
+    showSavedContext: boolean;
+    showChat: boolean;
+  };
 };
 
-export default function SavedContext({ query }: SavedContextProps) {
+export default function SavedContext({ query, uiState }: SavedContextProps) {
   const {
     contexts: filteredContext,
     loading,
     error,
   } = useSavedContext({
-    query: query.trim(),
+    query: !uiState?.showDeepResearch ? query.trim() : undefined,
     limit: 6,
+    mounted: !uiState?.showDeepResearch,
   });
 
   const getContentIcon = (type: string): LucideIcon => {
@@ -81,7 +87,7 @@ export default function SavedContext({ query }: SavedContextProps) {
                       {item.type}
                     </div>
                     <div className="text-xs text-white/50">
-                      {dayjs(item.createdAt).fromNow()}
+                      {dayjs(item?.createdAt).fromNow()}
                     </div>
                   </div>
                 </button>

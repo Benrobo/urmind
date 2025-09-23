@@ -1,5 +1,11 @@
 import { cn } from "@/lib/utils";
-import React, { useEffect, useState } from "react";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
   MessageSquare,
   FileText,
@@ -7,19 +13,12 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { SpotlightConversations } from "@/types/spotlight";
-import { mockSpotlightConversationsV2 } from "@/mock-data/mock-spotlight";
 import MarkdownRenderer from "@/components/markdown";
 import { activeConversationStore } from "@/store/conversation.store";
 import useStorageStore from "@/hooks/useStorageStore";
 import useConversations from "@/hooks/useConversations";
-
-export default function DeepResearchResult() {
-  return (
-    <div className="w-full h-auto flex flex-col relative overflow-y-auto">
-      <ResearchMessage />
-    </div>
-  );
-}
+import { sendMessageToBackgroundScriptWithResponse } from "@/helpers/messaging";
+import shortUUID from "short-uuid";
 
 const researchMessageTabs = [
   {
@@ -34,27 +33,31 @@ const researchMessageTabs = [
   },
 ];
 
-const conversationControls = [
-  {
-    id: "left",
-    icon: ChevronLeft,
-  },
-  {
-    id: "right",
-    icon: ChevronRight,
-  },
-];
+export type DeepResearchResultProps = {
+  deepResearchState: "new" | "follow-up" | null;
+  query: string;
+  resetState: () => void;
+  disableInput: () => void;
+};
 
-function ResearchMessage() {
-  const { value: activeConversationId, setValue: setActiveConversationId } =
-    useStorageStore(activeConversationStore);
+export default function DeepResearchResult({
+  deepResearchState,
+  query,
+  resetState,
+  disableInput,
+}: DeepResearchResultProps) {
+  const [isStreaming, setIsStreaming] = useState(false);
+  const {
+    value: activeConversationId,
+    setValue: setActiveConversationId,
+    refresh: refreshActiveConversation,
+  } = useStorageStore(activeConversationStore);
   const [activeTab, setActiveTab] = useState("answer");
   const [contextLength, setContextLength] = useState(3);
-  const [queryText, setQueryText] = useState("user query goes here");
-  const [activeTabRef, setActiveTabRef] = useState<HTMLButtonElement | null>(
-    null
-  );
-  const [isStreaming, setIsStreaming] = useState(false);
+
+  // Use ref to avoid unnecessary rerenders for tab underline
+  const activeTabRef = useRef<HTMLButtonElement | null>(null);
+
   const [activeConversationIndex, setActiveConversationIndex] = useState(0);
   const [activeConversation, setActiveConversation] =
     useState<SpotlightConversations | null>(null);
@@ -62,48 +65,220 @@ function ResearchMessage() {
   const { conversations, loading: conversationsLoading } = useConversations({
     isStreaming,
     limit: 10,
+    mounted: true,
   });
 
-  const hasMoreConversations = conversations.length > 1;
+  const hasMoreConversations = useMemo(
+    () => conversations.length > 1,
+    [conversations.length]
+  );
 
-  useEffect(() => {
-    const availableConversations =
-      conversations.length > 0 ? conversations : mockSpotlightConversationsV2;
-
-    if (!activeConversationId) {
-      const firstConversation = availableConversations[0];
-      if (firstConversation) {
-        setActiveConversationId(firstConversation.id);
-        setActiveConversation(firstConversation);
-        setActiveConversationIndex(0);
+  // Memoize the handler to avoid infinite rerenders
+  const handleResearchStateChange = useCallback(async () => {
+    if (deepResearchState === "new") {
+      // create new conversation
+      const convId = shortUUID.generate();
+      try {
+        await sendMessageToBackgroundScriptWithResponse({
+          action: "db-operation",
+          payload: {
+            operation: "createConversation",
+            data: {
+              id: convId,
+              messages: [
+                { id: shortUUID.generate(), role: "user", content: query },
+              ],
+            },
+          },
+        });
+        setActiveConversationId(convId);
+        resetState();
+      } catch (error) {
+        console.error("Failed to create conversation:", error);
       }
     } else {
-      const conversation = availableConversations.find(
+      // append query to active conversation
+      if (activeConversationId) {
+        try {
+          await sendMessageToBackgroundScriptWithResponse({
+            action: "db-operation",
+            payload: {
+              operation: "appendMessageToConversation",
+              data: {
+                conversationId: activeConversationId,
+                message: {
+                  id: shortUUID.generate(),
+                  role: "user",
+                  content: query,
+                },
+              },
+            },
+          });
+        } catch (error) {
+          console.error("Failed to append message:", error);
+        }
+      }
+      setIsStreaming(false);
+      refreshActiveConversation();
+    }
+    // eslint-disable-next-line
+  }, [
+    deepResearchState,
+    query,
+    setActiveConversationId,
+    resetState,
+    activeConversationId,
+    refreshActiveConversation,
+  ]);
+
+  // Only run when deepResearchState changes, not on every render
+  useEffect(() => {
+    if (deepResearchState !== null) {
+      handleResearchStateChange();
+    }
+    // Only resetState on unmount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      resetState();
+    };
+    // eslint-disable-next-line
+  }, [deepResearchState, handleResearchStateChange]);
+
+  // Only run when deepResearchState or conversations changes
+  useEffect(() => {
+    if (deepResearchState === "new" && conversations.length > 0) {
+      setIsStreaming(true);
+      // disableInput();
+    }
+    // eslint-disable-next-line
+  }, [deepResearchState, conversations.length, disableInput]);
+
+  // Memoize the conversation lookup to avoid unnecessary rerenders
+  useEffect(() => {
+    if (activeConversationId !== null) {
+      const conversation = conversations.find(
         (c) => c.id === activeConversationId
       );
       if (conversation) {
         setActiveConversation(conversation);
-        setActiveConversationIndex(
-          availableConversations.indexOf(conversation)
-        );
+        setActiveConversationIndex(conversations.indexOf(conversation));
       }
     }
+    // eslint-disable-next-line
   }, [activeConversationId, conversations]);
 
-  const getQueryFontSize = (text: string) => {
+  // Only refresh on mount
+  useEffect(() => {
+    refreshActiveConversation();
+    // eslint-disable-next-line
+  }, []);
+
+  // Memoize font size calculation
+  const getQueryFontSize = useCallback((text: string) => {
     const length = text.length;
     if (length <= 20) return "text-xl";
     if (length <= 40) return "text-lg";
     if (length <= 60) return "text-base";
     if (length <= 80) return "text-sm";
     return "text-xs";
-  };
+  }, []);
 
-  const getContextBadgeFontSize = (count: number) => {
+  const getContextBadgeFontSize = useCallback((count: number) => {
     if (count >= 9) return "text-xs";
     if (count >= 99) return "text-[10px]";
     return "text-[9px]";
-  };
+  }, []);
+
+  // Memoize messages to avoid unnecessary rerenders - moved before early returns
+  const renderedMessages = useMemo(
+    () =>
+      activeConversation?.messages.map((msg, idx) => (
+        <div
+          key={msg.id}
+          className={cn(
+            idx === activeConversation?.messages.length - 1 &&
+              "pb-10 border-b-[1px] border-b-white-300/20"
+          )}
+        >
+          {msg?.role === "user" && (
+            <div className="w-full flex flex-col gap-1 pb-4 px-4">
+              <div className="w-full flex items-center justify-start mb-2">
+                <p
+                  className={cn(
+                    "text-white font-geistmono",
+                    getQueryFontSize(msg?.content ?? "")
+                  )}
+                >
+                  {msg?.content ?? ""}
+                </p>
+              </div>
+
+              <div className="relative w-auto flex items-center justify-start gap-4">
+                {/* Base horizontal line */}
+                <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-white/10" />
+
+                {/* Active tab underline - 6px wider than tab */}
+                {activeTabRef.current && (
+                  <div
+                    className="absolute bottom-0 h-0.5 bg-white transition-all duration-200 ease-in-out"
+                    style={{
+                      width: `${activeTabRef.current.offsetWidth + 6}px`,
+                      left: `${activeTabRef.current.offsetLeft}px`,
+                    }}
+                  />
+                )}
+
+                {researchMessageTabs.map((t) => {
+                  const IconComponent = t.icon;
+                  return (
+                    <button
+                      key={t.id}
+                      ref={activeTab === t.id ? activeTabRef : null}
+                      onClick={() => setActiveTab(t.id)}
+                      className={cn(
+                        "relative w-auto px-0 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2",
+                        activeTab === t.id
+                          ? "text-white"
+                          : "text-white/60 hover:text-white/80"
+                      )}
+                    >
+                      <IconComponent size={14} />
+                      <span>{t.title}</span>
+                      {t.id === "contexts" && (
+                        <span
+                          className={cn(
+                            "bg-white/20 text-white/80 px-1.5 py-0.5 rounded-full",
+                            getContextBadgeFontSize(contextLength)
+                          )}
+                        >
+                          {contextLength}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {msg?.role === "assistant" && (
+            <section className="w-full overflow-y-auto px-4">
+              <MarkdownRenderer
+                markdownString={msg?.content ?? ""}
+                className="text-white"
+              />
+            </section>
+          )}
+        </div>
+      )),
+    [
+      activeConversation?.messages,
+      activeTab,
+      contextLength,
+      getQueryFontSize,
+      getContextBadgeFontSize,
+    ]
+  );
 
   // Loading state
   if (conversationsLoading) {
@@ -141,135 +316,47 @@ function ResearchMessage() {
   return (
     <div className="w-full h-full flex flex-col relative top-0 left-0 py-4 pb-[10em]">
       <div className="w-full flex items-center justify-end pr-1 mb-4">
-        {/* left and right arrow paginated button to switch between conversations */}
-        {hasMoreConversations &&
-          conversationControls.map((control, idx) => (
+        {/* Left and right arrow controls */}
+        {hasMoreConversations && (
+          <div className="flex items-center gap-2">
             <button
-              key={control.id}
               className={cn(
-                "w-6 h-6 border border-white/10 rounded-full mr-2 mb-2 bg-white/20 text-white-100 flex flex-center",
-                activeConversationIndex === 0 &&
-                  control.id === "left" &&
-                  "opacity-50 cursor-not-allowed",
+                "w-6 h-6 border border-white/10 rounded-full bg-white/20 text-white-100 flex items-center justify-center",
+                activeConversationIndex === 0 && "opacity-50 cursor-not-allowed"
+              )}
+              onClick={() => {
+                if (activeConversationIndex > 0) {
+                  const newIndex = activeConversationIndex - 1;
+                  setActiveConversationIndex(newIndex);
+                  setActiveConversationId(conversations[newIndex]!.id);
+                }
+              }}
+              disabled={activeConversationIndex === 0}
+            >
+              <ChevronLeft size={16} strokeWidth={2} />
+            </button>
+
+            <button
+              className={cn(
+                "w-6 h-6 border border-white/10 rounded-full bg-white/20 text-white-100 flex items-center justify-center",
                 activeConversationIndex === conversations.length - 1 &&
-                  control.id === "right" &&
                   "opacity-50 cursor-not-allowed"
               )}
+              onClick={() => {
+                if (activeConversationIndex < conversations.length - 1) {
+                  const newIndex = activeConversationIndex + 1;
+                  setActiveConversationIndex(newIndex);
+                  setActiveConversationId(conversations[newIndex]!.id);
+                }
+              }}
+              disabled={activeConversationIndex === conversations.length - 1}
             >
-              <control.icon
-                size={16}
-                strokeWidth={2}
-                onClick={() => setActiveConversationIndex(idx)}
-              />
+              <ChevronRight size={16} strokeWidth={2} />
             </button>
-          ))}
-      </div>
-      {activeConversation &&
-        activeConversation?.messages.map((msg, idx) => (
-          <div
-            key={msg.id}
-            className={cn(
-              idx === activeConversation?.messages.length - 1 &&
-                "pb-10 border-b-[1px] border-b-white-300/20"
-            )}
-          >
-            {msg?.role === "user" && (
-              <div className="w-full flex flex-col gap-1 pb-4 px-4">
-                <div className="w-full flex items-center justify-start mb-2">
-                  <p
-                    className={cn(
-                      "text-white font-geistmono",
-                      getQueryFontSize(msg?.text ?? "")
-                    )}
-                  >
-                    {msg?.text ?? ""}
-                  </p>
-                </div>
-
-                <div className="relative w-auto flex items-center justify-start gap-4">
-                  {/* Base horizontal line */}
-                  <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-white/10" />
-
-                  {/* Active tab underline - 6px wider than tab */}
-                  {activeTabRef && (
-                    <div
-                      className="absolute bottom-0 h-0.5 bg-white transition-all duration-200 ease-in-out"
-                      style={{
-                        width: `${activeTabRef.offsetWidth + 6}px`,
-                        left: `${activeTabRef.offsetLeft}px`,
-                      }}
-                    />
-                  )}
-
-                  {researchMessageTabs.map((t) => {
-                    const IconComponent = t.icon;
-                    return (
-                      <button
-                        key={t.id}
-                        ref={activeTab === t.id ? setActiveTabRef : null}
-                        onClick={() => setActiveTab(t.id)}
-                        className={cn(
-                          "relative w-auto px-0 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2",
-                          activeTab === t.id
-                            ? "text-white"
-                            : "text-white/60 hover:text-white/80"
-                        )}
-                      >
-                        <IconComponent size={14} />
-                        <span>{t.title}</span>
-                        {t.id === "contexts" && (
-                          <span
-                            className={cn(
-                              "bg-white/20 text-white/80 px-1.5 py-0.5 rounded-full",
-                              getContextBadgeFontSize(contextLength)
-                            )}
-                          >
-                            {contextLength}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {msg?.role === "assistant" && (
-              <section className="w-full overflow-y-auto px-4">
-                {/* V1.0 */}
-                {/* {msg?.parts.map((part, idx) => {
-                  switch (part.type) {
-                    case "text":
-                      return (
-                        <MarkdownRenderer
-                          markdownString={part.text ?? ""}
-                          key={idx}
-                          className="text-white"
-                        />
-                      );
-                    case "tool-searchContexts":
-                      return (
-                        <ExpandableToolCard
-                          key={idx}
-                          type={"tool-searchContexts"}
-                          state={part.state!}
-                          input={part.input!}
-                          output={part.output!}
-                        />
-                      );
-                    default:
-                      return null;
-                  }
-                })} */}
-
-                <MarkdownRenderer
-                  markdownString={msg?.text ?? ""}
-                  className="text-white"
-                />
-              </section>
-            )}
           </div>
-        ))}
+        )}
+      </div>
+      {activeConversation && renderedMessages}
     </div>
   );
 }
