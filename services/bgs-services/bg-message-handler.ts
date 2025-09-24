@@ -125,8 +125,6 @@ export class BackgroundMessageHandler {
   ): Promise<MessageResponse> {
     try {
       const { operation, data } = payload;
-      logger.log("🔍 Handling database operation:", { operation, data });
-
       let result;
 
       switch (operation) {
@@ -225,7 +223,7 @@ export class BackgroundMessageHandler {
     ) => {
       (async () => {
         try {
-          logger.log("📨 Received message:", request.action, request.payload);
+          // logger.log("📨 Received message:", request.action, request.payload);
           const tabId = sender.tab?.id!;
           let result: MessageResponse = { success: false };
 
@@ -249,7 +247,6 @@ export class BackgroundMessageHandler {
               break;
 
             case "db-operation":
-              logger.log("📊 Processing db-operation:", request.payload);
               result = await this.handleDatabaseOperation(
                 request.payload,
                 tabId!

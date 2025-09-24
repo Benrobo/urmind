@@ -111,8 +111,6 @@ class NavigationMonitor {
     const oldUrl = this.currentUrl;
     this.currentUrl = newUrl;
 
-    console.log("Handling navigation:", { oldUrl, newUrl });
-
     // Wait for new page to load
     await this.waitForPageLoad();
 

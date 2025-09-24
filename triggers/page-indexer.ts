@@ -139,9 +139,9 @@ async function processTextBatch(props: {
   let matchedCategory: string | null = null;
   if (similarContexts?.length > 0) {
     if (similarContexts?.length > 0) {
-      matchedCategory = similarContexts?.[0]?.metadata.category;
+      matchedCategory = similarContexts?.[0]?.category || null;
       logger.info(
-        `🔍 Matched context: ${similarContexts?.[0]?.metadata.category} with score: ${similarContexts?.[0]?.score}`
+        `🔍 Matched context: ${similarContexts?.[0]?.category} with score: ${similarContexts?.[0]?.score}`
       );
     }
   }

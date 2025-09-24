@@ -19,8 +19,6 @@ export class ContextNavigationService {
       return;
     }
 
-    logger.log("🎯 Context navigation detected:", contextId);
-
     try {
       // Get context from IndexedDB
       const context = await urmindDb.contexts?.getContext(contextId);
@@ -29,8 +27,6 @@ export class ContextNavigationService {
         logger.warn("⚠️ Context not found:", contextId);
         return;
       }
-
-      logger.log("📄 Context found:", context);
 
       // Wait for DOM to be ready
       if (document.readyState === "loading") {

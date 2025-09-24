@@ -62,7 +62,7 @@ export class EmbeddingsStore {
     query: string,
     tabId: number,
     options: { limit?: number } = {}
-  ): Promise<Array<{ id: string; score: number; metadata?: any }>> {
+  ) {
     // Get all stored embeddings
     const allEmbeddings = await this.getAll();
 
