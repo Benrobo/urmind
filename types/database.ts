@@ -68,6 +68,7 @@ export interface UrmindDB extends DBSchema {
 
         // V2.0
         content: string;
+        contextIds: string[];
       }>;
       createdAt: number;
       updatedAt: number;

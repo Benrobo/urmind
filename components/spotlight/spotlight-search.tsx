@@ -28,6 +28,8 @@ import SavedContext from "./saved-context";
 import { ContextType } from "@/types/context";
 import urmindDb from "@/services/db";
 import shortUUID from "short-uuid";
+import { sendMessageToBackgroundScriptWithResponse } from "@/helpers/messaging";
+import { SpotlightConversations } from "@/types/spotlight";
 
 dayjs.extend(relativeTime);
 
@@ -72,6 +74,14 @@ export default function SpotlightSearch({
   const deepResearchScrollRef = useRef<HTMLDivElement>(null);
   const [isUserAtBottom, setIsUserAtBottom] = useState(true);
 
+  const conversationsCount = useCallback(async () => {
+    const response = await sendMessageToBackgroundScriptWithResponse({
+      action: "db-operation",
+      payload: { operation: "getAllConversations" },
+    });
+    return (response?.result as SpotlightConversations[]).length;
+  }, []);
+
   // Hotkey configuration
   const hotKeysConfigOptions = {
     enableOnFormTags: true,
@@ -115,22 +125,12 @@ export default function SpotlightSearch({
     "meta+enter, ctrl+enter",
     async (e) => {
       e.preventDefault();
-
-      if (searchQuery.trim().length > 0) {
-        setAiSubmittedQuery(searchQuery);
-
-        // if (uiState.showDeepResearch) {
-        //   setDeepResearchState("follow-up");
-        // } else {
-        //   setDeepResearchState("new");
-        // }
-
+      console.log("🔍 UI State:", uiState);
+      // switch between ui states
+      if (!uiState.showDeepResearch) {
         await toggleDeepResearch();
-        // setLocalUiState("deep-research");
       } else {
         await toggleSavedContext();
-        // setLocalUiState("context");
-        setDeepResearchState(null);
       }
     },
     hotKeysConfigOptions
@@ -182,60 +182,16 @@ export default function SpotlightSearch({
     shortcut: "⌘⏎",
   };
 
-  const handleAskUrMind = () => {
-    if (!searchQuery.trim()) return;
-
-    // Add user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      type: "user",
-      content: searchQuery,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setIsStreaming(true);
-    setStreamingText("");
-
-    // Simulate AI response streaming
-    const aiResponse =
-      "Based on your saved context, I found relevant information about your query. Here's what I discovered:";
-    let currentText = "";
-
-    const streamInterval = setInterval(() => {
-      if (currentText.length < aiResponse.length) {
-        currentText += aiResponse[currentText.length];
-        setStreamingText(currentText);
-      } else {
-        clearInterval(streamInterval);
-        setIsStreaming(false);
-
-        // Add final AI message
-        const aiMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          type: "ai",
-          content: aiResponse,
-          timestamp: new Date(),
-          sources: [
-            {
-              id: "1",
-              title: "Docker Setup Tutorial",
-              subtitle: "docker.com • text",
-              type: "text",
-            },
-            {
-              id: "2",
-              title: "React Best Practices.pdf",
-              subtitle: "dev.to • artifact:document",
-              type: "artifact:document",
-            },
-          ],
-        };
-
-        setMessages((prev) => [...prev, aiMessage]);
-        setStreamingText("");
-      }
-    }, 50);
+  const handleAskUrMind = async () => {
+    if (searchQuery.trim().length > 0) {
+      const convCount = await conversationsCount();
+      if (!uiState.showDeepResearch) await toggleDeepResearch();
+      setAiSubmittedQuery(searchQuery);
+      setDeepResearchState(
+        !uiState.showDeepResearch ? "new" : convCount > 0 ? "follow-up" : "new"
+      );
+      setSearchQuery("");
+    }
   };
 
   const handleResultClick = (result: SearchResult) => {
@@ -245,6 +201,15 @@ export default function SpotlightSearch({
   const handleClose = () => {
     contextSpotlightVisibilityStore.hide();
     onClose?.();
+  };
+
+  const handleKeyDown = async (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      handleClose();
+    }
+    if (e.key === "Enter") {
+      await handleAskUrMind();
+    }
   };
 
   const openMindboard = async () => {
@@ -258,20 +223,6 @@ export default function SpotlightSearch({
     }
 
     contextSpotlightVisibilityStore.hide();
-  };
-
-  const handleKeyDown = async (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") {
-      handleClose();
-    }
-    if (e.key === "Enter") {
-      if (searchQuery.trim().length > 0) {
-        await toggleDeepResearch();
-        setAiSubmittedQuery(searchQuery);
-        setDeepResearchState(!uiState.showDeepResearch ? "new" : "follow-up");
-        setSearchQuery("");
-      }
-    }
   };
 
   const handleScroll = useCallback(() => {
@@ -417,7 +368,7 @@ export default function SpotlightSearch({
         )}
 
         {/* Show Chat Messages or Saved Context */}
-        <section className="w-full min-h-[500px] relative overflow-hidden">
+        <section className="w-full min-h-[400px] relative overflow-hidden">
           <div
             className={cn(
               "absolute inset-0 transition-transform duration-300 ease-in-out overflow-y-auto customScrollbar",

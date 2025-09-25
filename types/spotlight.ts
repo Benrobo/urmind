@@ -37,5 +37,6 @@ export type SpotlightConversations = {
     id: string;
     role: "assistant" | "user";
     content: string;
+    contextIds?: string[];
   }>;
 };

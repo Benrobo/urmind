@@ -92,6 +92,24 @@ export class ConversationService {
     });
   }
 
+  async updateMessageContextIds(
+    conversationId: string,
+    messageId: string,
+    contextIds: string[]
+  ): Promise<void> {
+    const conversation = await this.getConversation(conversationId);
+    if (!conversation)
+      throw new Error("[updating-message-context-ids] Conversation not found");
+
+    await this.db.put("conversations", {
+      ...conversation,
+      messages: conversation.messages.map((message) =>
+        message.id === messageId ? { ...message, contextIds } : message
+      ),
+      updatedAt: Date.now(),
+    });
+  }
+
   async getConversation(
     id: string
   ): Promise<UrmindDB["conversations"]["value"] | undefined> {

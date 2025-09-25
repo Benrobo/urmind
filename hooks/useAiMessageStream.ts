@@ -18,8 +18,8 @@ type StreamingState =
 type Props = {
   userQuery: string;
   conversationHistory: Array<{
-    role: "user" | "assistant";
-    content: string;
+    user: string;
+    assistant: string;
   }>;
   isStreaming: boolean;
   onComplete: () => void;
@@ -57,18 +57,17 @@ export default function useAiMessageStream({
         try {
           setStreamingState("thinking");
 
-          await sleep(1000);
-
           const relatedContexts = await findRelatedContexts(userQuery);
-          logger.log("Related contexts:", relatedContexts);
 
-          // setStreamingState("streaming");
+          logger.log("Related contexts:", relatedContexts);
 
           const prompt = DeepResearchSystemPrompt({
             userQuery,
             conversationHistory,
             relatedContexts,
           });
+
+          setStreamingState("streaming");
 
           for await (const chunk of await chromeAi.stream(prompt)) {
             const msgHash = md5Hash(userQuery);

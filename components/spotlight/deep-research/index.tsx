@@ -85,25 +85,41 @@ const DeepResearchResult = memo(
       if (!activeConversation) return [];
 
       const messages = activeConversation.messages;
-      const lastMessages = messages.slice(-3);
+      const history = [];
 
-      return lastMessages.map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-      }));
+      // Get the last 6 messages (3 pairs of user/assistant)
+      const lastMessages = messages.slice(-6);
+
+      // Group messages into user/assistant pairs, starting from the end
+      for (let i = lastMessages.length - 2; i >= 0; i -= 2) {
+        if (history.length >= 3) break;
+
+        const userMessage = lastMessages[i];
+        const assistantMessage = lastMessages[i + 1];
+
+        if (userMessage && assistantMessage) {
+          history.unshift({
+            user: userMessage.content,
+            assistant: assistantMessage.content,
+          });
+        }
+      }
+
+      return history;
     }, [activeConversation]);
 
-    const { messageStream, content, streamingState } = useAiMessageStream({
-      userQuery: userQuery ?? "",
-      conversationHistory,
-      isStreaming,
-      onComplete: () => {
-        setIsStreaming(false);
-      },
-      onError: (error) => {
-        console.error("Failed to stream message:", error);
-      },
-    });
+    const { messageStream, content, streamingState, relatedContexts } =
+      useAiMessageStream({
+        userQuery: userQuery ?? "",
+        conversationHistory,
+        isStreaming,
+        onComplete: () => {
+          setIsStreaming(false);
+        },
+        onError: (error) => {
+          console.error("Failed to stream message:", error);
+        },
+      });
 
     const hasMoreConversations = useMemo(
       () => conversations.length > 1,
@@ -204,121 +220,128 @@ const DeepResearchResult = memo(
             return conversation;
           });
         });
-
-        // Save chunk to database
-        // sendMessageToBackgroundScriptWithResponse({
-        //   action: "db-operation",
-        //   payload: {
-        //     operation: "updateMessageContent",
-        //     data: {
-        //       conversationId: activeConversationId,
-        //       messageId: activeMessageId,
-        //       content: messageStream,
-        //     },
-        //   },
-        // }).catch((error) => {
-        //   console.error("Failed to save message chunk:", error);
-        // });
       }
     }, [content, activeMessageId, isStreaming, activeConversationId]);
 
-    const handleDeepResearchState = async (state: "new" | "follow-up") => {
-      if (state === "new") {
-        // create new conversation
+    const createNewConversation = async () => {
+      try {
+        if (!query || query.trim().length === 0) {
+          console.error("No user query");
+          return;
+        }
+
         const convId = shortUUID.generate();
-        try {
-          const newConversation: SpotlightConversations = {
-            id: convId,
-            messages: [
-              { id: shortUUID.generate(), role: "user", content: query! },
-              {
-                id: shortUUID.generate(),
-                role: "assistant" as "user" | "assistant",
-                content: "",
-              },
-            ],
-          };
+        const newConversation: SpotlightConversations = {
+          id: convId,
+          messages: [
+            { id: shortUUID.generate(), role: "user", content: query! },
+            { id: shortUUID.generate(), role: "assistant", content: "" },
+          ],
+        };
 
-          await sendMessageToBackgroundScriptWithResponse({
-            action: "db-operation",
-            payload: {
-              operation: "createConversation",
-              data: newConversation,
-            },
+        await sendMessageToBackgroundScriptWithResponse({
+          action: "db-operation",
+          payload: {
+            operation: "createConversation",
+            data: newConversation,
+          },
+        });
+
+        setConversations([...conversations, newConversation]);
+        setActiveConversationId(convId);
+        setActiveMessageId(newConversation.messages[1]?.id!);
+        setIsStreaming(true);
+        setUserQuery(query!);
+        resetState();
+        onScrollToBottom?.();
+      } catch (err: any) {
+        console.error("Failed to create new conversation:", err);
+      }
+    };
+
+    const appendMessageToConversation = async () => {
+      if (!query || query.trim().length === 0) {
+        console.error("No user query");
+        return;
+      }
+
+      try {
+        const userMessage = {
+          id: shortUUID.generate(),
+          role: "user" as "user" | "assistant",
+          content: query!,
+        };
+        const emptyAssistantMessage = {
+          id: shortUUID.generate(),
+          role: "assistant" as "user" | "assistant",
+          content: "",
+        };
+
+        console.log({ userMessage, emptyAssistantMessage });
+
+        const appendMessagesData = {
+          conversationId: activeConversationId,
+          messages: [userMessage, emptyAssistantMessage],
+        };
+
+        await sendMessageToBackgroundScriptWithResponse({
+          action: "db-operation",
+          payload: {
+            operation: "appendMessagesToConversation",
+            data: appendMessagesData,
+          },
+        });
+
+        setConversations((prev) => {
+          return prev.map((conversation) => {
+            if (conversation.id === activeConversationId) {
+              return {
+                ...conversation,
+                messages: [
+                  ...conversation.messages,
+                  userMessage,
+                  emptyAssistantMessage,
+                ],
+              };
+            }
+            return conversation;
           });
+        });
 
-          setConversations([...conversations, newConversation]);
-          setActiveConversationId(convId);
-          setActiveMessageId(newConversation.messages[1]?.id!);
-          setIsStreaming(true);
-          setUserQuery(query!);
-          resetState();
-          onScrollToBottom?.();
-        } catch (error) {
-          console.error("Failed to create conversation:", error);
-        }
-      } else {
-        // append query to active conversation
-        if (activeConversationId) {
-          try {
-            const userMessage = {
-              id: shortUUID.generate(),
-              role: "user" as "user" | "assistant",
-              content: query!,
-            };
-            const emptyAssistantMessage = {
-              id: shortUUID.generate(),
-              role: "assistant" as "user" | "assistant",
-              content: "",
-            };
+        console.log("🔄 Setting activeMessageId to:", emptyAssistantMessage.id);
 
-            console.log({ userMessage, emptyAssistantMessage });
+        onScrollToBottom?.(150);
+        setActiveMessageId(emptyAssistantMessage.id);
+        setIsStreaming(true);
+        setUserQuery(query!);
+        resetState();
+      } catch (err: any) {
+        console.error("Failed to append message:", err);
+      }
+    };
 
-            const appendMessagesData = {
-              conversationId: activeConversationId,
-              messages: [userMessage, emptyAssistantMessage],
-            };
-
-            await sendMessageToBackgroundScriptWithResponse({
-              action: "db-operation",
-              payload: {
-                operation: "appendMessagesToConversation",
-                data: appendMessagesData,
-              },
-            });
-
-            setConversations((prev) => {
-              return prev.map((conversation) => {
-                if (conversation.id === activeConversationId) {
-                  return {
-                    ...conversation,
-                    messages: [
-                      ...conversation.messages,
-                      userMessage,
-                      emptyAssistantMessage,
-                    ],
-                  };
-                }
-                return conversation;
-              });
-            });
-
-            console.log(
-              "🔄 Setting activeMessageId to:",
-              emptyAssistantMessage.id
-            );
-
-            onScrollToBottom?.(150);
-            setActiveMessageId(emptyAssistantMessage.id);
-            setIsStreaming(true);
-            setUserQuery(query!);
-            resetState();
-          } catch (error) {
-            console.error("Failed to append message:", error);
+    const handleDeepResearchState = async (state: "new" | "follow-up") => {
+      switch (state) {
+        case "new":
+          await createNewConversation();
+          break;
+        case "follow-up":
+          if (conversations.length > 0) {
+            if (activeConversationId) {
+              await appendMessageToConversation();
+            } else if (
+              conversations.length === 0 &&
+              query!?.trim().length > 0
+            ) {
+              await createNewConversation();
+            } else {
+              console.error("No active conversation id");
+            }
           }
-        } else {
-          console.error("No active conversation id");
-        }
+          break;
+        default:
+          console.error("Invalid deep research state");
+          break;
       }
     };
 
@@ -428,6 +451,7 @@ const DeepResearchResult = memo(
                     idx !== activeConversation?.messages.length - 1 && "pb-10",
                     idx === activeConversation?.messages.length - 1 && "pb-10",
                     msg.role === "assistant" &&
+                      idx !== activeConversation?.messages.length - 1 &&
                       "border-b-[1px] border-b-white-300/20"
                   )}
                 >

@@ -17,7 +17,7 @@ export class ContextMenuService {
     await chrome.contextMenus.removeAll();
 
     // Create simple "Save to UrMind" menu item
-    await chrome.contextMenus.create({
+    chrome.contextMenus.create({
       id: "save-to-urmind",
       title: "Add me to your mind daddy 😉",
       contexts: ["selection", "image", "link"],

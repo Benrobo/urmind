@@ -17,6 +17,7 @@ type DatabaseOperations =
   | "updateMessageInConversation"
   | "appendMessageToConversation"
   | "appendMessagesToConversation"
+  | "updateMessageContextIds"
   | "semanticSearch"
   | "clearContexts"
   | "clearEmbeddings"
@@ -249,6 +250,22 @@ export class BackgroundMessageHandler {
           result = await urmindDb.conversations.appendMessagesToConversation(
             appendMessagesPayload.conversationId,
             appendMessagesPayload.messages
+          );
+          break;
+
+        case "updateMessageContextIds":
+          const updateContextIdsPayload = data as {
+            conversationId: string;
+            messageId: string;
+            contextIds: string[];
+          };
+          if (!urmindDb.conversations) {
+            throw new Error("Conversations service not initialized");
+          }
+          result = await urmindDb.conversations.updateMessageContextIds(
+            updateContextIdsPayload.conversationId,
+            updateContextIdsPayload.messageId,
+            updateContextIdsPayload.contextIds
           );
           break;
 
