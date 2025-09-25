@@ -52,6 +52,8 @@ export default defineContentScript({
     const dbMessageHandler = useDatabaseMessageHandler();
     dbMessageHandler.setupListener();
 
+    // Context menu functionality is handled in background script
+
     // Check for context navigation on page load
     setTimeout(async () => {
       await contextNavigationService.handleContextNavigation();
@@ -161,3 +163,5 @@ const waitForBody = () => {
     }
   });
 };
+
+// Context menu functionality is handled in background script

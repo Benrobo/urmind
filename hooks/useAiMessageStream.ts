@@ -62,7 +62,7 @@ export default function useAiMessageStream({
           const relatedContexts = await findRelatedContexts(userQuery);
           logger.log("Related contexts:", relatedContexts);
 
-          //   setStreamingState("streaming");
+          // setStreamingState("streaming");
 
           const prompt = DeepResearchSystemPrompt({
             userQuery,
