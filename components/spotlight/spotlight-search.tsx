@@ -1,4 +1,10 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
 import { cn } from "@/lib/utils";
 import {
   Sparkles,
@@ -7,6 +13,7 @@ import {
   ChevronUp,
   ChevronDown,
   CornerDownLeft,
+  ArrowDown,
 } from "lucide-react";
 import { SearchResult, SpotlightProps, SearchResultType } from "@/types/search";
 import { useHotkeys } from "react-hotkeys-hook";
@@ -57,11 +64,28 @@ export default function SpotlightSearch({
   const [disableInput, setDisableInput] = useState(false);
   const { value: isVisible } = useStorageStore(contextSpotlightVisibilityStore);
   const { value: uiState } = useStorageStore(uiStore);
+  // const [localUiState, setLocalUiState] = useState<"deep-research" | "context">(
+  //   uiState?.showDeepResearch ? "deep-research" : "context"
+  // );
+  const uiMounted = useRef(false);
+  const [aiSubmittedQuery, setAiSubmittedQuery] = useState<string | null>(null);
+  const deepResearchScrollRef = useRef<HTMLDivElement>(null);
+  const [isUserAtBottom, setIsUserAtBottom] = useState(true);
 
   // Hotkey configuration
   const hotKeysConfigOptions = {
     enableOnFormTags: true,
     enableOnContentEditable: true,
+  };
+
+  const toggleDeepResearch = async () => {
+    await uiStore.setShowDeepResearch(true);
+    await uiStore.setShowSavedContext(false);
+  };
+
+  const toggleSavedContext = async () => {
+    await uiStore.setShowSavedContext(true);
+    await uiStore.setShowDeepResearch(false);
   };
 
   useHotkeys(
@@ -93,17 +117,20 @@ export default function SpotlightSearch({
       e.preventDefault();
 
       if (searchQuery.trim().length > 0) {
-        if (uiState.showDeepResearch) {
-          setDeepResearchState("follow-up");
-        } else {
-          setDeepResearchState("new");
-        }
+        setAiSubmittedQuery(searchQuery);
 
-        await uiStore.setShowDeepResearch(true);
-        await uiStore.setShowChat(false);
+        // if (uiState.showDeepResearch) {
+        //   setDeepResearchState("follow-up");
+        // } else {
+        //   setDeepResearchState("new");
+        // }
+
+        await toggleDeepResearch();
+        // setLocalUiState("deep-research");
       } else {
-        await uiStore.setShowDeepResearch(false);
-        await uiStore.setShowChat(false);
+        await toggleSavedContext();
+        // setLocalUiState("context");
+        setDeepResearchState(null);
       }
     },
     hotKeysConfigOptions
@@ -133,12 +160,17 @@ export default function SpotlightSearch({
   );
 
   useEffect(() => {
-    if (uiState.showDeepResearch) {
+    if (uiMounted.current) return;
+    uiMounted.current = true;
+
+    if (uiState.showSavedContext && uiState.showDeepResearch) {
+      setDeepResearchState(null);
+    } else if (uiState.showDeepResearch) {
       setDeepResearchState("follow-up");
     } else {
       setDeepResearchState(null);
     }
-  }, [uiState]);
+  }, [uiState.showDeepResearch, uiState.showSavedContext]);
 
   const aiAction = {
     id: "ask-urmind-ai",
@@ -162,7 +194,6 @@ export default function SpotlightSearch({
     };
 
     setMessages((prev) => [...prev, userMessage]);
-    uiStore.setShowChat(true);
     setIsStreaming(true);
     setStreamingText("");
 
@@ -229,11 +260,80 @@ export default function SpotlightSearch({
     contextSpotlightVisibilityStore.hide();
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = async (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
       handleClose();
     }
+    if (e.key === "Enter") {
+      if (searchQuery.trim().length > 0) {
+        await toggleDeepResearch();
+        setAiSubmittedQuery(searchQuery);
+        setDeepResearchState(!uiState.showDeepResearch ? "new" : "follow-up");
+        setSearchQuery("");
+      }
+    }
   };
+
+  const handleScroll = useCallback(() => {
+    if (deepResearchScrollRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } =
+        deepResearchScrollRef.current;
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10; // 10px threshold
+      setIsUserAtBottom(isAtBottom);
+    }
+  }, []);
+
+  const scrollToBottom = useCallback(
+    (offset: number = 450) => {
+      if (deepResearchScrollRef.current && isUserAtBottom) {
+        // Use setTimeout to ensure DOM has updated
+        setTimeout(() => {
+          if (deepResearchScrollRef.current) {
+            deepResearchScrollRef.current.scrollTo({
+              top: deepResearchScrollRef.current.scrollHeight - offset,
+              behavior: "smooth",
+            });
+          }
+        }, 10);
+      }
+    },
+    [isUserAtBottom]
+  );
+
+  // Reset scroll position when starting new conversation
+  useEffect(() => {
+    if (deepResearchState === "new") {
+      setIsUserAtBottom(true);
+      // Scroll to bottom when new conversation starts
+      setTimeout(() => {
+        if (deepResearchScrollRef.current) {
+          deepResearchScrollRef.current.scrollTop =
+            deepResearchScrollRef.current.scrollHeight;
+        }
+      }, 100);
+    }
+  }, [deepResearchState]);
+
+  const deepResearchProps = useMemo(
+    () => ({
+      showDeepResearch: uiState.showDeepResearch,
+      deepResearchState: deepResearchState,
+      query: aiSubmittedQuery, // Only changes on Enter, not typing
+      resetState: () => {
+        setDeepResearchState(null);
+        setAiSubmittedQuery(null);
+      },
+      disableInput: () => setDisableInput(true),
+      onScrollToBottom: (offset: number = 450) => scrollToBottom(offset),
+      isUserAtBottom: isUserAtBottom,
+    }),
+    [
+      uiState.showDeepResearch,
+      deepResearchState,
+      aiSubmittedQuery,
+      scrollToBottom,
+    ]
+  );
 
   // const startNewConversation = () => {
   //   const query = searchQuery.trim();
@@ -292,7 +392,7 @@ export default function SpotlightSearch({
         </div>
       </div>
 
-      <div className="max-h-[500px] overflow-y-auto customScrollbar">
+      <div className="max-h-[80vh] overflow-y-auto customScrollbar">
         {/* Ask UrMind AI Action */}
         {!uiState.showDeepResearch && (
           <div className="px-4 py-3 border-b border-gray-102/20">
@@ -317,7 +417,7 @@ export default function SpotlightSearch({
         )}
 
         {/* Show Chat Messages or Saved Context */}
-        <section className="w-full min-h-[350px] relative overflow-hidden">
+        <section className="w-full min-h-[500px] relative overflow-hidden">
           <div
             className={cn(
               "absolute inset-0 transition-transform duration-300 ease-in-out overflow-y-auto customScrollbar",
@@ -328,19 +428,18 @@ export default function SpotlightSearch({
           </div>
 
           <div
+            ref={deepResearchScrollRef}
+            onScroll={handleScroll}
             className={cn(
               "absolute inset-0 transition-transform duration-300 ease-in-out overflow-y-auto customScrollbar pl-[2px]",
               uiState.showDeepResearch ? "translate-x-0" : "translate-x-full"
             )}
           >
-            <DeepResearchResult
-              deepResearchState={deepResearchState}
-              query={searchQuery}
-              resetState={() => setDeepResearchState(null)}
-              disableInput={() => {
-                setDisableInput(true);
-              }}
-            />
+            {uiState.showDeepResearch && (
+              <>
+                <DeepResearchResult {...deepResearchProps} />
+              </>
+            )}
           </div>
         </section>
       </div>

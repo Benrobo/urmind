@@ -5,12 +5,15 @@ import React, {
   useCallback,
   useMemo,
   useRef,
+  memo,
 } from "react";
 import {
   MessageSquare,
   FileText,
   ChevronLeft,
   ChevronRight,
+  ArrowDown,
+  Loader,
 } from "lucide-react";
 import { SpotlightConversations } from "@/types/spotlight";
 import MarkdownRenderer from "@/components/markdown";
@@ -19,6 +22,9 @@ import useStorageStore from "@/hooks/useStorageStore";
 import useConversations from "@/hooks/useConversations";
 import { sendMessageToBackgroundScriptWithResponse } from "@/helpers/messaging";
 import shortUUID from "short-uuid";
+import { useQuery } from "@tanstack/react-query";
+import queryClient from "@/config/tanstack-query";
+import useAiMessageStream from "@/hooks/useAiMessageStream";
 
 const researchMessageTabs = [
   {
@@ -35,328 +41,505 @@ const researchMessageTabs = [
 
 export type DeepResearchResultProps = {
   deepResearchState: "new" | "follow-up" | null;
-  query: string;
+  query: string | null;
   resetState: () => void;
   disableInput: () => void;
+  showDeepResearch: boolean;
+  onScrollToBottom?: (offset?: number) => void;
+  isUserAtBottom: boolean;
 };
 
-export default function DeepResearchResult({
-  deepResearchState,
-  query,
-  resetState,
-  disableInput,
-}: DeepResearchResultProps) {
-  const [isStreaming, setIsStreaming] = useState(false);
-  const {
-    value: activeConversationId,
-    setValue: setActiveConversationId,
-    refresh: refreshActiveConversation,
-  } = useStorageStore(activeConversationStore);
-  const [activeTab, setActiveTab] = useState("answer");
-  const [contextLength, setContextLength] = useState(3);
+const DeepResearchResult = memo(
+  ({
+    deepResearchState,
+    query,
+    resetState,
+    disableInput,
+    showDeepResearch,
+    onScrollToBottom,
+    isUserAtBottom,
+  }: DeepResearchResultProps) => {
+    const [isStreaming, setIsStreaming] = useState(false);
+    const {
+      value: activeConversationId,
+      setValue: setActiveConversationId,
+      refresh: refreshActiveConversation,
+    } = useStorageStore(activeConversationStore);
+    const [activeTab, setActiveTab] = useState("answer");
+    const [contextLength, setContextLength] = useState(3);
 
-  // Use ref to avoid unnecessary rerenders for tab underline
-  const activeTabRef = useRef<HTMLButtonElement | null>(null);
+    // local copy of query before resetState is called
+    const [userQuery, setUserQuery] = useState<string | null>(null);
+    // Use ref to avoid unnecessary rerenders for tab underline
+    const activeTabRef = useRef<HTMLButtonElement | null>(null);
+    const [conversations, setConversations] = useState<
+      SpotlightConversations[]
+    >([]);
+    const [activeConversationIndex, setActiveConversationIndex] = useState(0);
+    const [activeConversation, setActiveConversation] =
+      useState<SpotlightConversations | null>(null);
 
-  const [activeConversationIndex, setActiveConversationIndex] = useState(0);
-  const [activeConversation, setActiveConversation] =
-    useState<SpotlightConversations | null>(null);
+    const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
 
-  const { conversations, loading: conversationsLoading } = useConversations({
-    isStreaming,
-    limit: 10,
-    mounted: true,
-  });
+    const conversationHistory = useMemo(() => {
+      if (!activeConversation) return [];
 
-  const hasMoreConversations = useMemo(
-    () => conversations.length > 1,
-    [conversations.length]
-  );
+      const messages = activeConversation.messages;
+      const lastMessages = messages.slice(-3);
 
-  // Memoize the handler to avoid infinite rerenders
-  const handleResearchStateChange = useCallback(async () => {
-    if (deepResearchState === "new") {
-      // create new conversation
-      const convId = shortUUID.generate();
-      try {
-        await sendMessageToBackgroundScriptWithResponse({
+      return lastMessages.map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+      }));
+    }, [activeConversation]);
+
+    const { messageStream, content, streamingState } = useAiMessageStream({
+      userQuery: userQuery ?? "",
+      conversationHistory,
+      isStreaming,
+      onComplete: () => {
+        setIsStreaming(false);
+      },
+      onError: (error) => {
+        console.error("Failed to stream message:", error);
+      },
+    });
+
+    const hasMoreConversations = useMemo(
+      () => conversations.length > 1,
+      [conversations.length]
+    );
+
+    const getAllConversations = useCallback(async () => {
+      const response = await sendMessageToBackgroundScriptWithResponse({
+        action: "db-operation",
+        payload: { operation: "getAllConversations" },
+      });
+      return (response?.result as SpotlightConversations[]) || [];
+    }, []);
+
+    useEffect(() => {
+      // scroll to end of last ai message
+      onScrollToBottom?.(450);
+    }, []);
+
+    useEffect(() => {
+      getAllConversations().then((conversations) => {
+        console.log("🔍 Conversations:", conversations);
+        setConversations(conversations);
+      });
+    }, [getAllConversations]);
+
+    useEffect(() => {
+      if (activeConversationId !== null) {
+        const conversation = conversations.find(
+          (c) => c.id === activeConversationId
+        );
+        if (conversation) {
+          setActiveConversation(conversation);
+          setActiveConversationIndex(conversations.indexOf(conversation));
+        }
+      }
+    }, [activeConversationId, conversations]);
+
+    useEffect(() => {
+      if (deepResearchState !== null) {
+        switch (deepResearchState) {
+          case "new":
+            handleDeepResearchState("new");
+            break;
+          case "follow-up":
+            handleDeepResearchState("follow-up");
+            break;
+          default:
+            break;
+        }
+      }
+    }, [deepResearchState]);
+
+    // Auto-scroll when streaming text updates
+    useEffect(() => {
+      if (isStreaming && onScrollToBottom) {
+        onScrollToBottom();
+      }
+    }, [messageStream, isStreaming, onScrollToBottom]);
+
+    // useEffect(() => {
+    //   if (query && deepResearchState === "follow-up") {
+    //     queryClient.invalidateQueries({ queryKey: ["conversations", limit] });
+    //   }
+    // }, [deepResearchState, query]);
+
+    useEffect(() => {
+      if (content && activeMessageId && isStreaming && activeConversationId) {
+        // update message content in database
+        sendMessageToBackgroundScriptWithResponse({
           action: "db-operation",
           payload: {
-            operation: "createConversation",
+            operation: "updateMessageContent",
             data: {
-              id: convId,
-              messages: [
-                { id: shortUUID.generate(), role: "user", content: query },
-              ],
+              conversationId: activeConversationId,
+              messageId: activeMessageId,
+              content: content,
             },
           },
+        }).catch((error) => {
+          console.error("Failed to save message chunk:", error);
         });
-        setActiveConversationId(convId);
-        resetState();
-      } catch (error) {
-        console.error("Failed to create conversation:", error);
+
+        // Update local state
+        setConversations((prev) => {
+          return prev.map((conversation) => {
+            if (conversation.id === activeConversationId) {
+              return {
+                ...conversation,
+                messages: conversation.messages.map((message) => {
+                  if (message.id === activeMessageId) {
+                    return { ...message, content: content };
+                  }
+                  return message;
+                }),
+              };
+            }
+            return conversation;
+          });
+        });
+
+        // Save chunk to database
+        // sendMessageToBackgroundScriptWithResponse({
+        //   action: "db-operation",
+        //   payload: {
+        //     operation: "updateMessageContent",
+        //     data: {
+        //       conversationId: activeConversationId,
+        //       messageId: activeMessageId,
+        //       content: messageStream,
+        //     },
+        //   },
+        // }).catch((error) => {
+        //   console.error("Failed to save message chunk:", error);
+        // });
       }
-    } else {
-      // append query to active conversation
-      if (activeConversationId) {
+    }, [content, activeMessageId, isStreaming, activeConversationId]);
+
+    const handleDeepResearchState = async (state: "new" | "follow-up") => {
+      if (state === "new") {
+        // create new conversation
+        const convId = shortUUID.generate();
         try {
+          const newConversation: SpotlightConversations = {
+            id: convId,
+            messages: [
+              { id: shortUUID.generate(), role: "user", content: query! },
+              {
+                id: shortUUID.generate(),
+                role: "assistant" as "user" | "assistant",
+                content: "",
+              },
+            ],
+          };
+
           await sendMessageToBackgroundScriptWithResponse({
             action: "db-operation",
             payload: {
-              operation: "appendMessageToConversation",
-              data: {
-                conversationId: activeConversationId,
-                message: {
-                  id: shortUUID.generate(),
-                  role: "user",
-                  content: query,
-                },
-              },
+              operation: "createConversation",
+              data: newConversation,
             },
           });
+
+          setConversations([...conversations, newConversation]);
+          setActiveConversationId(convId);
+          setActiveMessageId(newConversation.messages[1]?.id!);
+          setIsStreaming(true);
+          setUserQuery(query!);
+          resetState();
+          onScrollToBottom?.();
         } catch (error) {
-          console.error("Failed to append message:", error);
+          console.error("Failed to create conversation:", error);
+        }
+      } else {
+        // append query to active conversation
+        if (activeConversationId) {
+          try {
+            const userMessage = {
+              id: shortUUID.generate(),
+              role: "user" as "user" | "assistant",
+              content: query!,
+            };
+            const emptyAssistantMessage = {
+              id: shortUUID.generate(),
+              role: "assistant" as "user" | "assistant",
+              content: "",
+            };
+
+            console.log({ userMessage, emptyAssistantMessage });
+
+            const appendMessagesData = {
+              conversationId: activeConversationId,
+              messages: [userMessage, emptyAssistantMessage],
+            };
+
+            await sendMessageToBackgroundScriptWithResponse({
+              action: "db-operation",
+              payload: {
+                operation: "appendMessagesToConversation",
+                data: appendMessagesData,
+              },
+            });
+
+            setConversations((prev) => {
+              return prev.map((conversation) => {
+                if (conversation.id === activeConversationId) {
+                  return {
+                    ...conversation,
+                    messages: [
+                      ...conversation.messages,
+                      userMessage,
+                      emptyAssistantMessage,
+                    ],
+                  };
+                }
+                return conversation;
+              });
+            });
+
+            console.log(
+              "🔄 Setting activeMessageId to:",
+              emptyAssistantMessage.id
+            );
+
+            onScrollToBottom?.(150);
+            setActiveMessageId(emptyAssistantMessage.id);
+            setIsStreaming(true);
+            setUserQuery(query!);
+            resetState();
+          } catch (error) {
+            console.error("Failed to append message:", error);
+          }
+        } else {
+          console.error("No active conversation id");
         }
       }
-      setIsStreaming(false);
-      refreshActiveConversation();
-    }
-    // eslint-disable-next-line
-  }, [
-    deepResearchState,
-    query,
-    setActiveConversationId,
-    resetState,
-    activeConversationId,
-    refreshActiveConversation,
-  ]);
-
-  // Only run when deepResearchState changes, not on every render
-  useEffect(() => {
-    if (deepResearchState !== null) {
-      handleResearchStateChange();
-    }
-    // Only resetState on unmount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    return () => {
-      resetState();
     };
-    // eslint-disable-next-line
-  }, [deepResearchState, handleResearchStateChange]);
 
-  // Only run when deepResearchState or conversations changes
-  useEffect(() => {
-    if (deepResearchState === "new" && conversations.length > 0) {
-      setIsStreaming(true);
-      // disableInput();
-    }
-    // eslint-disable-next-line
-  }, [deepResearchState, conversations.length, disableInput]);
+    // Memoize font size calculation
+    const getQueryFontSize = useCallback((text: string) => {
+      const length = text.length;
+      if (length <= 20) return "text-xl";
+      if (length <= 40) return "text-lg";
+      if (length <= 60) return "text-base";
+      if (length <= 80) return "text-sm";
+      return "text-xs";
+    }, []);
 
-  // Memoize the conversation lookup to avoid unnecessary rerenders
-  useEffect(() => {
-    if (activeConversationId !== null) {
-      const conversation = conversations.find(
-        (c) => c.id === activeConversationId
+    const getContextBadgeFontSize = useCallback((count: number) => {
+      if (count >= 9) return "text-xs";
+      if (count >= 99) return "text-[10px]";
+      return "text-[9px]";
+    }, []);
+
+    // Loading state
+    // if (loading) {
+    //   return (
+    //     <div className="w-full h-full flex flex-col items-center justify-center py-8 px-4">
+    //       <div className="text-center">
+    //         <MessageSquare className="w-12 h-12 text-white/40 mx-auto mb-4 animate-pulse" />
+    //         <h3 className="text-white/80 text-lg font-medium mb-2">
+    //           Loading conversations...
+    //         </h3>
+    //         <p className="text-white/60 text-sm">
+    //           Please wait while we fetch your research results
+    //         </p>
+    //       </div>
+    //     </div>
+    //   );
+    // }
+
+    if (conversations.length === 0 || !activeConversation) {
+      return (
+        <div className="w-full min-h-[350px] flex flex-col items-center justify-center py-8 px-4">
+          <div className="text-center">
+            <MessageSquare className="w-12 h-12 text-white/40 mx-auto mb-4" />
+            <h3 className="text-white/80 text-lg font-medium mb-2">
+              No conversations yet
+            </h3>
+            <p className="text-white/60 text-sm">
+              Start a conversation to see your research results here
+            </p>
+          </div>
+        </div>
       );
-      if (conversation) {
-        setActiveConversation(conversation);
-        setActiveConversationIndex(conversations.indexOf(conversation));
-      }
     }
-    // eslint-disable-next-line
-  }, [activeConversationId, conversations]);
 
-  // Only refresh on mount
-  useEffect(() => {
-    refreshActiveConversation();
-    // eslint-disable-next-line
-  }, []);
-
-  // Memoize font size calculation
-  const getQueryFontSize = useCallback((text: string) => {
-    const length = text.length;
-    if (length <= 20) return "text-xl";
-    if (length <= 40) return "text-lg";
-    if (length <= 60) return "text-base";
-    if (length <= 80) return "text-sm";
-    return "text-xs";
-  }, []);
-
-  const getContextBadgeFontSize = useCallback((count: number) => {
-    if (count >= 9) return "text-xs";
-    if (count >= 99) return "text-[10px]";
-    return "text-[9px]";
-  }, []);
-
-  // Memoize messages to avoid unnecessary rerenders - moved before early returns
-  const renderedMessages = useMemo(
-    () =>
-      activeConversation?.messages.map((msg, idx) => (
-        <div
-          key={msg.id}
-          className={cn(
-            idx === activeConversation?.messages.length - 1 &&
-              "pb-10 border-b-[1px] border-b-white-300/20"
-          )}
-        >
-          {msg?.role === "user" && (
-            <div className="w-full flex flex-col gap-1 pb-4 px-4">
-              <div className="w-full flex items-center justify-start mb-2">
-                <p
+    return (
+      <>
+        <div className="w-full min-h-[550px] flex flex-col relative top-0 left-0 py-4 pb-[10em]">
+          <div className="w-full flex items-center justify-end pr-1 mb-4">
+            {/* Left and right arrow controls */}
+            {hasMoreConversations && (
+              <div className="flex items-center gap-2">
+                <button
                   className={cn(
-                    "text-white font-geistmono",
-                    getQueryFontSize(msg?.content ?? "")
+                    "w-6 h-6 border border-white/10 rounded-full bg-white/20 text-white-100 flex items-center justify-center",
+                    activeConversationIndex === 0 &&
+                      "opacity-50 cursor-not-allowed"
+                  )}
+                  onClick={() => {
+                    if (activeConversationIndex > 0) {
+                      const newIndex = activeConversationIndex - 1;
+                      setActiveConversationIndex(newIndex);
+                      setActiveConversationId(conversations[newIndex]!.id);
+                    }
+                  }}
+                  disabled={activeConversationIndex === 0}
+                >
+                  <ChevronLeft size={16} strokeWidth={2} />
+                </button>
+
+                <button
+                  className={cn(
+                    "w-6 h-6 border border-white/10 rounded-full bg-white/20 text-white-100 flex items-center justify-center",
+                    activeConversationIndex === conversations.length - 1 &&
+                      "opacity-50 cursor-not-allowed"
+                  )}
+                  onClick={() => {
+                    if (activeConversationIndex < conversations.length - 1) {
+                      const newIndex = activeConversationIndex + 1;
+                      setActiveConversationIndex(newIndex);
+                      setActiveConversationId(conversations[newIndex]!.id);
+                    }
+                  }}
+                  disabled={
+                    activeConversationIndex === conversations.length - 1
+                  }
+                >
+                  <ChevronRight size={16} strokeWidth={2} />
+                </button>
+              </div>
+            )}
+          </div>
+          {activeConversation &&
+            activeConversation?.messages.map((msg, idx) => (
+              <React.Fragment key={msg.id}>
+                <div
+                  key={msg.id}
+                  className={cn(
+                    idx !== 0 && msg.role === "user" && "mt-10",
+                    idx !== activeConversation?.messages.length - 1 && "pb-10",
+                    idx === activeConversation?.messages.length - 1 && "pb-10",
+                    msg.role === "assistant" &&
+                      "border-b-[1px] border-b-white-300/20"
                   )}
                 >
-                  {msg?.content ?? ""}
-                </p>
-              </div>
-
-              <div className="relative w-auto flex items-center justify-start gap-4">
-                {/* Base horizontal line */}
-                <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-white/10" />
-
-                {/* Active tab underline - 6px wider than tab */}
-                {activeTabRef.current && (
-                  <div
-                    className="absolute bottom-0 h-0.5 bg-white transition-all duration-200 ease-in-out"
-                    style={{
-                      width: `${activeTabRef.current.offsetWidth + 6}px`,
-                      left: `${activeTabRef.current.offsetLeft}px`,
-                    }}
-                  />
-                )}
-
-                {researchMessageTabs.map((t) => {
-                  const IconComponent = t.icon;
-                  return (
-                    <button
-                      key={t.id}
-                      ref={activeTab === t.id ? activeTabRef : null}
-                      onClick={() => setActiveTab(t.id)}
-                      className={cn(
-                        "relative w-auto px-0 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2",
-                        activeTab === t.id
-                          ? "text-white"
-                          : "text-white/60 hover:text-white/80"
-                      )}
-                    >
-                      <IconComponent size={14} />
-                      <span>{t.title}</span>
-                      {t.id === "contexts" && (
-                        <span
+                  {msg?.role === "user" && (
+                    <div className="w-full flex flex-col gap-1 pb-0 px-4">
+                      <div className="w-full flex items-center justify-start mb-2">
+                        <p
                           className={cn(
-                            "bg-white/20 text-white/80 px-1.5 py-0.5 rounded-full",
-                            getContextBadgeFontSize(contextLength)
+                            "text-white font-geistmono",
+                            getQueryFontSize(msg?.content ?? "")
                           )}
                         >
-                          {contextLength}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+                          {msg?.content ?? ""}
+                        </p>
+                      </div>
 
-          {msg?.role === "assistant" && (
-            <section className="w-full overflow-y-auto px-4">
-              <MarkdownRenderer
-                markdownString={msg?.content ?? ""}
-                className="text-white"
-              />
-            </section>
-          )}
+                      <div className="relative w-auto flex items-center justify-start gap-4">
+                        {/* Base horizontal line */}
+                        <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-white/10" />
+
+                        {/* Active tab underline - 6px wider than tab */}
+                        {activeTabRef.current && (
+                          <div
+                            className="absolute bottom-0 h-0.5 bg-white transition-all duration-200 ease-in-out"
+                            style={{
+                              width: `${
+                                activeTabRef.current.offsetWidth + 6
+                              }px`,
+                              left: `${activeTabRef.current.offsetLeft}px`,
+                            }}
+                          />
+                        )}
+
+                        {researchMessageTabs.map((t) => {
+                          const IconComponent = t.icon;
+                          return (
+                            <button
+                              key={t.id}
+                              ref={(el) => {
+                                if (activeTab === t.id) {
+                                  activeTabRef.current = el;
+                                }
+                              }}
+                              // ref={activeTabRef}
+                              onClick={() => setActiveTab(t.id)}
+                              className={cn(
+                                "relative w-auto px-0 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2",
+                                activeTab === t.id
+                                  ? "text-white"
+                                  : "text-white/60 hover:text-white/80"
+                              )}
+                            >
+                              <IconComponent size={14} />
+                              <span>{t.title}</span>
+                              {t.id === "contexts" && (
+                                <span
+                                  className={cn(
+                                    "bg-white/20 text-white/80 px-1.5 py-0.5 rounded-full",
+                                    getContextBadgeFontSize(contextLength)
+                                  )}
+                                >
+                                  {contextLength}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {msg.role === "assistant" &&
+                    streamingState === "thinking" &&
+                    idx === activeConversation?.messages.length - 1 && (
+                      <div className="w-auto flex items-center justify-start ml-3 -translate-y-4 gap-2">
+                        <Loader className="w-4 h-4 text-white animate-spin" />
+                        <span className="text-white text-xs">Thinking...</span>
+                      </div>
+                    )}
+
+                  {msg?.role === "assistant" && (
+                    <section className="w-full overflow-y-auto px-4">
+                      <MarkdownRenderer
+                        markdownString={msg?.content ?? ""}
+                        className="text-white"
+                      />
+                    </section>
+                  )}
+                </div>
+
+                {/* divider */}
+                {/* {idx !== activeConversation?.messages.length - 1 && (
+                  <div className="w-full h-[1px] bg-white/10 mb-10 mt-5" />
+                )} */}
+              </React.Fragment>
+            ))}
         </div>
-      )),
-    [
-      activeConversation?.messages,
-      activeTab,
-      contextLength,
-      getQueryFontSize,
-      getContextBadgeFontSize,
-    ]
-  );
-
-  // Loading state
-  if (conversationsLoading) {
-    return (
-      <div className="w-full h-full flex flex-col items-center justify-center py-8 px-4">
-        <div className="text-center">
-          <MessageSquare className="w-12 h-12 text-white/40 mx-auto mb-4 animate-pulse" />
-          <h3 className="text-white/80 text-lg font-medium mb-2">
-            Loading conversations...
-          </h3>
-          <p className="text-white/60 text-sm">
-            Please wait while we fetch your research results
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (conversations.length === 0 || !activeConversation) {
-    return (
-      <div className="w-full min-h-[350px] flex flex-col items-center justify-center py-8 px-4">
-        <div className="text-center">
-          <MessageSquare className="w-12 h-12 text-white/40 mx-auto mb-4" />
-          <h3 className="text-white/80 text-lg font-medium mb-2">
-            No conversations yet
-          </h3>
-          <p className="text-white/60 text-sm">
-            Start a conversation to see your research results here
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="w-full h-full flex flex-col relative top-0 left-0 py-4 pb-[10em]">
-      <div className="w-full flex items-center justify-end pr-1 mb-4">
-        {/* Left and right arrow controls */}
-        {hasMoreConversations && (
-          <div className="flex items-center gap-2">
+        {/* {isUserAtBottom && (
+          <div className="absolute bottom-4 right-4 z-10">
             <button
-              className={cn(
-                "w-6 h-6 border border-white/10 rounded-full bg-white/20 text-white-100 flex items-center justify-center",
-                activeConversationIndex === 0 && "opacity-50 cursor-not-allowed"
-              )}
               onClick={() => {
-                if (activeConversationIndex > 0) {
-                  const newIndex = activeConversationIndex - 1;
-                  setActiveConversationIndex(newIndex);
-                  setActiveConversationId(conversations[newIndex]!.id);
-                }
+                onScrollToBottom?.();
               }}
-              disabled={activeConversationIndex === 0}
+              className="flex items-center gap-2 bg-white/90 hover:bg-white text-gray-800 px-3 py-2 rounded-full shadow-lg transition-all duration-200 hover:scale-105"
             >
-              <ChevronLeft size={16} strokeWidth={2} />
-            </button>
-
-            <button
-              className={cn(
-                "w-6 h-6 border border-white/10 rounded-full bg-white/20 text-white-100 flex items-center justify-center",
-                activeConversationIndex === conversations.length - 1 &&
-                  "opacity-50 cursor-not-allowed"
-              )}
-              onClick={() => {
-                if (activeConversationIndex < conversations.length - 1) {
-                  const newIndex = activeConversationIndex + 1;
-                  setActiveConversationIndex(newIndex);
-                  setActiveConversationId(conversations[newIndex]!.id);
-                }
-              }}
-              disabled={activeConversationIndex === conversations.length - 1}
-            >
-              <ChevronRight size={16} strokeWidth={2} />
+              <ArrowDown size={16} />
             </button>
           </div>
-        )}
-      </div>
-      {activeConversation && renderedMessages}
-    </div>
-  );
-}
+        )} */}
+      </>
+    );
+  }
+);
+
+export default DeepResearchResult;

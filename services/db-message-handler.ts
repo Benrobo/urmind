@@ -12,7 +12,10 @@ export type DatabaseOperations =
   | "getAllConversations"
   | "getAllContexts"
   | "createConversation"
-  | "appendMessageToConversation";
+  | "updateMessageInConversation"
+  | "updateMessageContent"
+  | "appendMessageToConversation"
+  | "appendMessagesToConversation";
 
 /**
  * Database operation handler for content script message listeners
@@ -65,16 +68,9 @@ export class DatabaseMessageHandler {
     ) => {
       if (request.action === "db-operation") {
         const { operation } = request.payload;
-        console.log("🔍 Content script received db-operation:", operation);
-
-        // Only handle embedding operations in content script
         const embeddingOperations = ["generateEmbedding", "semanticSearch"];
 
         if (embeddingOperations.includes(operation)) {
-          console.log(
-            "📝 Content script handling embedding operation:",
-            operation
-          );
           (async () => {
             try {
               const { operation, data, contextId } = request.payload;

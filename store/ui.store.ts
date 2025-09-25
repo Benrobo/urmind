@@ -4,13 +4,11 @@ import { StorageStore } from "@/helpers/storage-store";
 export class UIStore extends StorageStore<{
   showDeepResearch: boolean;
   showSavedContext: boolean;
-  showChat: boolean;
 }> {
   constructor() {
     super("local:ui_state", {
       showDeepResearch: true,
       showSavedContext: true,
-      showChat: false,
     });
   }
 
@@ -50,38 +48,10 @@ export class UIStore extends StorageStore<{
     return state.showSavedContext;
   }
 
-  // Chat methods
-  async setShowChat(show: boolean): Promise<void> {
-    const currentState = await this.get();
-    await this.set({ ...currentState, showChat: show });
-  }
-
-  async toggleChat(): Promise<boolean> {
-    const currentState = await this.get();
-    const newValue = !currentState.showChat;
-    await this.set({ ...currentState, showChat: newValue });
-    return newValue;
-  }
-
-  async isChatVisible(): Promise<boolean> {
-    const state = await this.get();
-    return state.showChat;
-  }
-
-  // Reset to default state
-  async resetToDefaults(): Promise<void> {
-    await this.set({
-      showDeepResearch: true,
-      showSavedContext: true,
-      showChat: false,
-    });
-  }
-
   // Get current UI state
   async getUIState(): Promise<{
     showDeepResearch: boolean;
     showSavedContext: boolean;
-    showChat: boolean;
   }> {
     return await this.get();
   }

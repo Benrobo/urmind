@@ -46,6 +46,16 @@ const MarkdownRenderer = memo(function MarkdownRenderer({
             </blockquote>
           ),
           pre: ({ children }) => <pre className="mb-4">{children}</pre>,
+          a: ({ children, href }) => (
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-cyan-100 hover:text-cyan-101 underline transition-colors duration-200"
+            >
+              {children}
+            </a>
+          ),
           code(props) {
             const { children, className, node, ...rest } = props;
             const match = /language-(\w+)/.exec(className || "");

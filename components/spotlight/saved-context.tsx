@@ -15,7 +15,6 @@ type SavedContextProps = {
   uiState: {
     showDeepResearch: boolean;
     showSavedContext: boolean;
-    showChat: boolean;
   };
 };
 
@@ -26,7 +25,7 @@ export default function SavedContext({ query, uiState }: SavedContextProps) {
     error,
   } = useSavedContext({
     query: !uiState?.showDeepResearch ? query.trim() : undefined,
-    limit: 6,
+    limit: 10,
     mounted: !uiState?.showDeepResearch,
   });
 

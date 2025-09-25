@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sendMessageToBackgroundScriptWithResponse } from "@/helpers/messaging";
+import { DatabaseOperations } from "@/services/db-message-handler";
 
 interface DevToolProps {
   className?: string;
@@ -41,7 +42,7 @@ export default function DevTool({ className }: DevToolProps) {
     },
   ];
 
-  const handleClear = async (operation: string, label: string) => {
+  const handleClear = async (operation: DatabaseOperations, label: string) => {
     setIsClearing(operation);
     try {
       const response = await sendMessageToBackgroundScriptWithResponse({
@@ -92,7 +93,9 @@ export default function DevTool({ className }: DevToolProps) {
               ({ id, label, icon: Icon, operation, color }) => (
                 <button
                   key={id}
-                  onClick={() => handleClear(operation, label)}
+                  onClick={() =>
+                    handleClear(operation as DatabaseOperations, label)
+                  }
                   disabled={isClearing !== null}
                   className={cn(
                     "w-full flex items-center gap-2 px-3 py-2 rounded-md text-white text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed",
@@ -105,7 +108,9 @@ export default function DevTool({ className }: DevToolProps) {
                   ) : (
                     <Icon size={16} />
                   )}
-                  <span className="flex-1 text-left">{label}</span>
+                  <span className="text-white text-[10px] flex-1 text-left">
+                    {label}
+                  </span>
                 </button>
               )
             )}

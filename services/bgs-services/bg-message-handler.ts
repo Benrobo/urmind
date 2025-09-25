@@ -7,6 +7,21 @@ import type {
   MessageResponse,
   PendingPageIndexingJob,
 } from "@/types/background-messages";
+import { UrmindDB } from "@/types/database";
+
+type DatabaseOperations =
+  | "getAllConversations"
+  | "getAllContexts"
+  | "createConversation"
+  | "updateMessageContent"
+  | "updateMessageInConversation"
+  | "appendMessageToConversation"
+  | "appendMessagesToConversation"
+  | "semanticSearch"
+  | "clearContexts"
+  | "clearEmbeddings"
+  | "clearConversations"
+  | "clearAllData";
 
 /**
  * Manages content script readiness and page indexing job queuing
@@ -120,7 +135,7 @@ export class BackgroundMessageHandler {
    * Handle database operations
    */
   async handleDatabaseOperation(
-    payload: any,
+    payload: { operation: DatabaseOperations; data: any },
     tabId: number
   ): Promise<MessageResponse> {
     try {
@@ -161,16 +176,6 @@ export class BackgroundMessageHandler {
           result = await urmindDb.conversations.createConversation(data);
           break;
 
-        case "appendMessageToConversation":
-          if (!urmindDb.conversations) {
-            throw new Error("Conversations service not available");
-          }
-          result = await urmindDb.conversations.appendMessageToConversation(
-            data.conversationId,
-            data.message
-          );
-          break;
-
         case "clearContexts":
           result = await urmindDb.clearContexts();
           break;
@@ -187,6 +192,64 @@ export class BackgroundMessageHandler {
 
         case "clearAllData":
           result = await urmindDb.clearAllData();
+          break;
+
+        case "updateMessageContent":
+          const updatePayload = data as {
+            conversationId: string;
+            messageId: string;
+            content: string;
+          };
+          if (!urmindDb.conversations) {
+            throw new Error("Conversations service not initialized");
+          }
+          result = await urmindDb.conversations.updateMessageContent(
+            updatePayload.conversationId,
+            updatePayload.messageId,
+            updatePayload.content
+          );
+          break;
+
+        case "updateMessageInConversation":
+          const updateMessagePayload = data as {
+            conversationId: string;
+            message: UrmindDB["conversations"]["value"]["messages"][number];
+          };
+          if (!urmindDb.conversations) {
+            throw new Error("Conversations service not initialized");
+          }
+          result = await urmindDb.conversations.updateMessageInConversation(
+            updateMessagePayload.conversationId,
+            updateMessagePayload.message
+          );
+          break;
+
+        case "appendMessageToConversation":
+          const appendMessagePayload = data as {
+            conversationId: string;
+            message: UrmindDB["conversations"]["value"]["messages"][number];
+          };
+          if (!urmindDb.conversations) {
+            throw new Error("Conversations service not initialized");
+          }
+          result = await urmindDb.conversations.appendMessageToConversation(
+            appendMessagePayload.conversationId,
+            appendMessagePayload.message
+          );
+          break;
+
+        case "appendMessagesToConversation":
+          const appendMessagesPayload = data as {
+            conversationId: string;
+            messages: UrmindDB["conversations"]["value"]["messages"][number][];
+          };
+          if (!urmindDb.conversations) {
+            throw new Error("Conversations service not initialized");
+          }
+          result = await urmindDb.conversations.appendMessagesToConversation(
+            appendMessagesPayload.conversationId,
+            appendMessagesPayload.messages
+          );
           break;
 
         default:

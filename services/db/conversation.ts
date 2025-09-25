@@ -22,10 +22,10 @@ export class ConversationService {
   }
 
   async appendMessageToConversation(
-    id: string,
+    conversationId: string,
     message: UrmindDB["conversations"]["value"]["messages"][number]
   ): Promise<void> {
-    const conversation = await this.getConversation(id);
+    const conversation = await this.getConversation(conversationId);
     if (!conversation)
       throw new Error("[appending-message] Conversation not found");
 
@@ -37,11 +37,48 @@ export class ConversationService {
     });
   }
 
+  async appendMessagesToConversation(
+    conversationId: string,
+    messages: UrmindDB["conversations"]["value"]["messages"][number][]
+  ): Promise<void> {
+    const conversation = await this.getConversation(conversationId);
+    if (!conversation)
+      throw new Error("[appending-messages] Conversation not found");
+
+    await this.db.put("conversations", {
+      ...conversation,
+      messages: [...conversation.messages, ...messages],
+      createdAt: conversation.createdAt,
+      updatedAt: conversation.updatedAt,
+    });
+  }
+
+  async updateMessageContent(
+    conversationId: string,
+    messageId: string,
+    content: string
+  ): Promise<void> {
+    const conversation = await this.getConversation(conversationId);
+    if (!conversation)
+      throw new Error("[updating-message] Conversation not found");
+
+    const updatedMessages = conversation.messages.map((msg) =>
+      msg.id === messageId ? { ...msg, content } : msg
+    );
+
+    await this.db.put("conversations", {
+      ...conversation,
+      messages: updatedMessages,
+      createdAt: conversation.createdAt,
+      updatedAt: Date.now(),
+    });
+  }
+
   async updateMessageInConversation(
-    id: string,
+    conversationId: string,
     message: UrmindDB["conversations"]["value"]["messages"][number]
   ): Promise<void> {
-    const conversation = await this.getConversation(id);
+    const conversation = await this.getConversation(conversationId);
     if (!conversation)
       throw new Error("[updating-message] Conversation not found");
 
