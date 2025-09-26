@@ -13,7 +13,12 @@ import { PageIndexerResponse } from "@/types/page-indexing";
 import shortId from "short-uuid";
 import logger from "@/lib/logger";
 import { UrmindDB } from "@/types/database";
-import { SemanticSearchThreshold } from "@/constant/internal";
+import {
+  SemanticDeduplicationThreshold,
+  SemanticSearchThreshold,
+} from "@/constant/internal";
+import { semanticCache } from "@/services/semantic-cache.service";
+import { semanticCacheStore } from "@/store/semantic-cache.store";
 
 // Types
 type PageIndexerPayload = {
@@ -92,19 +97,21 @@ async function processTextBatch(props: {
   const contentFingerprint = md5Hash(batch);
   logger.log("🔍 Content fingerprint:", contentFingerprint);
 
-  // Check if this specific content has already been processed
-  if (!urmindDb.contexts) {
-    logger.error("❌ Contexts service not available");
+  if (!urmindDb.contexts || !urmindDb.embeddings) {
+    logger.error("❌ Contexts or embeddings service not available");
     return;
   }
-  const existingContentContext =
-    await urmindDb.contexts.getContextByContentFingerprint(contentFingerprint);
-  if (existingContentContext) {
+
+  const shouldProcess = await semanticCache.shouldProcessContent(
+    batch,
+    tabId,
+    cleanUrl
+  );
+  if (!shouldProcess) {
     logger.warn(
       `⏭️ Skipping text batch ${
         batchIndex + 1
-      } - content already processed as context:`,
-      existingContentContext.id
+      } - content is too similar to existing contexts or already processed`
     );
     return;
   }
@@ -139,9 +146,12 @@ async function processTextBatch(props: {
   let matchedCategory: string | null = null;
   if (similarContexts?.length > 0) {
     if (similarContexts?.length > 0) {
-      matchedCategory = similarContexts?.[0]?.category || null;
+      matchedCategory = similarContexts?.[0]?.category?.label || null;
       logger.info(
-        `🔍 Matched context: ${similarContexts?.[0]?.category} with score: ${similarContexts?.[0]?.score}`
+        `🔍 Matched context: ${
+          similarContexts?.[0]?.category?.label ||
+          similarContexts?.[0]?.category
+        } with score: ${similarContexts?.[0]?.score}`
       );
     }
   }
@@ -156,17 +166,25 @@ async function processTextBatch(props: {
       id: contextId,
       fingerprint,
       contentFingerprint,
-      category: (
-        matchedCategory || contextResponse.context.category.toLowerCase()
-      ).replace(/\s/g, "-"),
+      category: {
+        label: matchedCategory || contextResponse.context.category.label,
+        slug: (matchedCategory || contextResponse.context.category.slug)
+          .toLowerCase()
+          .replace(/\s/g, "-"),
+      },
       type: "artifact:web-page",
       title: contextResponse.context.title,
       description: contextResponse.context.description,
       summary: contextResponse.context.summary,
+      og: {
+        title: pageMetadata.og.title,
+        description: pageMetadata.og.description,
+        image: pageMetadata.og.image,
+        favicon: pageMetadata.og.favicon,
+      },
       url: cleanUrl,
       fullUrl: fullUrl,
       image: pageMetadata.og.image || null,
-      favicon: pageMetadata.og.favicon || null,
       highlightText: "", // Legacy field
       highlightElements: [], // Empty for text-based approach
     };
@@ -174,6 +192,22 @@ async function processTextBatch(props: {
     try {
       logger.info("💾 Creating new text context:", contextData);
       await createContextWithEmbedding(contextData, cleanUrl, tabId);
+
+      if (matchedCategory) {
+        logger.warn(
+          "🔍 Caching content so that it doesn't get processed again"
+        );
+        // cache this content so that it doesn't get processed again
+        const semanticSignature = await semanticCache.generateSemanticSignature(
+          batch
+        );
+        const urlFingerprint = md5Hash(cleanUrl);
+        const signatureKey = `${urlFingerprint}:${semanticSignature}`;
+        await semanticCacheStore.addSignature(
+          signatureKey,
+          similarContexts?.[0]?.score ?? 0
+        );
+      }
     } catch (error) {
       logger.error("❌ Failed to create text context:", error);
     }
@@ -188,7 +222,15 @@ async function processTextBatch(props: {
 type ExistingContext = {
   title: string;
   description: string;
-  category: string;
+  category: string | { label: string; slug: string };
+};
+
+type ContextWithEmbedding = {
+  id: string;
+  title: string;
+  description: string;
+  summary: string;
+  embedding?: number[];
 };
 
 async function getExistingContext(
@@ -205,7 +247,10 @@ async function getExistingContext(
     return {
       title: existingUrlContext.title,
       description: existingUrlContext.description,
-      category: existingUrlContext.category,
+      category:
+        typeof existingUrlContext.category === "string"
+          ? existingUrlContext.category
+          : existingUrlContext.category.label,
     };
   }
 
@@ -237,12 +282,25 @@ async function createContextWithEmbedding(
     await urmindDb.embeddings.generateAndStore(embeddingText, tabId, {
       contextId: newContextId,
       type: "context",
-      category: contextData.category,
+      category: contextData.category.slug,
       url: cleanUrl,
     });
     logger.info("🔮 Embedding created for context:", newContextId);
   } catch (embeddingError) {
     logger.error("⚠️ Failed to create embedding:", embeddingError);
+
+    // Check if it's a WASM-related error
+    if (
+      embeddingError instanceof Error &&
+      embeddingError.message.includes("WebAssembly")
+    ) {
+      logger.error(
+        "🚨 WebAssembly error detected. This might be due to CSP restrictions or missing WASM files."
+      );
+      logger.error(
+        "💡 Try rebuilding the extension or check browser console for more details."
+      );
+    }
   }
 
   return newContextId;
@@ -262,7 +320,16 @@ async function generateTextContext(
         InitialContextCreatorPrompt({
           pageContent: batch,
           metadata: pageMetadata,
-          existingContext,
+          existingContext: existingContext
+            ? {
+                title: existingContext.title,
+                description: existingContext.description,
+                category:
+                  typeof existingContext.category === "string"
+                    ? existingContext.category
+                    : existingContext.category.label,
+              }
+            : undefined,
         })
       );
 

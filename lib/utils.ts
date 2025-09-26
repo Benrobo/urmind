@@ -10,6 +10,11 @@ export const md5Hash = (text: string) => {
   return md5(text);
 };
 
+export const shortenText = (url: string, length: number = 10) => {
+  if (!url) return "";
+  return url.length > length ? url.substring(0, length) + "..." : url;
+};
+
 export const sleep = (ms: number) => {
   return new Promise((resolve) => setTimeout(resolve, ms));
 };

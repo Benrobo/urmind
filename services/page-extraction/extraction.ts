@@ -20,6 +20,7 @@ export type PageMetadata = {
   og: {
     image: string | null;
     title: string | null;
+    description: string | null;
     favicon: string | null;
   };
   pageContent: string;
@@ -40,6 +41,7 @@ class PageExtractionService {
         og: {
           image: null,
           title: null,
+          description: null,
           favicon: null,
         },
         pageContent: "",
@@ -77,6 +79,7 @@ class PageExtractionService {
       og: {
         image: ogdetails.ogImage ?? null,
         title: ogdetails.ogTitle ?? null,
+        description: ogdetails.ogDescription ?? null,
         favicon: favicon ?? null,
       },
       pageContent: pageContent ?? "",
@@ -153,6 +156,7 @@ class PageExtractionService {
   private extractOgDetails(_metaTags: HTMLMetaElement[]) {
     let ogImage: string | undefined = undefined;
     let ogTitle: string | undefined = undefined;
+    let ogDescription: string | undefined = undefined;
     for (const meta of _metaTags) {
       for (const attr of Array.from(meta?.attributes ?? [])) {
         if (
@@ -164,13 +168,18 @@ class PageExtractionService {
         if (attr.name === "property" && attr.value.includes("og:title")) {
           if (!ogTitle) ogTitle = meta.getAttribute("content") || undefined;
         }
+        if (attr.name === "property" && attr.value.includes("og:description")) {
+          if (!ogDescription)
+            ogDescription = meta.getAttribute("content") || undefined;
+        }
       }
-      if (ogImage && ogTitle) break;
+      if (ogImage && ogTitle && ogDescription) break;
     }
 
     return {
       ogImage,
       ogTitle,
+      ogDescription,
     };
   }
 

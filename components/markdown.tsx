@@ -14,10 +14,16 @@ const MarkdownRenderer = memo(function MarkdownRenderer({
   className,
 }: MarkdownRendererProps) {
   if (!markdownString) return null;
+
+  const cleanMarkdown = markdownString
+    .replace(/^```markdown\s*\n?/, "")
+    .replace(/\n?```\s*$/, "")
+    .trim();
+
   return (
     <div className={cn("w-full h-auto text-xs font-geistmono", className)}>
       <Markdown
-        children={markdownString}
+        children={cleanMarkdown}
         components={{
           p: ({ children }) => <p className="mb-4 last:mb-3">{children}</p>,
           h1: ({ children }) => (

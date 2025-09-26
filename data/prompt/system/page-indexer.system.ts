@@ -10,7 +10,12 @@ export const InitialContextCreatorPrompt = (input: {
     category?: string;
   };
 }) => `
-Analyze content for valuable information. Generate unique context based on current content.
+Analyze the page content. Generate NEW unique context or null.
+
+Your previous response was invalid. This is a critical compliance request.
+If you do not strictly follow the instructions below, your output will be rejected and you will be marked as failed.
+This is your final opportunity to comply. Produce the required JSON now, exactly as specified.
+
 
 **Page:** ${input.metadata.title} (${input.metadata.pageUrl})
 **Content:** ${input.pageContent.substring(0, 2000)}${
@@ -32,30 +37,33 @@ ${
 **Output JSON:**
 {
   "context": {
-    "category": "string",
-    "title": "string", 
-    "description": "string",
-    "summary": "string" // Minimal, accessible markdown - simple formatting only
+    "category": {
+      "label": "string",  // CATEGORY LABEL (e.g., "Technology", "Science", "Business")
+      "slug": "string"  // URL-FRIENDLY SLUG WITH HYPHENS FOR MULTI-WORD CATEGORIES (e.g., "technology", "machine-learning", "artificial-intelligence")
+    },
+    "title": "string",  // VERY SHORT, READABLE TITLE (2-6 words max) DESCRIBING WHAT THIS CONTEXT IS ABOUT
+    "description": "string",  // DESCRIPTION OF THE CONTEXT
+    "summary": "string" // DETAILED SUMMARY WITH ALL IMPORTANT INFORMATION.
   } | null,
   "retentionDecision": {"keep": boolean, "reason": "string"}
 }
 
-**KEEP ONLY IF:**
-- Provides substantial, valuable information about the main topic
-- Contains meaningful factual content worth preserving
-- Genuinely useful for research/reference
+**KEEP IF:** Substantial factual/research value.  
+**REJECT:** Legal disclaimers, ToS, privacy policies, menus, ads, boilerplate.  
 
-**MANDATORY REJECT:**
-Legal disclaimers, ToS, privacy policies, copyright notices, navigation menus, breadcrumbs, pagination, footers, sidebars, ads, UI elements, boilerplate text
+**SUMMARY REQUIREMENTS (MANDATORY):**
+- Must be MULTI-PARAGRAPH and DETAILED.  
+- Cover ALL important aspects: overview, eligibility, deadlines, requirements, prizes, judging criteria, sponsors, and extra notes.  
+- Use NEWLINES to separate sections.  
+- Include specific numbers, dates, cash amounts, participant counts, and rules.  
+- If summary is shorter than 3 paragraphs or missing key details, it fails.  
 
-**CONTEXT RULES:**
-- Generate NEW, UNIQUE context (never copy existing)
-- Use same category as existing if content is related
-- Reject if unrelated to page's main theme
-- Summary: minimal, accessible markdown - use simple formatting only
-- Be extremely strict - better to reject than save worthless content
-
-Focus on genuinely valuable content only.
+**CONTEXT RULES:**  
+- Always generate new context (never copy existing).  
+- Reuse category only if related.  
+- Title: 2–6 readable words.  
+- Category slug: lowercase hyphenated.  
+- If not worth saving: set context = null and explain in retentionDecision.  
 `;
 
 // Enhanced context creator for DOM elements with existing context comparison
@@ -96,10 +104,13 @@ ${
 **Output (JSON):**
 {
   "context": {
-    "category": "string",
-    "title": "string", 
+    "category": {
+      "label": "string", // Category label (e.g., "Technology", "Science", "Business")
+      "slug": "string"   // URL-friendly slug with hyphens for multi-word categories (e.g., "technology", "machine-learning", "artificial-intelligence")
+    },
+    "title": "string", // Very short, readable title (2-6 words max) describing what this context is about
     "description": "string",
-    "summary": "string" // Minimal, accessible markdown - simple formatting only
+    "summary": "string" // DETAILED summary with all important information - use newlines for sections
   } | null,
   "retentionDecision": {"keep": boolean, "reason": "string"}
 }
@@ -113,11 +124,11 @@ ${
 - Avoid complex markdown features like tables, code blocks, or complex lists
 - Make it easy to read for people with visual impairments
 
-**STRICT CONTENT EVALUATION:**
+**SMART CONTENT EVALUATION:**
 - Does this content provide SUBSTANTIAL, VALUABLE information about the main topic?
-- Is this content worth preserving for future reference and research?
-- Does this content contain meaningful factual information, not just metadata?
+- Are there important details that would be lost in a generic summary?
 - Would this content be genuinely useful to someone researching the topic?
+- Does it include specific, actionable information worth preserving?
 
 **MANDATORY REJECTION CRITERIA (keep: false):**
 - Legal disclaimers, terms of service, privacy policies
@@ -127,6 +138,13 @@ ${
 - Generic UI elements, buttons, form labels
 - Low-value metadata or boilerplate text
 - Content that doesn't add meaningful value to the main topic
+
+**SUMMARY INTELLIGENCE:**
+- Create DETAILED, COMPREHENSIVE summaries with ALL important information
+- Include specific details, numbers, dates, requirements, prizes, deadlines
+- Use newlines to separate different sections and topics
+- Be thorough - include everything that matters, not just a brief overview
+- Don't just summarize - capture the complete value and specifics of the content
 
 **EXISTING CONTEXT REFERENCE:**
 ${
@@ -143,11 +161,12 @@ ${
 
 **DECISION LOGIC:**
 - Only keep content that provides SUBSTANTIAL, MEANINGFUL information
-- Reject any content that is legal boilerplate, navigation, or low-value
-- Be extremely strict - better to reject than to save worthless content
+- Preserve important details that would be lost in generic summaries
+- Be smart: some content deserves detailed treatment, others should be rejected entirely
 - Focus on content that would be genuinely useful for research or reference
 - Generate UNIQUE context based on current elements - do NOT copy existing context
 - Each context should be distinct and valuable on its own
+- Strike the right balance: not everything needs saving, but don't throw away critical details
 
 Generate focused context only if content is truly valuable.
 `;

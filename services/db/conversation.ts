@@ -1,5 +1,6 @@
 import { IDBPDatabase } from "idb";
 import { UrmindDB } from "@/types/database";
+import { Context } from "@/types/context";
 
 export class ConversationService {
   constructor(private db: IDBPDatabase<UrmindDB>) {}
@@ -122,11 +123,57 @@ export class ConversationService {
     return await index.get(id);
   }
 
-  async getAllConversations(): Promise<UrmindDB["conversations"]["value"][]> {
-    // return await this.db.getAll("conversations");
+  private async getMatchedContexts(contextIds: string[]): Promise<Context[]> {
+    const tx = this.db.transaction("contexts", "readonly");
+    const store = tx.objectStore("contexts");
+    const index = store.index("by-id");
+    const contexts = await Promise.all(
+      (contextIds ?? []).map((contextId) => index.get(contextId))
+    );
+    return contexts.filter((context) => context !== undefined);
+  }
+
+  async getAllConversations() {
     const tx = this.db.transaction("conversations", "readonly");
     const store = tx.objectStore("conversations");
-    return await store.getAll();
+    const conversations = await store.getAll();
+
+    let updatedConversations: UrmindDB["conversations"]["value"][] = [];
+
+    for (const conversation of conversations) {
+      const updatedMessages = await Promise.all(
+        conversation.messages.map(async (message) => {
+          if (message.role === "assistant") {
+            const matchedContexts = await this.getMatchedContexts(
+              message.contextIds ?? []
+            );
+            return {
+              ...message,
+              contextIds: message.contextIds ?? [],
+              matchedContexts: matchedContexts.map((ctx) => ({
+                id: ctx.id,
+                category: ctx.category,
+                title: ctx.title,
+                description: ctx.description,
+                type: ctx.type,
+                url: ctx.url,
+                fullUrl: ctx.fullUrl,
+                og: ctx.og,
+                summary: ctx.summary,
+              })),
+            };
+          }
+          return message;
+        })
+      );
+
+      updatedConversations.push({
+        ...conversation,
+        messages: updatedMessages,
+      });
+    }
+
+    return updatedConversations;
   }
 
   async updateConversation(

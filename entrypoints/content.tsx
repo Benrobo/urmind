@@ -14,7 +14,7 @@ import {
   sendMessageToBackgroundScriptWithResponse,
 } from "@/helpers/messaging";
 import NavigationMonitor from "@/helpers/navigation-monitor";
-import { useDatabaseMessageHandler } from "@/services/db-message-handler";
+import { useMessageHandler } from "@/services/message-handler";
 import { contextNavigationService } from "@/services/context-navigation.service";
 
 // initialize embedding model in content script
@@ -44,12 +44,13 @@ function monitorUrlChanges(cb?: () => void) {
 }
 
 export default defineContentScript({
-  matches: SUPPORTED_DOMAINS,
+  // matches: SUPPORTED_DOMAINS,
+  matches: ["<all_urls>"],
   cssInjectionMode: "ui",
   runAt: "document_start",
   async main(ctx) {
     // Set up database message handler (includes embedding operations)
-    const dbMessageHandler = useDatabaseMessageHandler();
+    const dbMessageHandler = useMessageHandler();
     dbMessageHandler.setupListener();
 
     // Context menu functionality is handled in background script
@@ -79,29 +80,31 @@ export default defineContentScript({
     // wait for dom to get settled
     await sleep(1000);
 
-    const pageMetadata = await pageExtractionService.extractPageMetadata();
+    // NO NEED TO LISTEN FOR NAVIGATION CHANGE SINCE IT CAN BE HANDLED IN BACKGROUND SCRIPT
+    // VIA chrome.tabs.onUpdated listener
+    // const pageMetadata = await pageExtractionService.extractPageMetadata();
 
-    navigationMonitor = new NavigationMonitor({
-      onNavigationChange: (newUrl, oldUrl) => {
-        sendMessageToBackgroundScript({
-          action: "navigation-detected",
-          payload: {
-            url: newUrl,
-            pageMetadata,
-          },
-        });
-      },
-    });
-    await navigationMonitor.startMonitoring();
+    // navigationMonitor = new NavigationMonitor({
+    //   onNavigationChange: (newUrl, oldUrl) => {
+    //     sendMessageToBackgroundScript({
+    //       action: "navigation-detected",
+    //       payload: {
+    //         url: newUrl,
+    //         pageMetadata,
+    //       },
+    //     });
+    //   },
+    // });
+    // await navigationMonitor.startMonitoring();
 
     window.addEventListener("DOMContentLoaded", () => {
-      sendMessageToBackgroundScript({
-        action: "navigation-detected",
-        payload: {
-          url: location.href,
-          pageMetadata,
-        },
-      });
+      // sendMessageToBackgroundScript({
+      //   action: "navigation-detected",
+      //   payload: {
+      //     url: location.href,
+      //     pageMetadata,
+      //   },
+      // });
     });
 
     const mountUi = async () => {

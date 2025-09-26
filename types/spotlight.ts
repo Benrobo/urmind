@@ -1,3 +1,5 @@
+import { Context } from "./context";
+
 export type AssistantResponseType =
   | "step-start"
   | "text"
@@ -33,10 +35,20 @@ export type SpotlightConversationsV1 = {
 
 export type SpotlightConversations = {
   id: string;
-  messages: Array<{
-    id: string;
-    role: "assistant" | "user";
-    content: string;
-    contextIds?: string[];
-  }>;
+  messages: Array<SpotlightConversationMessage>;
+};
+
+export type SpotlightConversationMessage = {
+  id: string;
+  role: "assistant" | "user";
+  content: string;
+  matchedContexts?: Omit<
+    Context,
+    | "highlightText"
+    | "highlightElements"
+    | "createdAt"
+    | "updatedAt"
+    | "contentFingerprint"
+    | "fingerprint"
+  >[];
 };

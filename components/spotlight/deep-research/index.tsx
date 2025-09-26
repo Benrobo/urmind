@@ -7,14 +7,6 @@ import React, {
   useRef,
   memo,
 } from "react";
-import {
-  MessageSquare,
-  FileText,
-  ChevronLeft,
-  ChevronRight,
-  ArrowDown,
-  Loader,
-} from "lucide-react";
 import { SpotlightConversations } from "@/types/spotlight";
 import MarkdownRenderer from "@/components/markdown";
 import { activeConversationStore } from "@/store/conversation.store";
@@ -25,19 +17,12 @@ import shortUUID from "short-uuid";
 import { useQuery } from "@tanstack/react-query";
 import queryClient from "@/config/tanstack-query";
 import useAiMessageStream from "@/hooks/useAiMessageStream";
-
-const researchMessageTabs = [
-  {
-    id: "answer",
-    title: "Answer",
-    icon: MessageSquare,
-  },
-  {
-    id: "contexts",
-    title: "Contexts",
-    icon: FileText,
-  },
-];
+import { Context } from "@/types/context";
+import ConversationNavigation from "./ConversationNavigation";
+import MessageTabs from "./MessageTabs";
+import SourcesDisplay from "./SourcesDisplay";
+import { Loader, MessageSquare } from "lucide-react";
+import Sources from "./Sources";
 
 export type DeepResearchResultProps = {
   deepResearchState: "new" | "follow-up" | null;
@@ -65,13 +50,15 @@ const DeepResearchResult = memo(
       setValue: setActiveConversationId,
       refresh: refreshActiveConversation,
     } = useStorageStore(activeConversationStore);
-    const [activeTab, setActiveTab] = useState("answer");
-    const [contextLength, setContextLength] = useState(3);
+    const [activeTab, setActiveTab] = useState<Record<string, string>>({});
+    const [contextLength, setContextLength] = useState(0);
 
     // local copy of query before resetState is called
     const [userQuery, setUserQuery] = useState<string | null>(null);
-    // Use ref to avoid unnecessary rerenders for tab underline
-    const activeTabRef = useRef<HTMLButtonElement | null>(null);
+    const activeTabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+    const allTabRefs = useRef<
+      Record<string, Record<string, HTMLButtonElement | null>>
+    >({});
     const [conversations, setConversations] = useState<
       SpotlightConversations[]
     >([]);
@@ -80,6 +67,11 @@ const DeepResearchResult = memo(
       useState<SpotlightConversations | null>(null);
 
     const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
+
+    const [messageContext, setMessageContext] = useState<Record<
+      string,
+      Context[]
+    > | null>(null);
 
     const conversationHistory = useMemo(() => {
       if (!activeConversation) return [];
@@ -121,6 +113,50 @@ const DeepResearchResult = memo(
         },
       });
 
+    // handle semantic matched contexts
+    useEffect(() => {
+      if (relatedContexts.length > 0 && activeMessageId) {
+        const matchedContexts = relatedContexts.map((ctx) => ({
+          id: ctx.id,
+          fingerprint: ctx.fingerprint,
+          contentFingerprint: ctx.contentFingerprint,
+          category: ctx.category,
+          title: ctx.title,
+          description: ctx.description,
+          summary: ctx.summary,
+          og: ctx.og,
+          highlightText: ctx.highlightText,
+          highlightElements: ctx.highlightElements,
+          type: ctx.type,
+          url: ctx.url,
+          fullUrl: ctx.fullUrl,
+          image: ctx.image,
+        })) as Context[];
+
+        if (matchedContexts.length > 0) {
+          setMessageContext((prev) => ({
+            ...prev,
+            [activeMessageId!]: matchedContexts,
+          }));
+        }
+
+        // update message context ids in database
+        const contextIds = matchedContexts.map((ctx) => ctx.id);
+
+        sendMessageToBackgroundScriptWithResponse({
+          action: "db-operation",
+          payload: {
+            operation: "updateMessageContextIds",
+            data: {
+              conversationId: activeConversationId,
+              messageId: activeMessageId,
+              contextIds,
+            },
+          },
+        });
+      }
+    }, [relatedContexts, activeMessageId]);
+
     const hasMoreConversations = useMemo(
       () => conversations.length > 1,
       [conversations.length]
@@ -135,7 +171,6 @@ const DeepResearchResult = memo(
     }, []);
 
     useEffect(() => {
-      // scroll to end of last ai message
       onScrollToBottom?.(450);
     }, []);
 
@@ -180,15 +215,36 @@ const DeepResearchResult = memo(
       }
     }, [messageStream, isStreaming, onScrollToBottom]);
 
-    // useEffect(() => {
-    //   if (query && deepResearchState === "follow-up") {
-    //     queryClient.invalidateQueries({ queryKey: ["conversations", limit] });
-    //   }
-    // }, [deepResearchState, query]);
+    // Initialize default tab for each message
+    useEffect(() => {
+      if (activeConversation) {
+        const newActiveTab = { ...activeTab };
+        activeConversation.messages.forEach((msg) => {
+          if (msg.role === "assistant" && !newActiveTab[msg.id]) {
+            newActiveTab[msg.id] = "answer";
+          }
+        });
+        setActiveTab(newActiveTab);
+      }
+    }, [activeConversation]);
 
+    // Update active tab ref when active tab changes
+    useEffect(() => {
+      Object.entries(activeTab).forEach(([messageId, tabId]) => {
+        if (
+          allTabRefs.current[messageId] &&
+          allTabRefs.current[messageId][tabId]
+        ) {
+          activeTabRefs.current[messageId] =
+            allTabRefs.current[messageId][tabId];
+        }
+      });
+    }, [activeTab]);
+
+    // TODO: Move to background script to persist message content on UI refresh
+    // update message content in database when streaming
     useEffect(() => {
       if (content && activeMessageId && isStreaming && activeConversationId) {
-        // update message content in database
         sendMessageToBackgroundScriptWithResponse({
           action: "db-operation",
           payload: {
@@ -355,91 +411,33 @@ const DeepResearchResult = memo(
       return "text-xs";
     }, []);
 
-    const getContextBadgeFontSize = useCallback((count: number) => {
-      if (count >= 9) return "text-xs";
-      if (count >= 99) return "text-[10px]";
-      return "text-[9px]";
-    }, []);
-
-    // Loading state
-    // if (loading) {
-    //   return (
-    //     <div className="w-full h-full flex flex-col items-center justify-center py-8 px-4">
-    //       <div className="text-center">
-    //         <MessageSquare className="w-12 h-12 text-white/40 mx-auto mb-4 animate-pulse" />
-    //         <h3 className="text-white/80 text-lg font-medium mb-2">
-    //           Loading conversations...
-    //         </h3>
-    //         <p className="text-white/60 text-sm">
-    //           Please wait while we fetch your research results
-    //         </p>
-    //       </div>
-    //     </div>
-    //   );
-    // }
-
     if (conversations.length === 0 || !activeConversation) {
-      return (
-        <div className="w-full min-h-[350px] flex flex-col items-center justify-center py-8 px-4">
-          <div className="text-center">
-            <MessageSquare className="w-12 h-12 text-white/40 mx-auto mb-4" />
-            <h3 className="text-white/80 text-lg font-medium mb-2">
-              No conversations yet
-            </h3>
-            <p className="text-white/60 text-sm">
-              Start a conversation to see your research results here
-            </p>
-          </div>
-        </div>
-      );
+      return <EmptyState />;
     }
 
     return (
       <>
         <div className="w-full min-h-[550px] flex flex-col relative top-0 left-0 py-4 pb-[10em]">
           <div className="w-full flex items-center justify-end pr-1 mb-4">
-            {/* Left and right arrow controls */}
-            {hasMoreConversations && (
-              <div className="flex items-center gap-2">
-                <button
-                  className={cn(
-                    "w-6 h-6 border border-white/10 rounded-full bg-white/20 text-white-100 flex items-center justify-center",
-                    activeConversationIndex === 0 &&
-                      "opacity-50 cursor-not-allowed"
-                  )}
-                  onClick={() => {
-                    if (activeConversationIndex > 0) {
-                      const newIndex = activeConversationIndex - 1;
-                      setActiveConversationIndex(newIndex);
-                      setActiveConversationId(conversations[newIndex]!.id);
-                    }
-                  }}
-                  disabled={activeConversationIndex === 0}
-                >
-                  <ChevronLeft size={16} strokeWidth={2} />
-                </button>
-
-                <button
-                  className={cn(
-                    "w-6 h-6 border border-white/10 rounded-full bg-white/20 text-white-100 flex items-center justify-center",
-                    activeConversationIndex === conversations.length - 1 &&
-                      "opacity-50 cursor-not-allowed"
-                  )}
-                  onClick={() => {
-                    if (activeConversationIndex < conversations.length - 1) {
-                      const newIndex = activeConversationIndex + 1;
-                      setActiveConversationIndex(newIndex);
-                      setActiveConversationId(conversations[newIndex]!.id);
-                    }
-                  }}
-                  disabled={
-                    activeConversationIndex === conversations.length - 1
-                  }
-                >
-                  <ChevronRight size={16} strokeWidth={2} />
-                </button>
-              </div>
-            )}
+            <ConversationNavigation
+              hasMoreConversations={hasMoreConversations}
+              activeConversationIndex={activeConversationIndex}
+              totalConversations={conversations.length}
+              onPrevious={() => {
+                if (activeConversationIndex > 0) {
+                  const newIndex = activeConversationIndex - 1;
+                  setActiveConversationIndex(newIndex);
+                  setActiveConversationId(conversations[newIndex]!.id);
+                }
+              }}
+              onNext={() => {
+                if (activeConversationIndex < conversations.length - 1) {
+                  const newIndex = activeConversationIndex + 1;
+                  setActiveConversationIndex(newIndex);
+                  setActiveConversationId(conversations[newIndex]!.id);
+                }
+              }}
+            />
           </div>
           {activeConversation &&
             activeConversation?.messages.map((msg, idx) => (
@@ -447,8 +445,10 @@ const DeepResearchResult = memo(
                 <div
                   key={msg.id}
                   className={cn(
-                    idx !== 0 && msg.role === "user" && "mt-10",
-                    idx !== activeConversation?.messages.length - 1 && "pb-10",
+                    idx !== 0 && msg.role === "user" && "mt-5",
+                    idx !== activeConversation?.messages.length - 1 &&
+                      msg.role === "assistant" &&
+                      "pb-10",
                     idx === activeConversation?.messages.length - 1 && "pb-10",
                     msg.role === "assistant" &&
                       idx !== activeConversation?.messages.length - 1 &&
@@ -456,96 +456,78 @@ const DeepResearchResult = memo(
                   )}
                 >
                   {msg?.role === "user" && (
-                    <div className="w-full flex flex-col gap-1 pb-0 px-4">
-                      <div className="w-full flex items-center justify-start mb-2">
-                        <p
-                          className={cn(
-                            "text-white font-geistmono",
-                            getQueryFontSize(msg?.content ?? "")
-                          )}
-                        >
-                          {msg?.content ?? ""}
-                        </p>
-                      </div>
-
-                      <div className="relative w-auto flex items-center justify-start gap-4">
-                        {/* Base horizontal line */}
-                        <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-white/10" />
-
-                        {/* Active tab underline - 6px wider than tab */}
-                        {activeTabRef.current && (
-                          <div
-                            className="absolute bottom-0 h-0.5 bg-white transition-all duration-200 ease-in-out"
-                            style={{
-                              width: `${
-                                activeTabRef.current.offsetWidth + 6
-                              }px`,
-                              left: `${activeTabRef.current.offsetLeft}px`,
-                            }}
-                          />
+                    <div className="w-full flex flex-col gap-1 px-4 pb-2">
+                      <p
+                        className={cn(
+                          "text-white font-geistmono",
+                          getQueryFontSize(msg?.content ?? "")
                         )}
-
-                        {researchMessageTabs.map((t) => {
-                          const IconComponent = t.icon;
-                          return (
-                            <button
-                              key={t.id}
-                              ref={(el) => {
-                                if (activeTab === t.id) {
-                                  activeTabRef.current = el;
-                                }
-                              }}
-                              // ref={activeTabRef}
-                              onClick={() => setActiveTab(t.id)}
-                              className={cn(
-                                "relative w-auto px-0 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2",
-                                activeTab === t.id
-                                  ? "text-white"
-                                  : "text-white/60 hover:text-white/80"
-                              )}
-                            >
-                              <IconComponent size={14} />
-                              <span>{t.title}</span>
-                              {t.id === "contexts" && (
-                                <span
-                                  className={cn(
-                                    "bg-white/20 text-white/80 px-1.5 py-0.5 rounded-full",
-                                    getContextBadgeFontSize(contextLength)
-                                  )}
-                                >
-                                  {contextLength}
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      >
+                        {msg?.content ?? ""}
+                      </p>
                     </div>
                   )}
 
+                  {msg?.role === "assistant" && (
+                    <MessageTabs
+                      message={msg}
+                      matchedSources={
+                        isStreaming
+                          ? messageContext?.[msg.id] ?? []
+                          : (msg.matchedContexts as Context[]) ?? []
+                      }
+                      activeTab={activeTab[msg.id] || "answer"}
+                      onTabChange={(tabId) => {
+                        setActiveTab((prev) => ({
+                          ...prev,
+                          [msg.id]: tabId,
+                        }));
+                      }}
+                      activeTabRefs={activeTabRefs}
+                      allTabRefs={allTabRefs}
+                      matchedSourcesCount={
+                        isStreaming
+                          ? messageContext?.[msg.id]?.length ?? 0
+                          : msg.matchedContexts?.length ?? 0
+                      }
+                    />
+                  )}
+
+                  {/* thinking */}
+                  <ThinkingIndicator
+                    isVisible={
+                      msg.role === "assistant" &&
+                      (streamingState === "thinking" ||
+                        streamingState === "pending") &&
+                      idx === activeConversation?.messages.length - 1 &&
+                      isStreaming
+                    }
+                  />
+
+                  {/* sources */}
                   {msg.role === "assistant" &&
-                    streamingState === "thinking" &&
-                    idx === activeConversation?.messages.length - 1 && (
-                      <div className="w-auto flex items-center justify-start ml-3 -translate-y-4 gap-2">
-                        <Loader className="w-4 h-4 text-white animate-spin" />
-                        <span className="text-white text-xs">Thinking...</span>
-                      </div>
+                    activeTab[msg.id] === "answer" && (
+                      <SourcesDisplay message={msg} />
                     )}
 
-                  {msg?.role === "assistant" && (
-                    <section className="w-full overflow-y-auto px-4">
-                      <MarkdownRenderer
-                        markdownString={msg?.content ?? ""}
-                        className="text-white"
-                      />
-                    </section>
-                  )}
-                </div>
+                  {msg?.role === "assistant" &&
+                    activeTab[msg.id] === "answer" && (
+                      <section className="w-full overflow-y-auto px-4">
+                        <MarkdownRenderer
+                          markdownString={msg?.content ?? ""}
+                          className="text-white"
+                        />
+                      </section>
+                    )}
 
-                {/* divider */}
-                {/* {idx !== activeConversation?.messages.length - 1 && (
-                  <div className="w-full h-[1px] bg-white/10 mb-10 mt-5" />
-                )} */}
+                  {/* Sources tab content */}
+                  {msg?.role === "assistant" &&
+                    activeTab[msg.id] === "sources" && (
+                      <div className="w-full">
+                        <Sources sources={msg.matchedContexts} />
+                      </div>
+                    )}
+                </div>
               </React.Fragment>
             ))}
         </div>
@@ -567,3 +549,34 @@ const DeepResearchResult = memo(
 );
 
 export default DeepResearchResult;
+
+interface ThinkingIndicatorProps {
+  isVisible: boolean;
+}
+
+function ThinkingIndicator({ isVisible }: ThinkingIndicatorProps) {
+  if (!isVisible) return null;
+
+  return (
+    <div className="w-auto flex items-center justify-start ml-3 -translate-y-4 gap-2">
+      <Loader className="w-4 h-4 text-white animate-spin" />
+      <span className="text-white text-xs">Thinking...</span>
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="w-full min-h-[350px] flex flex-col items-center justify-center py-8 px-4">
+      <div className="text-center">
+        <MessageSquare className="w-12 h-12 text-white/40 mx-auto mb-4" />
+        <h3 className="text-white/80 text-lg font-medium mb-2">
+          No conversations yet
+        </h3>
+        <p className="text-white/60 text-sm">
+          Start a conversation to see your research results here
+        </p>
+      </div>
+    </div>
+  );
+}

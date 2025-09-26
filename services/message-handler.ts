@@ -3,8 +3,13 @@
 
 import logger from "@/lib/logger";
 import { embeddingHelper } from "@/services/embedding-helper";
+import pageExtractionService from "./page-extraction/extraction";
+import { sendMessageToBackgroundScript } from "@/helpers/messaging";
+import { BgScriptMessageHandlerActions } from "./bgs-services/bg-message-handler";
 
-export type DatabaseOperations =
+export type MessageHandlerOperations =
+  // page extraction
+  | "page-metadata-extraction"
   // embedding model operations (content script only)
   | "generateEmbedding"
   | "semanticSearch"
@@ -15,18 +20,19 @@ export type DatabaseOperations =
   | "updateMessageInConversation"
   | "updateMessageContent"
   | "appendMessageToConversation"
-  | "appendMessagesToConversation";
+  | "appendMessagesToConversation"
+  | "updateMessageContextIds";
 
 /**
- * Database operation handler for content script message listeners
+ *  operation handler for content script message listeners
  * Handles embedding model operations that require content script access
  */
-export class DatabaseMessageHandler {
+export class MessageHandler {
   /**
    * Handle a database operation message from background script
    */
   async handleOperation(
-    operation: DatabaseOperations,
+    operation: MessageHandlerOperations,
     data?: any,
     contextId?: string
   ): Promise<any> {
@@ -50,6 +56,11 @@ export class DatabaseMessageHandler {
         );
         break;
 
+      case "page-metadata-extraction":
+        result = await pageExtractionService.extractPageMetadata();
+        console.log("📄 Content script extracted page metadata:", result);
+        break;
+
       default:
         throw new Error(`Unknown embedding operation: ${operation}`);
     }
@@ -66,6 +77,7 @@ export class DatabaseMessageHandler {
       sender: chrome.runtime.MessageSender,
       sendResponse: (response?: any) => void
     ) => {
+      console.log("🔍 Content script message listener:", request);
       if (request.action === "db-operation") {
         const { operation } = request.payload;
         const embeddingOperations = ["generateEmbedding", "semanticSearch"];
@@ -101,6 +113,21 @@ export class DatabaseMessageHandler {
           return false;
         }
       }
+      if (request.action === "client-operation") {
+        const { operation } = request.payload;
+        console.log("🔍 Client operation:", operation);
+        if (operation === "page-metadata-extraction") {
+          (async () => {
+            const result = await this.handleOperation(operation);
+            sendMessageToBackgroundScript({
+              action: "page-metadata-extraction",
+              payload: {
+                pageMetadata: result,
+              },
+            });
+          })();
+        }
+      }
       return false; // Let other listeners handle non-db messages
     };
   }
@@ -109,15 +136,15 @@ export class DatabaseMessageHandler {
 /**
  * Hook to set up database message handling in content script
  */
-export function useDatabaseMessageHandler() {
-  const handler = new DatabaseMessageHandler();
+export function useMessageHandler() {
+  const handler = new MessageHandler();
 
   // Set up the message listener
   const setupListener = () => {
     const listener = handler.createMessageListener();
     chrome.runtime.onMessage.addListener(listener);
 
-    // logger.log("📡 Database message handler initialized");
+    // logger.log("📡  message handler initialized");
 
     // Return cleanup function
     return () => {

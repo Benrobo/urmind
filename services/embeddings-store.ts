@@ -1,6 +1,6 @@
 import { IDBPDatabase } from "idb";
 import { UrmindDB } from "@/types/database";
-import { sendDBOperationMessageToContentScript } from "@/helpers/messaging";
+import { sendMessageToContentScriptWithResponse } from "@/helpers/messaging";
 import urmindDb from "./db";
 import { Context } from "@/types/context";
 
@@ -44,7 +44,7 @@ export class EmbeddingsStore {
    * Content -> Background: Return embedding vector
    */
   async generateEmbedding(text: string, tabId: number): Promise<number[]> {
-    const response = await sendDBOperationMessageToContentScript(
+    const response = await sendMessageToContentScriptWithResponse(
       tabId,
       "generateEmbedding",
       { text }
@@ -67,7 +67,7 @@ export class EmbeddingsStore {
     const allEmbeddings = await this.getAll();
 
     // Send to content script for similarity calculation
-    const response = (await sendDBOperationMessageToContentScript(
+    const response = (await sendMessageToContentScriptWithResponse(
       tabId,
       "semanticSearch",
       {

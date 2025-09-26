@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sendMessageToBackgroundScriptWithResponse } from "@/helpers/messaging";
-import { DatabaseOperations } from "@/services/db-message-handler";
+import { DatabaseOperations } from "@/services/message-handler";
 
 interface DevToolProps {
   className?: string;

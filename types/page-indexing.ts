@@ -1,6 +1,9 @@
 export type PageIndexerResponse = {
   context: {
-    category: string;
+    category: {
+      label: string;
+      slug: string;
+    };
     title: string;
     description: string;
     summary: string;
@@ -13,7 +16,10 @@ export type PageIndexerResponse = {
 
 export type DOMPageIndexerResponse = {
   context: {
-    category: string;
+    category: {
+      label: string;
+      slug: string;
+    };
     title: string;
     description: string;
     summary: string;

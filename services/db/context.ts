@@ -15,13 +15,7 @@ export class ContextService {
     };
 
     try {
-      const result = await this.db.put("contexts", contextData);
-      console.log("Context creation result:", result);
-
-      // Verify the context was created
-      const verification = await this.db.get("contexts", context.id);
-      console.log("Context verification:", verification);
-
+      await this.db.put("contexts", contextData);
       return context.id;
     } catch (error) {
       console.error("Failed to create context:", error);
@@ -63,7 +57,7 @@ export class ContextService {
 
   async getAllContextCategories(): Promise<string[]> {
     const contexts = await this.db.getAll("contexts");
-    const categories = contexts.map((context) => context.category);
+    const categories = contexts.map((context) => context.category.label);
     return [...new Set(categories)];
   }
 

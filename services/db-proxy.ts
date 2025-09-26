@@ -1,4 +1,4 @@
-import { sendDBOperationMessageToContentScript } from "@/helpers/messaging";
+import { sendMessageToContentScriptWithResponse } from "@/helpers/messaging";
 import logger from "@/lib/logger";
 import { UrmindDB } from "@/types/database";
 
@@ -33,7 +33,7 @@ export class DatabaseProxy {
    */
   async getAllContextCategories(): Promise<string[]> {
     try {
-      const result = await sendDBOperationMessageToContentScript(
+      const result = await sendMessageToContentScriptWithResponse(
         this.getTabId(),
         "getAllContextCategories"
       );
@@ -51,7 +51,7 @@ export class DatabaseProxy {
     type: string
   ): Promise<UrmindDB["contexts"]["value"][]> {
     try {
-      const result = await sendDBOperationMessageToContentScript(
+      const result = await sendMessageToContentScriptWithResponse(
         this.getTabId(),
         "getContextsByType",
         { type }
@@ -70,7 +70,7 @@ export class DatabaseProxy {
     fingerprint: string
   ): Promise<UrmindDB["contexts"]["value"] | undefined> {
     try {
-      const result = await sendDBOperationMessageToContentScript(
+      const result = await sendMessageToContentScriptWithResponse(
         this.getTabId(),
         "getContextByFingerprint",
         { fingerprint }
@@ -89,7 +89,7 @@ export class DatabaseProxy {
     contentFingerprint: string
   ): Promise<UrmindDB["contexts"]["value"] | undefined> {
     try {
-      const result = await sendDBOperationMessageToContentScript(
+      const result = await sendMessageToContentScriptWithResponse(
         this.getTabId(),
         "getContextByContentFingerprint",
         { contentFingerprint }
@@ -108,7 +108,7 @@ export class DatabaseProxy {
     context: Omit<UrmindDB["contexts"]["value"], "createdAt" | "updatedAt">
   ): Promise<string> {
     try {
-      const result = await sendDBOperationMessageToContentScript(
+      const result = await sendMessageToContentScriptWithResponse(
         this.getTabId(),
         "createContext",
         context
@@ -127,7 +127,7 @@ export class DatabaseProxy {
     id: string
   ): Promise<UrmindDB["contexts"]["value"] | undefined> {
     try {
-      const result = await sendDBOperationMessageToContentScript(
+      const result = await sendMessageToContentScriptWithResponse(
         this.getTabId(),
         "getContext",
         undefined,
@@ -145,7 +145,7 @@ export class DatabaseProxy {
    */
   async getAllContexts(): Promise<UrmindDB["contexts"]["value"][]> {
     try {
-      const result = await sendDBOperationMessageToContentScript(
+      const result = await sendMessageToContentScriptWithResponse(
         this.getTabId(),
         "getAllContexts"
       );
@@ -164,7 +164,7 @@ export class DatabaseProxy {
     updates: Partial<UrmindDB["contexts"]["value"]>
   ): Promise<void> {
     try {
-      await sendDBOperationMessageToContentScript(
+      await sendMessageToContentScriptWithResponse(
         this.getTabId(),
         "updateContext",
         updates,
@@ -181,7 +181,7 @@ export class DatabaseProxy {
    */
   async deleteContext(id: string): Promise<void> {
     try {
-      await sendDBOperationMessageToContentScript(
+      await sendMessageToContentScriptWithResponse(
         this.getTabId(),
         "deleteContext",
         undefined,
@@ -200,7 +200,7 @@ export class DatabaseProxy {
    */
   async generateEmbeddingFromText(text: string): Promise<number[]> {
     try {
-      const result = await sendDBOperationMessageToContentScript(
+      const result = await sendMessageToContentScriptWithResponse(
         this.getTabId(),
         "generateEmbeddingFromText",
         { text }
@@ -222,7 +222,7 @@ export class DatabaseProxy {
     }
   ) {
     try {
-      const result = await sendDBOperationMessageToContentScript(
+      const result = await sendMessageToContentScriptWithResponse(
         this.getTabId(),
         "cosineSimilarity",
         { text, options }
@@ -243,7 +243,7 @@ export class DatabaseProxy {
    */
   async createEmbedding(data: any): Promise<string> {
     try {
-      const result = await sendDBOperationMessageToContentScript(
+      const result = await sendMessageToContentScriptWithResponse(
         this.getTabId(),
         "createEmbedding",
         data
@@ -260,7 +260,7 @@ export class DatabaseProxy {
    */
   async getEmbedding(id: string): Promise<any> {
     try {
-      const result = await sendDBOperationMessageToContentScript(
+      const result = await sendMessageToContentScriptWithResponse(
         this.getTabId(),
         "getEmbedding",
         { id }
@@ -280,7 +280,7 @@ export class DatabaseProxy {
     metadataValue: any
   ): Promise<any[]> {
     try {
-      const result = await sendDBOperationMessageToContentScript(
+      const result = await sendMessageToContentScriptWithResponse(
         this.getTabId(),
         "getEmbeddingsByMetadata",
         { metadataKey, metadataValue }
@@ -297,10 +297,13 @@ export class DatabaseProxy {
    */
   async updateEmbedding(id: string, updates: any): Promise<void> {
     try {
-      await sendDBOperationMessageToContentScript(
+      await sendMessageToContentScriptWithResponse(
         this.getTabId(),
         "updateEmbedding",
-        { id, updates }
+        {
+          id,
+          updates,
+        }
       );
     } catch (error) {
       logger.error("❌ Proxy updateEmbedding failed:", error);

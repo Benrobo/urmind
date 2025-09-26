@@ -8,8 +8,13 @@ import type {
   PendingPageIndexingJob,
 } from "@/types/background-messages";
 import { UrmindDB } from "@/types/database";
+import { PageMetadata } from "../page-extraction/extraction";
 
-type DatabaseOperations =
+type BgScriptMessageHandlerOperations =
+  // page metadata extraction
+  | "page-metadata-extraction"
+
+  // db operations
   | "getAllConversations"
   | "getAllContexts"
   | "createConversation"
@@ -23,6 +28,14 @@ type DatabaseOperations =
   | "clearEmbeddings"
   | "clearConversations"
   | "clearAllData";
+
+export type BgScriptMessageHandlerActions =
+  | "content-script-ready"
+  | "page-metadata-extraction"
+  | "navigation-detected"
+  | "openOptionsPage"
+  | "db-operation"
+  | "client-operation";
 
 /**
  * Manages content script readiness and page indexing job queuing
@@ -136,7 +149,7 @@ export class BackgroundMessageHandler {
    * Handle database operations
    */
   async handleDatabaseOperation(
-    payload: { operation: DatabaseOperations; data: any },
+    payload: { operation: BgScriptMessageHandlerOperations; data: any },
     tabId: number
   ): Promise<MessageResponse> {
     try {
@@ -307,7 +320,7 @@ export class BackgroundMessageHandler {
           const tabId = sender.tab?.id!;
           let result: MessageResponse = { success: false };
 
-          switch (request.action) {
+          switch (request.action as BgScriptMessageHandlerActions) {
             case "content-script-ready":
               result = await this.handleContentScriptReady(
                 request.payload,
@@ -331,6 +344,19 @@ export class BackgroundMessageHandler {
                 request.payload,
                 tabId!
               );
+              break;
+
+            case "page-metadata-extraction":
+              const pageMetadataPayload = request.payload as {
+                pageMetadata: PageMetadata;
+              };
+              console.log("🔍 Page metadata extracted:", pageMetadataPayload);
+
+              await pageIndexerJob.trigger({
+                pageMetadata: pageMetadataPayload.pageMetadata,
+                tabId: tabId!,
+                url: pageMetadataPayload?.pageMetadata?.pageUrl,
+              });
               break;
 
             default:

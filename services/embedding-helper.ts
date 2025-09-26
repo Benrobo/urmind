@@ -27,14 +27,14 @@ export class EmbeddingHelper {
   }
 
   cosineSimilarity(
-    query: number[],
+    queryEmbedding: number[],
     vectors: { id: string; vector: number[]; metadata?: any }[],
     limit = 10
   ) {
     return vectors
       .map((e) => ({
         id: e.id,
-        score: cos_sim(query, e.vector),
+        score: cos_sim(queryEmbedding, e.vector),
         metadata: e.metadata,
       }))
       .sort((a, b) => b.score - a.score)

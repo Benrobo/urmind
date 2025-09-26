@@ -1,14 +1,10 @@
-import { DatabaseOperations } from "@/services/db-message-handler";
+import { BgScriptMessageHandlerActions } from "@/services/bgs-services/bg-message-handler";
+import { MessageHandlerOperations } from "@/services/message-handler";
 import { PageMetadata } from "@/services/page-extraction/extraction";
 import { MessageResponse } from "@/types/background-messages";
-import retry from "async-retry";
 
 interface BaseProps {
-  action:
-    | "navigation-detected"
-    | "openOptionsPage"
-    | "db-operation"
-    | "content-script-ready";
+  action: BgScriptMessageHandlerActions;
   payload?: Record<string, any>;
 }
 
@@ -35,9 +31,23 @@ interface ContentScriptReadyMessage extends BaseProps {
 interface DBOperationMessage extends BaseProps {
   action: "db-operation";
   payload: {
-    operation: DatabaseOperations;
+    operation: MessageHandlerOperations;
     data?: any;
     contextId?: string;
+  };
+}
+
+interface ContentScriptMessageOperation extends BaseProps {
+  payload: {
+    operation: MessageHandlerOperations;
+    data?: any;
+  };
+}
+
+interface PageMetadataExtractionMessage extends BaseProps {
+  action: "page-metadata-extraction";
+  payload: {
+    pageMetadata: PageMetadata;
   };
 }
 
@@ -47,8 +57,19 @@ export function sendMessageToBackgroundScript(
     | OpenOptionsPageMessage
     | DBOperationMessage
     | ContentScriptReadyMessage
+    | PageMetadataExtractionMessage
 ) {
   chrome.runtime.sendMessage(message);
+}
+
+/**
+ * Send message to content script
+ */
+export function sendMessageToContentScript(
+  tabId: number,
+  message: ContentScriptMessageOperation
+) {
+  chrome.tabs.sendMessage(tabId, message);
 }
 
 /**
@@ -72,9 +93,9 @@ export function sendMessageToBackgroundScriptWithResponse(
  * Send database operation message to a specific tab's content script
  * This is used by the background script to communicate with content scripts
  */
-export function sendDBOperationMessageToContentScript(
+export function sendMessageToContentScriptWithResponse(
   tabId: number,
-  operation: DatabaseOperations,
+  operation: MessageHandlerOperations,
   data?: any,
   contextId?: string
 ): Promise<any> {

@@ -56,7 +56,7 @@ class UrmindDatabase {
           );
           contextStore.createIndex("by-created", "createdAt");
           contextStore.createIndex("by-fingerprint", "fingerprint");
-          contextStore.createIndex("by-category", "category");
+          contextStore.createIndex("by-category", "category.slug");
         }
 
         // Create embeddings store
