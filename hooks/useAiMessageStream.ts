@@ -67,7 +67,9 @@ export default function useAiMessageStream({
             relatedContexts,
           });
 
-          setStreamingState("streaming");
+          // console.log("Prompt:", prompt);
+
+          setStreamingState("thinking");
 
           for await (const chunk of await chromeAi.stream(prompt)) {
             const msgHash = md5Hash(userQuery);

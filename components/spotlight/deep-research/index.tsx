@@ -472,9 +472,9 @@ const DeepResearchResult = memo(
                     <MessageTabs
                       message={msg}
                       matchedSources={
-                        isStreaming
-                          ? messageContext?.[msg.id] ?? []
-                          : (msg.matchedContexts as Context[]) ?? []
+                        (msg.matchedContexts as Context[])?.length > 0
+                          ? (msg.matchedContexts as Context[])
+                          : messageContext?.[msg.id] ?? []
                       }
                       activeTab={activeTab[msg.id] || "answer"}
                       onTabChange={(tabId) => {
@@ -486,9 +486,9 @@ const DeepResearchResult = memo(
                       activeTabRefs={activeTabRefs}
                       allTabRefs={allTabRefs}
                       matchedSourcesCount={
-                        isStreaming
-                          ? messageContext?.[msg.id]?.length ?? 0
-                          : msg.matchedContexts?.length ?? 0
+                        (msg.matchedContexts as Context[])?.length > 0
+                          ? (msg.matchedContexts as Context[])?.length
+                          : (messageContext?.[msg.id] ?? [])?.length ?? 0
                       }
                     />
                   )}
@@ -524,25 +524,19 @@ const DeepResearchResult = memo(
                   {msg?.role === "assistant" &&
                     activeTab[msg.id] === "sources" && (
                       <div className="w-full">
-                        <Sources sources={msg.matchedContexts} />
+                        <Sources
+                          sources={
+                            (msg.matchedContexts as Context[])?.length > 0
+                              ? (msg.matchedContexts as Context[])
+                              : messageContext?.[msg.id] ?? []
+                          }
+                        />
                       </div>
                     )}
                 </div>
               </React.Fragment>
             ))}
         </div>
-        {/* {isUserAtBottom && (
-          <div className="absolute bottom-4 right-4 z-10">
-            <button
-              onClick={() => {
-                onScrollToBottom?.();
-              }}
-              className="flex items-center gap-2 bg-white/90 hover:bg-white text-gray-800 px-3 py-2 rounded-full shadow-lg transition-all duration-200 hover:scale-105"
-            >
-              <ArrowDown size={16} />
-            </button>
-          </div>
-        )} */}
       </>
     );
   }
@@ -558,9 +552,9 @@ function ThinkingIndicator({ isVisible }: ThinkingIndicatorProps) {
   if (!isVisible) return null;
 
   return (
-    <div className="w-auto flex items-center justify-start ml-3 -translate-y-4 gap-2">
+    <div className="w-auto flex items-center justify-start ml-3 gap-2">
       <Loader className="w-4 h-4 text-white animate-spin" />
-      <span className="text-white text-xs">Thinking...</span>
+      <span className="text-white text-xs">Researching...</span>
     </div>
   );
 }

@@ -58,17 +58,11 @@ export default function SpotlightSearch({
   onClose,
 }: SpotlightProps) {
   const [searchQuery, setSearchQuery] = useState(initialQuery);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [streamingText, setStreamingText] = useState("");
   const [deepResearchState, setDeepResearchState] =
     useState<DeepResearchResultProps["deepResearchState"]>(null);
   const [disableInput, setDisableInput] = useState(false);
   const { value: isVisible } = useStorageStore(contextSpotlightVisibilityStore);
   const { value: uiState } = useStorageStore(uiStore);
-  // const [localUiState, setLocalUiState] = useState<"deep-research" | "context">(
-  //   uiState?.showDeepResearch ? "deep-research" : "context"
-  // );
   const uiMounted = useRef(false);
   const [aiSubmittedQuery, setAiSubmittedQuery] = useState<string | null>(null);
   const deepResearchScrollRef = useRef<HTMLDivElement>(null);
@@ -191,6 +185,7 @@ export default function SpotlightSearch({
         !uiState.showDeepResearch ? "new" : convCount > 0 ? "follow-up" : "new"
       );
       setSearchQuery("");
+      scrollToBottom();
     }
   };
 
