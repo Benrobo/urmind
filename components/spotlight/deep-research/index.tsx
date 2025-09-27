@@ -74,7 +74,6 @@ const DeepResearchResult = memo(
     > | null>(null);
 
     const conversationHistory = useMemo(() => {
-      console.log("activeConversation", activeConversation);
       if (!activeConversation) return [];
 
       const messages = activeConversation.messages;
