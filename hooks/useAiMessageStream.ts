@@ -67,7 +67,7 @@ export default function useAiMessageStream({
             relatedContexts,
           });
 
-          // console.log("Prompt:", prompt);
+          console.log("Prompt:", prompt);
 
           setStreamingState("thinking");
 

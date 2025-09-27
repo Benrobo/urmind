@@ -74,10 +74,20 @@ const DeepResearchResult = memo(
     > | null>(null);
 
     const conversationHistory = useMemo(() => {
+      console.log("activeConversation", activeConversation);
       if (!activeConversation) return [];
 
       const messages = activeConversation.messages;
       const history = [];
+
+      // check if assistant response is included
+      const assistantResponseIncluded = messages.some(
+        (msg) => msg.role === "assistant" && msg.content.trim().length > 0
+      );
+
+      if (!assistantResponseIncluded) {
+        return [];
+      }
 
       // Get the last 6 messages (3 pairs of user/assistant)
       const lastMessages = messages.slice(-6);
@@ -305,6 +315,7 @@ const DeepResearchResult = memo(
 
         setConversations([...conversations, newConversation]);
         setActiveConversationId(convId);
+        setActiveConversation(newConversation);
         setActiveMessageId(newConversation.messages[1]?.id!);
         setIsStreaming(true);
         setUserQuery(query!);
