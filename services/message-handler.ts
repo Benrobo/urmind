@@ -36,6 +36,7 @@ export class MessageHandler {
     data?: any,
     contextId?: string
   ): Promise<any> {
+    console.log("🔍 Content script handling operation:", operation);
     let result;
     switch (operation) {
       case "generateEmbedding":
@@ -49,6 +50,7 @@ export class MessageHandler {
           throw new Error("embeddings required for semanticSearch");
 
         const queryEmbedding = await embeddingHelper.generate(data.query);
+
         result = embeddingHelper.cosineSimilarity(
           queryEmbedding,
           data.embeddings,

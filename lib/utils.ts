@@ -20,6 +20,37 @@ export const sleep = (ms: number) => {
 };
 
 /**
+ * Creates a debounced function that delays invoking func until after wait milliseconds
+ * have elapsed since the last time the debounced function was invoked.
+ *
+ * @param func - The function to debounce
+ * @param wait - The number of milliseconds to delay
+ * @param immediate - If true, trigger the function on the leading edge instead of the trailing edge
+ * @returns The debounced function
+ */
+export const debounce = <T extends (...args: any[]) => any>(
+  func: T,
+  wait: number,
+  immediate: boolean = false
+): ((...args: Parameters<T>) => void) => {
+  let timeout: NodeJS.Timeout | null = null;
+
+  return (...args: Parameters<T>) => {
+    const later = () => {
+      timeout = null;
+      if (!immediate) func(...args);
+    };
+
+    const callNow = immediate && !timeout;
+
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+
+    if (callNow) func(...args);
+  };
+};
+
+/**
  * Cleans a URL for fingerprinting by removing query parameters and fragments
  * to ensure the same page gets the same fingerprint regardless of URL params.
  *

@@ -33,7 +33,7 @@ export default function Sources({ sources }: SourcesProps) {
                 <div className="w-full flex flex-col items-start justify-start">
                   <div className="w-full flex flex-nowrap items-center justify-start gap-4">
                     <span className="text-white-100 text-[11px] font-medium">
-                      {s.og.title}
+                      {shortenText(s.og.title ?? "", 70)}
                     </span>
                     {/* tag */}
                     <span className="text-[8px] px-1 py-[2px] rounded-full bg-white-100/10 text-white-100 border border-white-100/10">

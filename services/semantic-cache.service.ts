@@ -1,7 +1,8 @@
 import { md5Hash } from "@/lib/utils";
 import logger from "@/lib/logger";
 import { semanticCacheStore } from "@/store/semantic-cache.store";
-import { SemanticDeduplicationThreshold } from "@/constant/internal";
+import { PageIndexingSemanticDeduplicationThreshold } from "@/constant/internal";
+import { preferencesStore, PreferencesState } from "@/store/preferences.store";
 import urmindDb from "@/services/db";
 
 export class SemanticAwareCache {
@@ -28,7 +29,8 @@ export class SemanticAwareCache {
       }
 
       const searchResults = await this.performSemanticSearch(batch, tabId);
-      const shouldProcess = this.evaluateResults(searchResults);
+      const preferences = await preferencesStore.get();
+      const shouldProcess = this.evaluateResults(searchResults, preferences);
 
       console.log("searchResults", searchResults);
 
@@ -51,7 +53,7 @@ export class SemanticAwareCache {
   async generateSemanticSignature(content: string): Promise<string> {
     const normalized = content.toLowerCase().replace(/\s+/g, " ").trim();
 
-    const prefix = normalized.slice(0, 100);
+    const prefix = normalized.slice(0, 300);
     // const length = normalized.length;
     // const wordCount = normalized.split(/\s+/).length;
 
@@ -60,7 +62,10 @@ export class SemanticAwareCache {
     return md5Hash(prefix);
   }
 
-  private async performSemanticSearch(batch: string, tabId: number) {
+  private async performSemanticSearch(
+    batch: string,
+    tabId: number
+  ): Promise<any[]> {
     if (!urmindDb.embeddings) {
       throw new Error("Embeddings service not available");
     }
@@ -68,14 +73,26 @@ export class SemanticAwareCache {
     return await urmindDb.embeddings.semanticSearch(batch, tabId, { limit: 4 });
   }
 
-  private evaluateResults(searchResults: any[]): boolean {
+  private evaluateResults(
+    searchResults: any[],
+    preferences: PreferencesState
+  ): boolean {
     if (!searchResults || searchResults.length === 0) {
       return true;
     }
 
     const topResult = searchResults[0];
-    if (topResult && topResult.score >= SemanticDeduplicationThreshold) {
-      logger.warn(`⏭️ Too similar (${topResult.score})`);
+
+    // Use different thresholds based on user preferences
+    const threshold =
+      preferences.embeddingStyle === "online"
+        ? PageIndexingSemanticDeduplicationThreshold.online
+        : PageIndexingSemanticDeduplicationThreshold.offline;
+
+    if (topResult && topResult.score >= threshold) {
+      logger.warn(
+        `⏭️ Too similar (${topResult.score} >= ${threshold}) [${preferences.embeddingStyle}]`
+      );
       return false;
     }
 

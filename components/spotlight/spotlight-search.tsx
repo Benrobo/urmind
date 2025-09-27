@@ -306,7 +306,7 @@ export default function SpotlightSearch({
         zIndex: 1000,
         top: "50%",
         left: "50%",
-        transform: "translate(-50%, -50%)",
+        transform: "translate(-50%, -50%) scale(1)",
       }}
       onKeyDown={handleKeyDown}
     >

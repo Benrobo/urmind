@@ -128,6 +128,8 @@ async function renderMainAppUi(ctx: ContentScriptContext) {
       wrapper.className = "urmind-wrapper";
       wrapper.style.background = "transparent";
       wrapper.style.backgroundColor = "transparent";
+      wrapper.style.zIndex = Number.MAX_SAFE_INTEGER.toString();
+
       container.append(wrapper);
 
       const root = ReactDOM.createRoot(wrapper);

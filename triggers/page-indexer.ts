@@ -2,7 +2,10 @@ import pageExtractionService, {
   PageMetadata,
 } from "@/services/page-extraction/extraction";
 import { Task, task } from "./task";
-import { chromeAi } from "@/helpers/agent/utils";
+import { chromeAi, geminiAi } from "@/helpers/agent/utils";
+import { preferencesStore } from "@/store/preferences.store";
+import { generateText, streamText } from "ai";
+import { ai_models } from "@/constant/internal";
 import { md5Hash, cleanUrlForFingerprint } from "@/lib/utils";
 import urmindDb from "@/services/db";
 import { embeddingHelper } from "@/services/embedding-helper";
@@ -13,10 +16,7 @@ import { PageIndexerResponse } from "@/types/page-indexing";
 import shortId from "short-uuid";
 import logger from "@/lib/logger";
 import { UrmindDB } from "@/types/database";
-import {
-  SemanticDeduplicationThreshold,
-  SemanticSearchThreshold,
-} from "@/constant/internal";
+import { PageIndexingSemanticSearchThreshold } from "@/constant/internal";
 import { semanticCache } from "@/services/semantic-cache.service";
 import { semanticCacheStore } from "@/store/semantic-cache.store";
 
@@ -136,8 +136,15 @@ async function processTextBatch(props: {
     { limit: 5 }
   );
 
+  // Get user preferences for threshold
+  const preferences = await preferencesStore.get();
+  const threshold =
+    preferences.embeddingStyle === "online"
+      ? PageIndexingSemanticSearchThreshold.online
+      : PageIndexingSemanticSearchThreshold.offline;
+
   const similarContexts = semanticSearchResults?.filter(
-    (c) => c.score >= SemanticSearchThreshold
+    (c) => c.score >= threshold
   );
 
   logger.info(`🔍 Semantic search results:`, semanticSearchResults);
@@ -316,22 +323,38 @@ async function generateTextContext(
 ): Promise<PageIndexerResponse> {
   return retry(
     async () => {
-      const llmResponse = await chromeAi.invoke(
-        InitialContextCreatorPrompt({
-          pageContent: batch,
-          metadata: pageMetadata,
-          existingContext: existingContext
-            ? {
-                title: existingContext.title,
-                description: existingContext.description,
-                category:
-                  typeof existingContext.category === "string"
-                    ? existingContext.category
-                    : existingContext.category.label,
-              }
-            : undefined,
-        })
-      );
+      // Get user preferences for model selection
+      const preferences = await preferencesStore.get();
+
+      let llmResponse: string;
+
+      // Try online model first if user prefers online
+      if (preferences.embeddingStyle === "online" && preferences.geminiApiKey) {
+        try {
+          llmResponse = await generateWithOnlineModel(
+            batch,
+            pageMetadata,
+            existingContext,
+            preferences
+          );
+        } catch (onlineError) {
+          console.warn(
+            "Online model failed, falling back to local model:",
+            onlineError
+          );
+          llmResponse = await generateWithLocalModel(
+            batch,
+            pageMetadata,
+            existingContext
+          );
+        }
+      } else {
+        llmResponse = await generateWithLocalModel(
+          batch,
+          pageMetadata,
+          existingContext
+        );
+      }
 
       const sanitizedResponse = cleanLLMResponse({
         response: llmResponse,
@@ -353,4 +376,65 @@ async function generateTextContext(
       },
     }
   );
+}
+
+async function generateWithOnlineModel(
+  batch: string,
+  pageMetadata: PageMetadata,
+  existingContext: ExistingContext | undefined,
+  preferences: any
+): Promise<string> {
+  const genAI = geminiAi(preferences.geminiApiKey);
+  const modelName = ai_models.generation.gemini_flash; // Always use Flash for online generation
+
+  logger.log(`🤖 Using online model for context generation: ${modelName}`);
+
+  const result = await generateText({
+    model: genAI(modelName),
+    prompt: InitialContextCreatorPrompt({
+      pageContent: batch,
+      metadata: pageMetadata,
+      existingContext: existingContext
+        ? {
+            title: existingContext.title,
+            description: existingContext.description,
+            category:
+              typeof existingContext.category === "string"
+                ? existingContext.category
+                : existingContext.category.label,
+          }
+        : undefined,
+    }),
+  });
+
+  logger.log("✅ Online context generation completed");
+  return result.text;
+}
+
+async function generateWithLocalModel(
+  batch: string,
+  pageMetadata: PageMetadata,
+  existingContext: ExistingContext | undefined
+): Promise<string> {
+  logger.log("🏠 Using local ChromeAI for context generation");
+
+  const result = await chromeAi.invoke(
+    InitialContextCreatorPrompt({
+      pageContent: batch,
+      metadata: pageMetadata,
+      existingContext: existingContext
+        ? {
+            title: existingContext.title,
+            description: existingContext.description,
+            category:
+              typeof existingContext.category === "string"
+                ? existingContext.category
+                : existingContext.category.label,
+          }
+        : undefined,
+    })
+  );
+
+  logger.log("✅ Local context generation completed");
+  return result;
 }

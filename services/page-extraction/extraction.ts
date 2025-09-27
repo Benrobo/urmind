@@ -73,7 +73,7 @@ class PageExtractionService {
         GEMINI_NANO_MAX_TOKENS_PER_PROMPT * 4 // ~4096 bytes for 1024 tokens
       );
 
-    return {
+    const result = {
       title: _title,
       description: _description?.getAttribute("content") ?? null,
       og: {
@@ -87,6 +87,10 @@ class PageExtractionService {
       pageContentBatches,
       pageContextualTextElementBatches,
     };
+
+    console.log("📄 Page metadata:", result);
+
+    return result;
   }
 
   private cleanUrl(url: string) {

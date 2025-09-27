@@ -88,8 +88,8 @@ const DeepResearchResult = memo(
         return [];
       }
 
-      // Get the last 6 messages (3 pairs of user/assistant)
-      const lastMessages = messages.slice(-6);
+      // Get the last 12 messages (6 pairs of user/assistant)
+      const lastMessages = messages.slice(-12);
 
       // Group messages into user/assistant pairs, starting from the end
       for (let i = lastMessages.length - 2; i >= 0; i -= 2) {

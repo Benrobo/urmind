@@ -2,11 +2,13 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import useSavedContext from "@/hooks/useContext";
 import { FileText, Globe, LucideIcon, Image, File } from "lucide-react";
-import { constructUrlTextFragment } from "@/lib/utils";
+import { constructUrlTextFragment, debounce } from "@/lib/utils";
 import { Context } from "@/types/context";
 import logger from "@/lib/logger";
 import { contextSpotlightVisibilityStore } from "@/store/context.store";
 import { contextNavigationService } from "@/services/context-navigation.service";
+import React, { useCallback, useState } from "react";
+import CustomLoader from "@/components/Loader";
 
 dayjs.extend(relativeTime);
 
@@ -19,12 +21,27 @@ type SavedContextProps = {
 };
 
 export default function SavedContext({ query, uiState }: SavedContextProps) {
+  const [debouncedQuery, setDebouncedQuery] = useState(query);
+
+  // Debounce the query to avoid too many API calls
+  const debouncedSetQuery = useCallback(
+    debounce((newQuery: string) => {
+      setDebouncedQuery(newQuery);
+    }, 300),
+    []
+  );
+
+  // Update debounced query when query changes
+  React.useEffect(() => {
+    debouncedSetQuery(query);
+  }, [query, debouncedSetQuery]);
+
   const {
     contexts: filteredContext,
     loading,
     error,
   } = useSavedContext({
-    query: !uiState?.showDeepResearch ? query.trim() : undefined,
+    query: !uiState?.showDeepResearch ? debouncedQuery.trim() : undefined,
     limit: 10,
     mounted: !uiState?.showDeepResearch,
   });
@@ -59,7 +76,15 @@ export default function SavedContext({ query, uiState }: SavedContextProps) {
         </div>
 
         <div className="space-y-1">
-          {filteredContext.length > 0 ? (
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <CustomLoader
+                size="md"
+                text="Searching your mind..."
+                className="mb-3"
+              />
+            </div>
+          ) : filteredContext.length > 0 ? (
             filteredContext.map((item) => {
               const IconComponent = getContentIcon(item.type);
               return (

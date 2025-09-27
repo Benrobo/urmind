@@ -73,7 +73,7 @@
 
 @layer base {
   * {
-    @apply border-border;
+    /* @apply border; */
   }
   body {
     /* @apply p-0 m-0 font-inter text-dark-100 transition-all overflow-x-hidden; */
@@ -92,6 +92,8 @@ button {
 }
 
 .urmind-wrapper {
+  /* transform: scale(1) !important; */
+  z-index: 2147483647 !important;
   background: transparent !important;
   background-color: transparent !important;
 }
