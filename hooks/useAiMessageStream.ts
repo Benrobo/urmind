@@ -7,9 +7,13 @@ import logger from "@/lib/logger";
 import { md5Hash, sleep } from "@/lib/utils";
 import { Context } from "@/types/context";
 import { preferencesStore } from "@/store/preferences.store";
-import { generateText, streamText } from "ai";
 import { ai_models } from "@/constant/internal";
 import React, { useEffect, useState } from "react";
+import {
+  generateSearchQuery,
+  getAllContextCategories,
+} from "@/helpers/search-query-generator";
+import { AIService } from "@/services/ai.service";
 
 type StreamingState =
   | "pending"
@@ -60,7 +64,21 @@ export default function useAiMessageStream({
         try {
           setStreamingState("thinking");
 
-          const relatedContexts = await findRelatedContexts(userQuery);
+          // Generate an optimized search query using context categories and conversation history
+          const availableCategories = await getAllContextCategories();
+          const optimizedSearchQuery = await generateSearchQuery(
+            userQuery,
+            conversationHistory,
+            availableCategories
+          );
+
+          logger.log(
+            `Using optimized search query: "${optimizedSearchQuery}" for user query: "${userQuery}"`
+          );
+
+          const relatedContexts = await findRelatedContexts(
+            optimizedSearchQuery
+          );
 
           logger.log("Related contexts:", relatedContexts);
 
@@ -72,44 +90,19 @@ export default function useAiMessageStream({
 
           // console.log("Prompt:", prompt);
 
-          setStreamingState("thinking");
+          setStreamingState("streaming");
 
-          // Get user preferences for model selection
-          const preferences = await preferencesStore.get();
-
-          // Check generation style preference
-          if (
-            preferences.generationStyle === "online" &&
-            preferences.geminiApiKey
-          ) {
-            try {
-              await streamWithOnlineModel(
-                prompt,
-                userQuery,
-                messageStream,
-                setMessageStream
-              );
-            } catch (onlineError) {
-              logger.warn(
-                "🌐 Online model failed, falling back to local ChromeAI:",
-                onlineError
-              );
-              await streamWithLocalModel(
-                prompt,
-                userQuery,
-                messageStream,
-                setMessageStream
-              );
-            }
-          } else {
-            // Use local ChromeAI for generation
-            await streamWithLocalModel(
-              prompt,
-              userQuery,
-              messageStream,
-              setMessageStream
-            );
-          }
+          // Use the centralized AI service for streaming
+          const msgHash = md5Hash(userQuery);
+          await AIService.streamText({
+            prompt,
+            onChunk: (chunk: string) => {
+              setMessageStream((prev) => ({
+                ...prev,
+                [msgHash]: (prev[msgHash] || "") + chunk,
+              }));
+            },
+          });
 
           setStreamingState("completed");
           onComplete();
@@ -151,54 +144,6 @@ export default function useAiMessageStream({
     } catch (err: any) {
       console.error("Error finding related contexts:", err);
       return [];
-    }
-  };
-
-  const streamWithOnlineModel = async (
-    prompt: string,
-    userQuery: string,
-    messageStream: Record<string, string>,
-    setMessageStream: React.Dispatch<
-      React.SetStateAction<Record<string, string>>
-    >
-  ) => {
-    const preferences = await preferencesStore.get();
-    const genAI = geminiAi(preferences.geminiApiKey);
-    const modelName = ai_models.generation.gemini_flash; // Always use Flash for online generation
-
-    logger.log(`🤖 Using online model: ${modelName}`);
-
-    const result = streamText({
-      model: genAI(modelName),
-      prompt: prompt,
-    });
-
-    const msgHash = md5Hash(userQuery);
-
-    for await (const chunk of result.textStream) {
-      setMessageStream((prev) => ({
-        ...prev,
-        [msgHash]: (prev[msgHash] || "") + chunk,
-      }));
-    }
-  };
-
-  const streamWithLocalModel = async (
-    prompt: string,
-    userQuery: string,
-    messageStream: Record<string, string>,
-    setMessageStream: React.Dispatch<
-      React.SetStateAction<Record<string, string>>
-    >
-  ) => {
-    logger.log("🤖 Using local model: ChromeAI");
-
-    for await (const chunk of await chromeAi.stream(prompt)) {
-      const msgHash = md5Hash(userQuery);
-      setMessageStream((prev) => ({
-        ...prev,
-        [msgHash]: (prev[msgHash] || "") + chunk,
-      }));
     }
   };
 

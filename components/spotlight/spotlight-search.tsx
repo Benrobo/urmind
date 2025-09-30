@@ -5,6 +5,10 @@ import React, {
   useRef,
   useCallback,
 } from "react";
+import {
+  useInputFocusManagement,
+  useContainerFocusManagement,
+} from "@/hooks/useFocusManagement";
 import { cn } from "@/lib/utils";
 import {
   Sparkles,
@@ -62,6 +66,15 @@ export default function SpotlightSearch({
     useState<DeepResearchResultProps["deepResearchState"]>(null);
   const [disableInput, setDisableInput] = useState(false);
   const { value: isVisible } = useStorageStore(contextSpotlightVisibilityStore);
+
+  // Focus management hooks
+  const { ref: inputRef, eventHandlers: inputEventHandlers } =
+    useInputFocusManagement(isVisible && !disableInput, {
+      excludeElements: [".urmind-wrapper", "[data-urmind]"], // Exclude our own components
+    });
+
+  const { eventHandlers: containerEventHandlers } =
+    useContainerFocusManagement(isVisible);
   const { value: uiState } = useStorageStore(uiStore);
   const uiMounted = useRef(false);
   const [aiSubmittedQuery, setAiSubmittedQuery] = useState<string | null>(null);
@@ -317,13 +330,25 @@ export default function SpotlightSearch({
             "flex items-center space-x-3",
             disableInput && "opacity-50 cursor-not-allowed grayscale"
           )}
+          {...containerEventHandlers}
         >
           <Search size={18} className="text-white/60" />
           <input
+            ref={inputRef}
             type="text"
             placeholder="Ask your mind... or search your memory"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            {...inputEventHandlers}
+            onKeyDown={(e) => {
+              // Call the hook's event handler first
+              inputEventHandlers.onKeyDown?.(e);
+              // Handle escape key
+              if (e.key === "Escape") {
+                e.preventDefault();
+                // Handle escape key if needed
+              }
+            }}
             className={cn(
               "flex-1 bg-transparent text-white placeholder-white/60 text-sm outline-none",
               disableInput && "opacity-50 cursor-not-allowed grayscale"

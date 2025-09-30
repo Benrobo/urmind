@@ -250,7 +250,7 @@ export default function Popup() {
           {preferences.generationStyle === "online" && (
             <div className="mt-3 flex items-start gap-2 p-2 bg-blue-500/20 border border-blue-400/30 rounded-lg">
               <AlertTriangle className="w-3 h-3 text-blue-400 mt-0.5 flex-shrink-0" />
-              <div className="text-xs text-blue-200">
+              <div className="text-xs text-white-100">
                 <strong>Note:</strong> Online generation requires a valid Gemini
                 API key.
               </div>
@@ -295,8 +295,8 @@ export default function Popup() {
             <p className="text-xs text-white/60">
               Your API key is stored locally and never shared.
             </p>
-            <div className="mt-2 p-2 bg-blue-103/20 border border-blue-100/40 rounded-lg">
-              <div className="text-xs text-blue-100">
+            <div className="mt-2 p-2 bg-white/20 border border-white/40 rounded-lg">
+              <div className="text-xs text-white-100">
                 <strong>Fallback:</strong> If online model fails, the system
                 will automatically switch to local Gemini Nano model.
               </div>

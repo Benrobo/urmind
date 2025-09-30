@@ -16,7 +16,8 @@ const MarkdownRenderer = memo(function MarkdownRenderer({
   if (!markdownString) return null;
 
   const cleanMarkdown = markdownString
-    .replace(/^```markdown\s*\n?/, "")
+    .replace(/^```markdown\s*\n?/gi, "")
+    .replace(/^```markdown\n?/gi, "")
     .replace(/\n?```\s*$/, "")
     .trim();
 
@@ -65,6 +66,7 @@ const MarkdownRenderer = memo(function MarkdownRenderer({
           code(props) {
             const { children, className, node, ...rest } = props;
             const match = /language-(\w+)/.exec(className || "");
+            console.log({ match });
             return match ? (
               <SyntaxHighlighter
                 PreTag="div"

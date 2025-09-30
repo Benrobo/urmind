@@ -192,6 +192,7 @@ ${context.url ? `Source: [${context.url}](${context.url})` : ""}`
 
 <output_format>
 Raw detailed markdown string with all the information you need to answer the user's query.
+IT MUST BE PROPERLY FORMATTED WITH MARKDOWN, NO MISALIGNMENTS, NO WRAPPING, NO INCONSISTENCIES.
 </output_format>
 
 <identity_handling>
@@ -216,3 +217,43 @@ UrMind also includes a **Mindboard**: a canvas where users can manually drop in 
 
 YOU MUST ALWAYS GENERATE A DETAILED MARKDOWN RESPONSE WITH ALL THE INFORMATION YOU NEED TO ANSWER THE USER'S QUERY.
 `;
+
+/**
+ * Creates a focused prompt for generating search queries
+ */
+export const SearchQueryGenerationPrompt = (
+  userQuery: string,
+  conversationHistory: string,
+  availableCategories: string[]
+) => `You are a search query generator for UrMind, a personal knowledge management system.
+
+**Task**: Generate a focused search query that will help find relevant saved contexts for the user's question.
+
+**User's Question**: ${userQuery}
+
+**Previous Conversation Context**:
+${conversationHistory}
+
+**Available Context Categories** (these are real categories from the user's saved contexts):
+${
+  availableCategories.length > 0
+    ? availableCategories.map((cat) => `- ${cat}`).join("\n")
+    : "No specific categories available"
+}
+
+**Instructions**:
+1. Generate a search query that includes factual terms, keywords, or concepts that might appear in the user's saved contexts
+2. Use terms from the available categories when relevant
+3. Include specific technical terms, proper nouns, or domain-specific language from the user's question
+4. Keep the search query concise but comprehensive (2-8 words typically work best)
+5. Focus on nouns, technical terms, and key concepts rather than common words
+6. If the question is about a specific topic, include related terms that might be in saved contexts
+
+**Examples**:
+- User asks "How do I set up authentication?" → Search query: "authentication setup JWT OAuth"
+- User asks "What did I learn about React hooks?" → Search query: "React hooks useState useEffect"
+- User asks "Python data analysis tips" → Search query: "Python pandas numpy data analysis"
+
+**Generate a search query for**: "${userQuery}"
+
+**Search Query**:`;
