@@ -9,6 +9,8 @@ import { contextSpotlightVisibilityStore } from "@/store/context.store";
 import { contextNavigationService } from "@/services/context-navigation.service";
 import React, { useCallback, useState } from "react";
 import CustomLoader from "@/components/Loader";
+import { SearchContextDebounceTimeMs } from "@/constant/internal";
+import { preferencesStore } from "@/store/preferences.store";
 
 dayjs.extend(relativeTime);
 
@@ -23,13 +25,20 @@ type SavedContextProps = {
 export default function SavedContext({ query, uiState }: SavedContextProps) {
   const [debouncedQuery, setDebouncedQuery] = useState(query);
 
-  // Debounce the query to avoid too many API calls
-  const debouncedSetQuery = useCallback(
-    debounce((newQuery: string) => {
-      setDebouncedQuery(newQuery);
-    }, 300),
-    []
-  );
+  const debouncedSetQuery = useCallback(async (newQuery: string) => {
+    const preferences = await preferencesStore.get();
+    const embeddingStyle = preferences?.embeddingStyle;
+
+    debounce(
+      (value) => {
+        setDebouncedQuery(value);
+      },
+      embeddingStyle === "local"
+        ? SearchContextDebounceTimeMs.offline
+        : SearchContextDebounceTimeMs.online,
+      false
+    )(newQuery);
+  }, []);
 
   // Update debounced query when query changes
   React.useEffect(() => {

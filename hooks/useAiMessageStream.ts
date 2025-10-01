@@ -85,7 +85,7 @@ export default function useAiMessageStream({
           const prompt = DeepResearchSystemPrompt({
             userQuery,
             conversationHistory,
-            relatedContexts,
+            relatedContexts: relatedContexts ?? [],
           });
 
           // console.log("Prompt:", prompt);
@@ -97,6 +97,7 @@ export default function useAiMessageStream({
           await AIService.streamText({
             prompt,
             onChunk: (chunk: string) => {
+              // console.log("message stream >>>", chunk);
               setMessageStream((prev) => ({
                 ...prev,
                 [msgHash]: (prev[msgHash] || "") + chunk,
@@ -150,7 +151,7 @@ export default function useAiMessageStream({
   return {
     streamingState,
     messageStream,
-    content: messageStream[md5Hash(userQuery)],
+    content: messageStream[md5Hash(userQuery)] ?? "",
     setStreamingState,
     setMessageStream,
     relatedContexts,

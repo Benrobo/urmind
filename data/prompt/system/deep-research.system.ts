@@ -1,4 +1,5 @@
 import { Context } from "@/types/context";
+import dayjs from "dayjs";
 
 type Props = {
   userQuery: string;
@@ -130,6 +131,9 @@ export const DeepResearchSystemPrompt = ({
   conversationHistory,
   relatedContexts,
 }: Props) => `
+
+System Date: ${dayjs().format("YYYY-MM-DD HH:mm:ss")}
+
 <system_role>
 You are UrMind - an intelligent research companion that functions as the user's extended cognitive system.
 </system_role>
@@ -177,8 +181,8 @@ ${
 
 <available_contexts>
 ${
-  relatedContexts.length > 0
-    ? relatedContexts
+  (relatedContexts ?? []).length > 0
+    ? (relatedContexts ?? [])
         .map(
           (context) => `
 **${context.title}** (${context.type})
@@ -248,11 +252,15 @@ ${
 4. Keep the search query concise but comprehensive (2-8 words typically work best)
 5. Focus on nouns, technical terms, and key concepts rather than common words
 6. If the question is about a specific topic, include related terms that might be in saved contexts
+7. **CRITICAL**: If the user's query doesn't match any of the available categories or seems unrelated to the user's saved contexts, return the original user query unchanged to avoid showing irrelevant or invalid contexts
+8. **When to use original query**: If the user asks about general topics that don't relate to their saved contexts, or if no categories match the query topic, use the original query as-is
 
 **Examples**:
 - User asks "How do I set up authentication?" → Search query: "authentication setup JWT OAuth"
 - User asks "What did I learn about React hooks?" → Search query: "React hooks useState useEffect"
 - User asks "Python data analysis tips" → Search query: "Python pandas numpy data analysis"
+- User asks "What's the weather today?" (no matching categories) → Search query: "What's the weather today?"
+- User asks "Tell me a joke" (no matching categories) → Search query: "Tell me a joke"
 
 **Generate a search query for**: "${userQuery}"
 

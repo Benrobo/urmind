@@ -234,6 +234,7 @@ const DeepResearchResult = memo(
           }
         });
         setActiveTab(newActiveTab);
+        // setActiveMessageId(activeConversation.messages[1]?.id!);
       }
     }, [activeConversation]);
 
@@ -253,7 +254,7 @@ const DeepResearchResult = memo(
     // TODO: Move to background script to persist message content on UI refresh
     // update message content in database when streaming
     useEffect(() => {
-      if (content && activeMessageId && isStreaming && activeConversationId) {
+      if (content && activeMessageId && activeConversationId) {
         sendMessageToBackgroundScriptWithResponse({
           action: "db-operation",
           payload: {
@@ -517,7 +518,17 @@ const DeepResearchResult = memo(
                   {/* sources */}
                   {msg.role === "assistant" &&
                     activeTab[msg.id] === "answer" && (
-                      <SourcesDisplay message={msg} />
+                      <SourcesDisplay
+                        message={{
+                          content: msg.content,
+                          id: msg.id,
+                          role: msg.role,
+                          matchedContexts:
+                            (msg.matchedContexts as Context[])?.length > 0
+                              ? (msg.matchedContexts as Context[])
+                              : messageContext?.[msg.id] ?? [],
+                        }}
+                      />
                     )}
 
                   {msg?.role === "assistant" &&

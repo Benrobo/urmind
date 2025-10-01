@@ -63,10 +63,8 @@ export class EmbeddingsStore {
     tabId: number,
     options: { limit?: number } = {}
   ) {
-    // Get all stored embeddings
     const allEmbeddings = await this.getAll();
 
-    // Send to content script for similarity calculation
     const response = (await sendMessageToContentScriptWithResponse(
       tabId,
       "semanticSearch",
