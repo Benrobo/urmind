@@ -53,12 +53,24 @@ export default function MindboardCanvas() {
         nodes={nodes}
         // edges={edges}
         onNodesChange={onNodesChange}
-        fitView={true}
+        onConnect={(params) => {
+          console.log(params);
+        }}
+        onLoad={(params) => {
+          console.log(params);
+        }}
+        defaultViewport={{
+          x: 200,
+          y: 300,
+          zoom: 1.5,
+        }}
+        // fitView={true}
         // minZoom={0.01}
         colorMode="dark"
         nodeTypes={nodeTypes}
       >
-        <Background />
+        {/* @ts-ignore */}
+        <Background variant="dots" gap={15} size={1} color="#3d3f48" />
         <Controls />
       </ReactFlow>
     </div>
