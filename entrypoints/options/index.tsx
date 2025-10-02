@@ -1,3 +1,5 @@
+import MindBoardPage from "@/components/mindboard";
+
 export default function Options() {
-  return <div>Mind Board</div>;
+  return <MindBoardPage />;
 }

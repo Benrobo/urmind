@@ -84,7 +84,7 @@ export function ImageWithFallback({ src, className }: ImageWithFallbackProps) {
     // return <Globe className="w-[32px] h-[32px] text-gray-400" />;
     return (
       <img
-        src={urmindLogo}
+        src={chrome.runtime.getURL("icons/icon32.png")}
         alt="Favicon"
         className={cn("w-full h-full object-contain", className)}
         onError={() => setStatus("error")}

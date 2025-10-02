@@ -54,7 +54,7 @@ export default defineConfig({
       omnibox: { keyword: "urmind" },
       content_security_policy: {
         extension_pages:
-          "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src-elem 'self' 'unsafe-inline' ws://localhost:5174/ https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; connect-src 'self' ws://localhost:5174/ http://localhost:5174/ https://huggingface.co https://cdn-lfs.huggingface.co https://cdn.jsdelivr.net https://generativelanguage.googleapis.com https://api.openai.com https://cas-bridge.xethub.hf.co",
+          "default-src 'self'; img-src 'self' data: blob: https:; script-src 'self' 'wasm-unsafe-eval'; style-src-elem 'self' 'unsafe-inline' ws://localhost:5174/ https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; connect-src 'self' ws://localhost:5174/ http://localhost:5174/ https://huggingface.co https://cdn-lfs.huggingface.co https://cdn.jsdelivr.net https://generativelanguage.googleapis.com https://api.openai.com https://cas-bridge.xethub.hf.co",
       },
       web_accessible_resources: [
         {
