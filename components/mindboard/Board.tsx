@@ -83,16 +83,10 @@ export default function MindboardCanvas() {
     }
   }, [contexts, selectedCategory, contextsLoading, setNodes]);
 
-  console.log("nodes", nodes);
-  console.log("selectedCategory", selectedCategory);
-  console.log("contexts", contexts);
-  console.log("contextsLoading", contextsLoading);
-
   const onNodesChange = useCallback(
     (changes: any) => {
       setNodes((nodesSnapshot) => applyNodeChanges(changes, nodesSnapshot));
 
-      // Save positions when nodes are dragged
       changes.forEach((change: any) => {
         if (change.type === "position" && change.position) {
           setContextPosition(change.id, change.position);
