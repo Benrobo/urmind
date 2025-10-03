@@ -1,8 +1,6 @@
-import { Context } from "@/types/context";
+import { Context, SavedContext } from "@/types/context";
 import { useQuery } from "@tanstack/react-query";
 import { sendMessageToBackgroundScriptWithResponse } from "@/helpers/messaging";
-
-type SavedContext = Context & { createdAt: number };
 
 type SavedContextProps = {
   query?: string;

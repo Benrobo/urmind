@@ -23,6 +23,7 @@ type NodeWrapperProps = {
     title: string;
     subtitle: string;
     createdAt: string;
+    favicon: string | null;
   };
 };
 
@@ -34,8 +35,13 @@ export default function NodeWrapper({
   return (
     <div className="w-auto min-w-[250px] max-w-[300px] min-h-4 bg-gray-100 border-1 border-white/20 rounded-md">
       <div className="w-full px-2 pb-2 py-2">
-        <div className="w-full flex items-center justify-between">
-          <Brain size={15} className="text-white/50" />
+        <div className="w-full flex items-center justify-between pb-2">
+          <div className="flex items-center gap-2">
+            <Brain size={15} className="text-white/50" />
+            <span className="text-[9px] text-white/60 bg-white/5 px-1.5 py-0.3 rounded-sm border border-white/10">
+              {type.split(":")[1]?.toUpperCase() || type.toUpperCase()}
+            </span>
+          </div>
           <MoreMenu />
         </div>
 
@@ -46,7 +52,7 @@ export default function NodeWrapper({
         <div className="w-full flex items-center justify-between mt-2">
           <div className="max-w-[20px] rounded-full mr-2">
             <ImageWithFallback
-              src={chrome.runtime.getURL("icons/icon32.png")}
+              src={header?.favicon ?? chrome.runtime.getURL("icons/icon32.png")}
               className="object-contain min-w-[20px] min-h-[20px] rounded-full"
             />
           </div>

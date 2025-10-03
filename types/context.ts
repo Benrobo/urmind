@@ -34,3 +34,5 @@ export type Context = {
 };
 
 export type UrmindTools = "tool-searchContexts" | "tool-addToContexts";
+
+export type SavedContext = Context & { createdAt: number; updatedAt: number };

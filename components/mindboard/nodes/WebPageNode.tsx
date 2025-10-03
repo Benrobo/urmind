@@ -1,34 +1,38 @@
 import React from "react";
 import NodeWrapper from "./NodeWrapper";
 import { shortenText } from "@/lib/utils";
+import { WebPageNodeData } from "@/types/mindboard";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+dayjs.extend(relativeTime);
 
 type WebPageNodeProps = {
   id: string;
-  data: {
-    title: string;
-    subtitle: string;
-  };
+  data: WebPageNodeData["data"];
   position: { x: number; y: number };
   type: string;
 };
 
 export default function WebPageNode(props: WebPageNodeProps) {
   const { data } = props;
-  const { title, subtitle } = data;
+  const { context } = data;
 
   return (
     <NodeWrapper
       type="artifact:web-page"
       header={{
-        title,
-        subtitle,
-        createdAt: new Date().toISOString(),
+        title: context?.title,
+        subtitle: context?.summary,
+        createdAt: dayjs(context?.createdAt).fromNow(),
+        favicon: context?.og?.favicon,
       }}
     >
-      <div className="w-full flex flex-col min-h-4 ">
-        <p className="text-xs text-white-100">{title}</p>
-        <p className="text-[10px] text-white/50">{shortenText(subtitle, 45)}</p>
-      </div>
+      <button className="w-full flex flex-col min-h-4 cursor-pointer border-none outline-none text-start">
+        <p className="text-xs text-white-100">{context?.title}</p>
+        <p className="text-[10px] text-white/50">
+          {shortenText(context?.summary, 45)}
+        </p>
+      </button>
     </NodeWrapper>
   );
 }

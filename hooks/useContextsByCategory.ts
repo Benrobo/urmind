@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { sendMessageToBackgroundScriptWithResponse } from "@/helpers/messaging";
-import { Context } from "@/types/context";
+import { SavedContext } from "@/types/context";
 
 type UseContextsByCategoryProps = {
   categoryId: string | null;
@@ -31,7 +31,7 @@ export default function useContextsByCategory({
         },
       });
 
-      return (response?.result as Context[]) || [];
+      return (response?.result as SavedContext[]) || [];
     },
     enabled: mounted && !!categoryId,
     retry: 3,

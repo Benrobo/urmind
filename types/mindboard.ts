@@ -1,13 +1,13 @@
 import type { NodeTypes, Node } from "@xyflow/react";
-import { Context, ContextType } from "./context";
+import { SavedContext } from "./context";
 
-export interface WebPageNodeData {
+export interface WebPageNodeData extends Node {
   id: string;
   position: { x: number; y: number };
   type: "artifact:web-page";
   data: {
-    title: string;
-    subtitle: string;
+    context: SavedContext;
+    metadata: {};
   };
 }
 

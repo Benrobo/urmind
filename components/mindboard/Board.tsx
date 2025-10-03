@@ -55,6 +55,8 @@ export default function MindboardCanvas() {
     contextsError,
     contextPositions,
     setContextPosition,
+    viewPort,
+    setViewPort,
   } = useMindboardContext();
 
   useEffect(() => {
@@ -68,15 +70,16 @@ export default function MindboardCanvas() {
             x: (index % 3) * 300, // 3 columns
             y: Math.floor(index / 3) * 200, // rows
           },
+          // @ts-expect-error
           type: context.type,
           data: {
-            title: context.title || "Untitled",
-            subtitle: context.content?.substring(0, 100) || "No content",
+            context,
+            metadata: {},
           },
-        };
+        } satisfies CombinedNodes;
       });
 
-      setNodes(contextNodes);
+      setNodes(contextNodes as unknown as CombinedNodes[]);
     } else if (selectedCategory && !contextsLoading) {
       // No contexts found for this category
       setNodes([]);
@@ -138,17 +141,12 @@ export default function MindboardCanvas() {
         nodes={nodes}
         // edges={edges}
         onNodesChange={onNodesChange}
-        onConnect={(params) => {
-          console.log(params);
-        }}
-        onLoad={(params) => {
-          console.log(params);
-        }}
         defaultViewport={{
-          x: 100,
-          y: 100,
-          zoom: 0.9,
+          x: viewPort.x,
+          y: viewPort.y,
+          zoom: viewPort.zoom,
         }}
+        onViewportChange={setViewPort}
         // fitView={true}
         // minZoom={0.01}
         colorMode="dark"
