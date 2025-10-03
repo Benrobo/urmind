@@ -55,14 +55,39 @@ export class ContextService {
     return await index.get(contentFingerprint);
   }
 
-  async getAllContextCategories(): Promise<string[]> {
+  async getAllContextCategories(): Promise<
+    UrmindDB["contexts"]["value"]["category"][]
+  > {
     const contexts = await this.db.getAll("contexts");
-    const categories = contexts.map((context) => context.category.label);
-    return [...new Set(categories)];
+    const seen = new Set<string>();
+    const categories: UrmindDB["contexts"]["value"]["category"][] = [];
+    for (const context of contexts) {
+      if (
+        context.category !== undefined &&
+        context.category !== null &&
+        !seen.has(context.category?.slug)
+      ) {
+        seen.add(context.category?.slug);
+        categories.push(context.category);
+      }
+    }
+    return categories;
   }
 
   async getAllContexts(): Promise<UrmindDB["contexts"]["value"][]> {
     return await this.db.getAll("contexts");
+  }
+
+  async getContextsByCategory(
+    categoryId: string
+  ): Promise<UrmindDB["contexts"]["value"][]> {
+    const contexts = await this.db.getAll("contexts");
+    return contexts.filter(
+      (context) =>
+        context.category?.slug === categoryId ||
+        context.category?.label.toLowerCase().replace(/\s+/g, "-") ===
+          categoryId
+    );
   }
 
   async getContextsByType(

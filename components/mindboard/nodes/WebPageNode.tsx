@@ -3,17 +3,26 @@ import NodeWrapper from "./NodeWrapper";
 import { shortenText } from "@/lib/utils";
 
 type WebPageNodeProps = {
-  title: string;
-  subtitle: string;
+  id: string;
+  data: {
+    title: string;
+    subtitle: string;
+  };
+  position: { x: number; y: number };
+  type: string;
 };
 
-export default function WebPageNode({ title, subtitle }: WebPageNodeProps) {
+export default function WebPageNode(props: WebPageNodeProps) {
+  const { data } = props;
+  const { title, subtitle } = data;
+
   return (
     <NodeWrapper
       type="artifact:web-page"
       header={{
+        title,
+        subtitle,
         createdAt: new Date().toISOString(),
-        favicon: "",
       }}
     >
       <div className="w-full flex flex-col min-h-4 ">

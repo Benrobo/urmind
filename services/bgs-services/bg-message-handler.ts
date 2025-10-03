@@ -17,6 +17,8 @@ type BgScriptMessageHandlerOperations =
   // db operations
   | "getAllConversations"
   | "getAllContexts"
+  | "getAllContextCategories"
+  | "getContextsByCategory"
   | "createConversation"
   | "updateMessageContent"
   | "updateMessageInConversation"
@@ -170,6 +172,25 @@ export class BackgroundMessageHandler {
           }
           const contexts = await urmindDb.contexts.getAllContexts();
           result = data?.limit ? contexts.slice(0, data.limit) : contexts;
+          break;
+
+        case "getAllContextCategories":
+          if (!urmindDb.contexts) {
+            throw new Error("Contexts service not available");
+          }
+          result = await urmindDb.contexts.getAllContextCategories();
+          break;
+
+        case "getContextsByCategory":
+          if (!urmindDb.contexts) {
+            throw new Error("Contexts service not available");
+          }
+          if (!data?.categoryId) {
+            throw new Error("categoryId is required for getContextsByCategory");
+          }
+          result = await urmindDb.contexts.getContextsByCategory(
+            data.categoryId
+          );
           break;
 
         case "semanticSearch":

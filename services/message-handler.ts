@@ -16,6 +16,8 @@ export type MessageHandlerOperations =
   // database operations (background script only)
   | "getAllConversations"
   | "getAllContexts"
+  | "getAllContextCategories"
+  | "getContextsByCategory"
   | "createConversation"
   | "updateMessageInConversation"
   | "updateMessageContent"

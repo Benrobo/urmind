@@ -20,15 +20,16 @@ type NodeWrapperProps = {
   children: React.ReactNode;
   type: ContextType;
   header: {
+    title: string;
+    subtitle: string;
     createdAt: string;
-    favicon: string;
   };
 };
 
 export default function NodeWrapper({
   children,
-  header,
   type,
+  header,
 }: NodeWrapperProps) {
   return (
     <div className="w-auto min-w-[250px] max-w-[300px] min-h-4 bg-gray-100 border-1 border-white/20 rounded-md">
@@ -39,12 +40,13 @@ export default function NodeWrapper({
         </div>
 
         {/* actual content  */}
+        {/* only show  */}
         <>{type !== "url" && children}</>
 
         <div className="w-full flex items-center justify-between mt-2">
           <div className="max-w-[20px] rounded-full mr-2">
             <ImageWithFallback
-              src={header.favicon}
+              src={chrome.runtime.getURL("icons/icon32.png")}
               className="object-contain min-w-[20px] min-h-[20px] rounded-full"
             />
           </div>
@@ -63,7 +65,9 @@ export default function NodeWrapper({
 
 function MoreMenu() {
   const [isOpen, setIsOpen] = useState(false);
-  const menuContainerRef = useClickOutside(() => setIsOpen(false));
+  const menuContainerRef = useClickOutside(() => setIsOpen(false), {
+    excludeSelectors: ["#more-menu-toggle"],
+  });
 
   const menuItems = [
     // { icon: Edit, label: "Edit", onClick: () => console.log("Edit clicked") },
@@ -84,6 +88,7 @@ function MoreMenu() {
   return (
     <div className="relative">
       <button
+        id="more-menu-toggle"
         onClick={() => setIsOpen(!isOpen)}
         className="text-xs text-white p-1 hover:bg-white/10 rounded transition-colors"
       >
