@@ -11,6 +11,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import WebPageNode from "./nodes/WebPageNode";
+import ContextInfoSidebar from "./ContextInfoSidebar";
 import { ContextType } from "@/types/context";
 import { CombinedNodes, NodeProps } from "@/types/mindboard";
 import { useMindboardContext } from "@/context/MindboardCtx";
@@ -57,6 +58,9 @@ export default function MindboardCanvas() {
     setContextPosition,
     viewPort,
     setViewPort,
+    isRightSidebarOpen,
+    selectedContext,
+    closeRightSidebar,
   } = useMindboardContext();
 
   useEffect(() => {
@@ -136,32 +140,40 @@ export default function MindboardCanvas() {
   }
 
   return (
-    <div className="w-[calc(100%-250px)] h-screen">
-      <ReactFlow
-        nodes={nodes}
-        // edges={edges}
-        onNodesChange={onNodesChange}
-        defaultViewport={{
-          x: viewPort.x,
-          y: viewPort.y,
-          zoom: viewPort.zoom,
-        }}
-        onViewportChange={setViewPort}
-        // fitView={true}
-        // minZoom={0.01}
-        colorMode="dark"
-        nodeTypes={nodeTypes}
-      >
-        <Background
-          // @ts-ignore
-          variant="dots"
-          gap={10}
-          size={1}
-          color="#3d3f48"
-          bgColor="#1b1b1b"
-        />
-        <Controls />
-      </ReactFlow>
-    </div>
+    <>
+      <div className="w-[calc(100%-250px)] h-screen">
+        <ReactFlow
+          nodes={nodes}
+          // edges={edges}
+          onNodesChange={onNodesChange}
+          defaultViewport={{
+            x: viewPort.x,
+            y: viewPort.y,
+            zoom: viewPort.zoom,
+          }}
+          onViewportChange={setViewPort}
+          // fitView={true}
+          // minZoom={0.01}
+          colorMode="dark"
+          nodeTypes={nodeTypes}
+        >
+          <Background
+            // @ts-ignore
+            variant="dots"
+            gap={10}
+            size={1}
+            color="#3d3f48"
+            bgColor="#1b1b1b"
+          />
+          <Controls />
+        </ReactFlow>
+      </div>
+
+      <ContextInfoSidebar
+        isOpen={isRightSidebarOpen}
+        onClose={closeRightSidebar}
+        selectedContext={selectedContext}
+      />
+    </>
   );
 }

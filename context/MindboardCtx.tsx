@@ -23,6 +23,11 @@ interface BoardContextValuesProps {
   ) => Promise<void>;
   viewPort: Viewport;
   setViewPort: (viewPort: Viewport) => void;
+  // Right sidebar state
+  isRightSidebarOpen: boolean;
+  selectedContext: any;
+  openRightSidebar: (context: any) => void;
+  closeRightSidebar: () => void;
 }
 
 export const MindboardCtx = createContext<BoardContextValuesProps>(
@@ -40,6 +45,10 @@ export default function MindboardCtxProvider({
     zoom: 0.9,
   });
   const [nodes, setNodes, onNodesChange] = useCustomNodesState([]);
+
+  // Right sidebar state
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
+  const [selectedContext, setSelectedContext] = useState<any>(null);
   const { value: mindboardState } = useStorageStore(mindboardStore);
   const selectedCategory = mindboardState?.selectedCategory || null;
   const contextPositions = mindboardState?.contextPositions || {};
@@ -53,6 +62,29 @@ export default function MindboardCtxProvider({
     mounted: true,
   });
 
+  // Right sidebar functions
+  const openRightSidebar = (context: any) => {
+    // First close if already open to trigger slide-out animation
+    if (isRightSidebarOpen) {
+      setIsRightSidebarOpen(false);
+      setSelectedContext(null);
+
+      // Wait for slide-out animation, then slide in with new context
+      setTimeout(() => {
+        setSelectedContext(context);
+        setIsRightSidebarOpen(true);
+      }, 300);
+    } else {
+      setSelectedContext(context);
+      setIsRightSidebarOpen(true);
+    }
+  };
+
+  const closeRightSidebar = () => {
+    setIsRightSidebarOpen(false);
+    setSelectedContext(null);
+  };
+
   const providerValues: BoardContextValuesProps = {
     nodes,
     setNodes,
@@ -65,6 +97,10 @@ export default function MindboardCtxProvider({
     setContextPosition: mindboardStore.setContextPosition.bind(mindboardStore),
     viewPort,
     setViewPort,
+    isRightSidebarOpen,
+    selectedContext,
+    openRightSidebar,
+    closeRightSidebar,
   };
 
   return (
