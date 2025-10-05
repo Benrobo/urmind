@@ -14,3 +14,9 @@ export interface WebPageNodeData extends Node {
 export type CombinedNodes = WebPageNodeData;
 
 export type NodeProps = WebPageNodeData;
+
+export type SelectedContext = {
+  id: string;
+  type: string;
+  data: { context: SavedContext };
+};

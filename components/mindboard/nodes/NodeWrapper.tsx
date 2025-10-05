@@ -6,14 +6,15 @@ import {
   ExternalLink,
   Brain,
 } from "lucide-react";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { cn, shortenText } from "@/lib/utils";
 import useClickOutside from "@/hooks/useClickOutside";
 import { ImageWithFallback } from "@/components/ImageWithFallback";
-import { ContextType } from "@/types/context";
+import { ContextType, SavedContext } from "@/types/context";
+import { useMindboardContext } from "@/context/MindboardCtx";
 
 dayjs.extend(relativeTime);
 
@@ -26,12 +27,14 @@ type NodeWrapperProps = {
     createdAt: string;
     favicon: string | null;
   };
+  context?: SavedContext; // The full context object for delete functionality
 };
 
 export default function NodeWrapper({
   children,
   type,
   header,
+  context,
 }: NodeWrapperProps) {
   return (
     <motion.div
@@ -56,7 +59,7 @@ export default function NodeWrapper({
               {type.split(":")[1]?.toUpperCase() || type.toUpperCase()}
             </span>
           </div>
-          <MoreMenu />
+          <MoreMenu context={context} />
         </div>
 
         {/* actual content  */}
@@ -83,11 +86,24 @@ export default function NodeWrapper({
   );
 }
 
-function MoreMenu() {
+function MoreMenu({ context }: { context?: SavedContext }) {
   const [isOpen, setIsOpen] = useState(false);
-  const menuContainerRef = useClickOutside(() => setIsOpen(false), {
+  const { openDeleteModal } = useMindboardContext();
+
+  const handleClose = useCallback(() => {
+    setIsOpen(false);
+  }, []);
+
+  const menuContainerRef = useClickOutside(handleClose, {
     excludeSelectors: ["#more-menu-toggle"],
   });
+
+  const handleDelete = () => {
+    if (context?.id) {
+      openDeleteModal(context);
+      setIsOpen(false); // Close the menu
+    }
+  };
 
   const menuItems = [
     // { icon: Edit, label: "Edit", onClick: () => console.log("Edit clicked") },
@@ -100,7 +116,7 @@ function MoreMenu() {
     {
       icon: Trash2,
       label: "Delete",
-      onClick: () => console.log("Delete clicked"),
+      onClick: handleDelete,
       className: "text-red-305",
     },
   ];
@@ -109,11 +125,13 @@ function MoreMenu() {
     <div className="relative">
       <motion.button
         id="more-menu-toggle"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
         className="text-xs text-white p-1 hover:bg-white/10 rounded transition-colors"
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}
-        animate={{ rotate: isOpen ? 90 : 0 }}
         transition={{ duration: 0.2 }}
       >
         <Ellipsis className="w-4 h-4 text-white-100" />

@@ -56,22 +56,12 @@ export class ContextService {
   }
 
   async getAllContextCategories(): Promise<
-    UrmindDB["contexts"]["value"]["category"][]
+    UrmindDB["context_categories"]["value"][]
   > {
-    const contexts = await this.db.getAll("contexts");
-    const seen = new Set<string>();
-    const categories: UrmindDB["contexts"]["value"]["category"][] = [];
-    for (const context of contexts) {
-      if (
-        context.category !== undefined &&
-        context.category !== null &&
-        !seen.has(context.category?.slug)
-      ) {
-        seen.add(context.category?.slug);
-        categories.push(context.category);
-      }
-    }
-    return categories;
+    const transaction = this.db.transaction(["context_categories"], "readonly");
+    const store = transaction.objectStore("context_categories");
+    const index = store.index("by-created");
+    return await index.getAll();
   }
 
   async getAllContexts(): Promise<UrmindDB["contexts"]["value"][]> {
@@ -79,15 +69,10 @@ export class ContextService {
   }
 
   async getContextsByCategory(
-    categoryId: string
+    categorySlug: string
   ): Promise<UrmindDB["contexts"]["value"][]> {
     const contexts = await this.db.getAll("contexts");
-    return contexts.filter(
-      (context) =>
-        context.category?.slug === categoryId ||
-        context.category?.label.toLowerCase().replace(/\s+/g, "-") ===
-          categoryId
-    );
+    return contexts.filter((context) => context.categorySlug === categorySlug);
   }
 
   async getContextsByType(

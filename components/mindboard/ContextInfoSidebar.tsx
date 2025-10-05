@@ -14,13 +14,16 @@ import { ImageWithFallback } from "../ImageWithFallback";
 import { cn, shortenText } from "@/lib/utils";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import { useMindboardContext } from "@/context/MindboardCtx";
+import { SavedContext } from "@/types/context";
+import { SelectedContext } from "@/types/mindboard";
 
 dayjs.extend(relativeTime);
 
 type ContextInfoSidebarProps = {
   isOpen: boolean;
   onClose: () => void;
-  selectedContext?: any;
+  selectedContext?: SelectedContext | null;
 };
 
 export default function ContextInfoSidebar({
@@ -30,6 +33,7 @@ export default function ContextInfoSidebar({
 }: ContextInfoSidebarProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  const { openDeleteModal } = useMindboardContext();
 
   const context = selectedContext?.data?.context;
 
@@ -43,27 +47,9 @@ export default function ContextInfoSidebar({
   }, [isOpen]);
 
   // Handle delete context
-  const handleDeleteContext = async () => {
+  const handleDeleteContext = () => {
     if (!context?.id) return;
-
-    // Show confirmation dialog
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${
-        context.title || "this context"
-      }"? This action cannot be undone.`
-    );
-
-    if (confirmed) {
-      try {
-        // TODO: Implement actual delete functionality
-        console.log("Deleting context:", context.id);
-        // Close sidebar after deletion
-        onClose();
-      } catch (error) {
-        console.error("Error deleting context:", error);
-        alert("Failed to delete context. Please try again.");
-      }
-    }
+    openDeleteModal(context);
   };
 
   return (
@@ -244,7 +230,7 @@ export default function ContextInfoSidebar({
                         </div>
 
                         {/* Category */}
-                        {context?.category && (
+                        {context?.categorySlug && (
                           <div className="flex items-start gap-3">
                             <Tag className="w-4 h-4 text-white/50 mt-0.5 flex-shrink-0" />
                             <div className="min-w-0 flex-1">
@@ -255,12 +241,11 @@ export default function ContextInfoSidebar({
                                 <div
                                   className="w-3 h-3 rounded"
                                   style={{
-                                    backgroundColor:
-                                      context.category.color || "#6b7280",
+                                    backgroundColor: "#6b7280", // Default color since we don't have category color in context
                                   }}
                                 />
                                 <span className="text-white/70 text-sm">
-                                  {context.category.label}
+                                  {context.categorySlug}
                                 </span>
                               </div>
                             </div>
@@ -315,7 +300,7 @@ export default function ContextInfoSidebar({
                             className="object-contain w-4 h-4 rounded"
                           />
                           <span className="text-xs text-white/40">
-                            {context?.og?.siteName || "UrMind Context"}
+                            {context?.og?.title || "UrMind Context"}
                           </span>
                         </div>
                       </div>

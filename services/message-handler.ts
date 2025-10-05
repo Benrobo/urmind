@@ -18,6 +18,7 @@ export type MessageHandlerOperations =
   | "getAllContexts"
   | "getAllContextCategories"
   | "getContextsByCategory"
+  | "deleteContext"
   | "createConversation"
   | "updateMessageInConversation"
   | "updateMessageContent"

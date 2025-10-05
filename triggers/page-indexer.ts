@@ -150,21 +150,37 @@ async function processTextBatch(props: {
   logger.info(`🔍 Semantic search results:`, semanticSearchResults);
   logger.info(`🔍 Closely similar contexts:`, similarContexts);
 
-  let matchedCategory: string | null = null;
+  let matchedCategorySlug: string | null = null;
   if (similarContexts?.length > 0) {
     if (similarContexts?.length > 0) {
-      matchedCategory = similarContexts?.[0]?.category?.label || null;
+      matchedCategorySlug = similarContexts?.[0]?.categorySlug || null;
       logger.info(
-        `🔍 Matched context: ${
-          similarContexts?.[0]?.category?.label ||
-          similarContexts?.[0]?.category
-        } with score: ${similarContexts?.[0]?.score}`
+        `🔍 Matched context: ${similarContexts?.[0]?.categorySlug} with score: ${similarContexts?.[0]?.score}`
       );
     }
   }
 
   if (contextResponse.retentionDecision.keep && contextResponse.context) {
     const contextId = shortId.generate();
+
+    // Get or create category
+    const categoryLabel = matchedCategorySlug
+      ? await getCategoryLabelBySlug(matchedCategorySlug)
+      : contextResponse.context.category.label;
+
+    const categorySlug =
+      matchedCategorySlug ||
+      contextResponse.context.category.slug.toLowerCase().replace(/\s/g, "-");
+
+    // Ensure category exists in context_categories table
+    if (!urmindDb.contextCategories) {
+      throw new Error("Context categories service not available");
+    }
+
+    await urmindDb.contextCategories.getOrCreateCategory(
+      categoryLabel,
+      categorySlug
+    );
 
     const contextData: Omit<
       UrmindDB["contexts"]["value"],
@@ -173,12 +189,7 @@ async function processTextBatch(props: {
       id: contextId,
       fingerprint,
       contentFingerprint,
-      category: {
-        label: matchedCategory || contextResponse.context.category.label,
-        slug: (matchedCategory || contextResponse.context.category.slug)
-          .toLowerCase()
-          .replace(/\s/g, "-"),
-      },
+      categorySlug,
       type: "artifact:web-page",
       title: contextResponse.context.title,
       description: contextResponse.context.description,
@@ -200,7 +211,7 @@ async function processTextBatch(props: {
       logger.info("💾 Creating new text context:", contextData);
       await createContextWithEmbedding(contextData, cleanUrl, tabId);
 
-      if (matchedCategory) {
+      if (matchedCategorySlug) {
         logger.warn(
           "🔍 Caching content so that it doesn't get processed again"
         );
@@ -229,8 +240,17 @@ async function processTextBatch(props: {
 type ExistingContext = {
   title: string;
   description: string;
-  category: string | { label: string; slug: string };
+  category: string;
 };
+
+async function getCategoryLabelBySlug(slug: string): Promise<string> {
+  if (!urmindDb.contextCategories) {
+    throw new Error("Context categories service not available");
+  }
+
+  const category = await urmindDb.contextCategories.getCategoryBySlug(slug);
+  return category?.label || slug;
+}
 
 type ContextWithEmbedding = {
   id: string;
@@ -254,10 +274,7 @@ async function getExistingContext(
     return {
       title: existingUrlContext.title,
       description: existingUrlContext.description,
-      category:
-        typeof existingUrlContext.category === "string"
-          ? existingUrlContext.category
-          : existingUrlContext.category.label,
+      category: existingUrlContext.categorySlug,
     };
   }
 
@@ -289,7 +306,7 @@ async function createContextWithEmbedding(
     await urmindDb.embeddings.generateAndStore(embeddingText, tabId, {
       contextId: newContextId,
       type: "context",
-      category: contextData.category.slug,
+      category: contextData.categorySlug,
       url: cleanUrl,
     });
     logger.info("🔮 Embedding created for context:", newContextId);
@@ -398,10 +415,7 @@ async function generateWithOnlineModel(
         ? {
             title: existingContext.title,
             description: existingContext.description,
-            category:
-              typeof existingContext.category === "string"
-                ? existingContext.category
-                : existingContext.category.label,
+            category: existingContext.category,
           }
         : undefined,
     }),
@@ -426,10 +440,7 @@ async function generateWithLocalModel(
         ? {
             title: existingContext.title,
             description: existingContext.description,
-            category:
-              typeof existingContext.category === "string"
-                ? existingContext.category
-                : existingContext.category.label,
+            category: existingContext.category,
           }
         : undefined,
     })

@@ -3,17 +3,19 @@ import { UrmindDB } from "@/types/database";
 import { ContextService } from "./context";
 import { ConversationService } from "./conversation";
 import { EmbeddingsStore } from "@/services/embeddings-store";
+import { ContextCategoriesService } from "./context-categories";
 
 class UrmindDatabase {
   private db: IDBPDatabase<UrmindDB> | null = null;
   private dbName = "urmind-db";
-  private version = 3.5;
+  private version = 4.0;
   private initPromise: Promise<void> | null = null;
 
   // Service instances
   public contexts: ContextService | null = null;
   public conversations: ConversationService | null = null;
   public embeddings: EmbeddingsStore | null = null;
+  public contextCategories: ContextCategoriesService | null = null;
 
   getDb(): IDBPDatabase<UrmindDB> {
     if (!this.db) throw new Error("Database not initialized");
@@ -42,6 +44,17 @@ class UrmindDatabase {
           `Upgrading database from version ${oldVersion} to ${db.version}`
         );
 
+        // Create context_categories store
+        if (!db.objectStoreNames.contains("context_categories")) {
+          console.log("Creating context_categories store");
+          const categoryStore = db.createObjectStore("context_categories", {
+            keyPath: "slug",
+          });
+          categoryStore.createIndex("by-slug", "slug");
+          categoryStore.createIndex("by-label", "label");
+          categoryStore.createIndex("by-created", "createdAt");
+        }
+
         // Create contexts store
         if (!db.objectStoreNames.contains("contexts")) {
           console.log("Creating contexts store");
@@ -56,7 +69,23 @@ class UrmindDatabase {
           );
           contextStore.createIndex("by-created", "createdAt");
           contextStore.createIndex("by-fingerprint", "fingerprint");
-          contextStore.createIndex("by-category", "category.slug");
+          contextStore.createIndex("by-category-slug", "categorySlug");
+        } else if (oldVersion < 4.0) {
+          // Update existing contexts store for new schema
+          console.log("Updating contexts store for new category structure");
+          const contextStore = db
+            .transaction(["contexts"], "versionchange")
+            .objectStore("contexts");
+
+          // Remove old category index if it exists
+          try {
+            contextStore.deleteIndex("by-category");
+          } catch (e) {
+            // Index might not exist, that's ok
+          }
+
+          // Add new category slug index
+          contextStore.createIndex("by-category-slug", "categorySlug");
         }
 
         // Create embeddings store
@@ -87,6 +116,7 @@ class UrmindDatabase {
     this.contexts = new ContextService(this.db);
     this.conversations = new ConversationService(this.db);
     this.embeddings = new EmbeddingsStore(this.db);
+    this.contextCategories = new ContextCategoriesService(this.db);
 
     console.log("Database services initialized");
   }
@@ -95,13 +125,14 @@ class UrmindDatabase {
     if (!this.db) throw new Error("Database not initialized");
 
     const tx = this.db.transaction(
-      ["contexts", "embeddings", "conversations"],
+      ["contexts", "embeddings", "conversations", "context_categories"],
       "readwrite"
     );
     await Promise.all([
       tx.objectStore("contexts").clear(),
       tx.objectStore("embeddings").clear(),
       tx.objectStore("conversations").clear(),
+      tx.objectStore("context_categories").clear(),
       tx.done,
     ]);
   }

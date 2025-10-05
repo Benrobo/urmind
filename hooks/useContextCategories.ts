@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { sendMessageToBackgroundScriptWithResponse } from "@/helpers/messaging";
-import { Context } from "@/types/context";
+import { ContextCategory } from "@/types/context";
 
 type UseContextCategoriesProps = {
   mounted?: boolean;
@@ -42,10 +42,10 @@ export default function useContextCategories({
         },
       });
 
-      const dbCategories = (response?.result as Context["category"][]) || [];
+      const dbCategories = (response?.result as ContextCategory[]) || [];
 
-      const processCategory = (category: Context["category"]) => ({
-        id: category.slug.toLowerCase().replace(/\s+/g, "-"),
+      const processCategory = (category: ContextCategory) => ({
+        id: category.slug,
         name: category.label,
         color: generateColorFromHash(category.label),
         count: 0, // TODO: Add count from database

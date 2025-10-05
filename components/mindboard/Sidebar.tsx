@@ -25,11 +25,11 @@ export default function MindBoardSidebar() {
     }
   }, [mindboardState]);
 
-  const handleCategorySelect = (categoryId: string) => {
-    if (selectedCategory === categoryId) {
+  const handleCategorySelect = (categorySlug: string) => {
+    if (selectedCategory === categorySlug) {
       setSelectedCategory(null);
     } else {
-      setSelectedCategory(categoryId);
+      setSelectedCategory(categorySlug);
     }
   };
 

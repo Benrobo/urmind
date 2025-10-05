@@ -129,7 +129,7 @@ const DeepResearchResult = memo(
           id: ctx.id,
           fingerprint: ctx.fingerprint,
           contentFingerprint: ctx.contentFingerprint,
-          category: ctx.category,
+          categorySlug: ctx.categorySlug,
           title: ctx.title,
           description: ctx.description,
           summary: ctx.summary,

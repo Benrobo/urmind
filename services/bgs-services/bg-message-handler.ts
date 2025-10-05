@@ -19,6 +19,7 @@ type BgScriptMessageHandlerOperations =
   | "getAllContexts"
   | "getAllContextCategories"
   | "getContextsByCategory"
+  | "deleteContext"
   | "createConversation"
   | "updateMessageContent"
   | "updateMessageInConversation"
@@ -185,12 +186,24 @@ export class BackgroundMessageHandler {
           if (!urmindDb.contexts) {
             throw new Error("Contexts service not available");
           }
-          if (!data?.categoryId) {
-            throw new Error("categoryId is required for getContextsByCategory");
+          if (!data?.categorySlug) {
+            throw new Error(
+              "categorySlug is required for getContextsByCategory"
+            );
           }
           result = await urmindDb.contexts.getContextsByCategory(
-            data.categoryId
+            data.categorySlug
           );
+          break;
+
+        case "deleteContext":
+          if (!urmindDb.contexts) {
+            throw new Error("Contexts service not available");
+          }
+          if (!data?.id) {
+            throw new Error("Context ID is required for deleteContext");
+          }
+          result = await urmindDb.contexts.deleteContext(data.id);
           break;
 
         case "semanticSearch":

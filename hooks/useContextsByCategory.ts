@@ -3,12 +3,12 @@ import { sendMessageToBackgroundScriptWithResponse } from "@/helpers/messaging";
 import { SavedContext } from "@/types/context";
 
 type UseContextsByCategoryProps = {
-  categoryId: string | null;
+  categorySlug: string | null;
   mounted?: boolean;
 };
 
 export default function useContextsByCategory({
-  categoryId,
+  categorySlug,
   mounted = true,
 }: UseContextsByCategoryProps) {
   const {
@@ -17,9 +17,9 @@ export default function useContextsByCategory({
     error,
     refetch,
   } = useQuery({
-    queryKey: ["contexts-by-category", categoryId],
+    queryKey: ["contexts-by-category", categorySlug],
     queryFn: async () => {
-      if (!categoryId) {
+      if (!categorySlug) {
         return [];
       }
 
@@ -27,13 +27,13 @@ export default function useContextsByCategory({
         action: "db-operation",
         payload: {
           operation: "getContextsByCategory",
-          data: { categoryId },
+          data: { categorySlug },
         },
       });
 
       return (response?.result as SavedContext[]) || [];
     },
-    enabled: mounted && !!categoryId,
+    enabled: mounted && !!categorySlug,
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     refetchIntervalInBackground: true,

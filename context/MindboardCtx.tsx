@@ -1,11 +1,13 @@
 import useCustomNodesState from "@/hooks/mindboard-hooks/useCustomNodesState";
-import { CombinedNodes } from "@/types/mindboard";
+import { CombinedNodes, SelectedContext } from "@/types/mindboard";
 import { applyNodeChanges, Edge, NodeChange, Viewport } from "@xyflow/react";
 import React, { createContext, useContext, useState } from "react";
 import useContextsByCategory from "@/hooks/useContextsByCategory";
 import { mindboardStore } from "@/store/mindboard.store";
 import useStorageStore from "@/hooks/useStorageStore";
 import { Context, SavedContext } from "@/types/context";
+import useDeleteContext from "@/hooks/useDeleteContext";
+import DeleteConfirmationModal from "@/components/mindboard/DeleteConfirmationModal";
 
 interface BoardContextValuesProps {
   nodes: CombinedNodes[];
@@ -23,11 +25,14 @@ interface BoardContextValuesProps {
   ) => Promise<void>;
   viewPort: Viewport;
   setViewPort: (viewPort: Viewport) => void;
-  // Right sidebar state
   isRightSidebarOpen: boolean;
-  selectedContext: any;
-  openRightSidebar: (context: any) => void;
+  selectedContext: SelectedContext | null;
+  openRightSidebar: (context: SelectedContext) => void;
   closeRightSidebar: () => void;
+  isDeleteModalOpen: boolean;
+  contextToDelete: SavedContext | null;
+  openDeleteModal: (context: SavedContext) => void;
+  closeDeleteModal: () => void;
 }
 
 export const MindboardCtx = createContext<BoardContextValuesProps>(
@@ -48,7 +53,15 @@ export default function MindboardCtxProvider({
 
   // Right sidebar state
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
-  const [selectedContext, setSelectedContext] = useState<any>(null);
+  const [selectedContext, setSelectedContext] =
+    useState<SelectedContext | null>(null);
+
+  // Delete context state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [contextToDelete, setContextToDelete] = useState<SavedContext | null>(
+    null
+  );
+
   const { value: mindboardState } = useStorageStore(mindboardStore);
   const selectedCategory = mindboardState?.selectedCategory || null;
   const contextPositions = mindboardState?.contextPositions || {};
@@ -58,12 +71,28 @@ export default function MindboardCtxProvider({
     loading: contextsLoading,
     error: contextsError,
   } = useContextsByCategory({
-    categoryId: selectedCategory,
+    categorySlug: selectedCategory,
     mounted: true,
   });
 
+  // Delete context functionality
+  const { deleteContext, isDeleting } = useDeleteContext({
+    onSuccess: () => {
+      setIsDeleteModalOpen(false);
+      setContextToDelete(null);
+      // Close right sidebar if it was open for the deleted context
+      if (selectedContext?.data?.context?.id === contextToDelete?.id) {
+        closeRightSidebar();
+      }
+    },
+    onError: (error) => {
+      console.error("Failed to delete context:", error);
+      alert("Failed to delete context. Please try again.");
+    },
+  });
+
   // Right sidebar functions
-  const openRightSidebar = (context: any) => {
+  const openRightSidebar = (context: SelectedContext) => {
     // First close if already open to trigger slide-out animation
     if (isRightSidebarOpen) {
       setIsRightSidebarOpen(false);
@@ -85,6 +114,23 @@ export default function MindboardCtxProvider({
     setSelectedContext(null);
   };
 
+  // Delete context functions
+  const openDeleteModal = (context: SavedContext) => {
+    setContextToDelete(context);
+    setIsDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+    setContextToDelete(null);
+  };
+
+  const handleConfirmDelete = () => {
+    if (contextToDelete?.id) {
+      deleteContext(contextToDelete.id);
+    }
+  };
+
   const providerValues: BoardContextValuesProps = {
     nodes,
     setNodes,
@@ -101,11 +147,24 @@ export default function MindboardCtxProvider({
     selectedContext,
     openRightSidebar,
     closeRightSidebar,
+    isDeleteModalOpen,
+    contextToDelete,
+    openDeleteModal,
+    closeDeleteModal,
   };
 
   return (
     <MindboardCtx.Provider value={providerValues}>
       {children}
+
+      {/* Global Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleConfirmDelete}
+        contextTitle={contextToDelete?.title}
+        isDeleting={isDeleting}
+      />
     </MindboardCtx.Provider>
   );
 }

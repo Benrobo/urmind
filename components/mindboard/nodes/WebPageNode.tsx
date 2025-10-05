@@ -26,6 +26,7 @@ export default function WebPageNode(props: WebPageNodeProps) {
   return (
     <NodeWrapper
       type="artifact:web-page"
+      context={context}
       header={{
         title: context?.title,
         subtitle: context?.summary,

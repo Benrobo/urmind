@@ -5,14 +5,18 @@ export type ContextType =
   | "artifact:document"
   | "artifact:image";
 
+export type ContextCategory = {
+  slug: string;
+  label: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
 export type Context = {
   id: string;
   fingerprint: string;
   contentFingerprint: string; // prevent processing the same content multiple times
-  category: {
-    label: string;
-    slug: string;
-  };
+  categorySlug: string; // reference to context_categories.slug
   type: ContextType;
   title: string;
   description: string;
