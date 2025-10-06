@@ -5,12 +5,12 @@ export const GeneralSemanticSearchThreshold = {
 
 export const PageIndexingSemanticSearchThreshold = {
   offline: 0.5,
-  online: 0.8,
+  online: 0.9,
 };
 
 export const PageIndexingSemanticDeduplicationThreshold = {
   offline: 0.6,
-  online: 0.8,
+  online: 0.9,
 };
 
 export const SearchContextDebounceTimeMs = {
