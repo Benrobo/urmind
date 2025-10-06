@@ -8,6 +8,11 @@ export const PageIndexingSemanticSearchThreshold = {
   online: 0.9,
 };
 
+export const SaveToUrmindSemanticSearchThreshold = {
+  offline: 0.5,
+  online: 0.7,
+};
+
 export const PageIndexingSemanticDeduplicationThreshold = {
   offline: 0.6,
   online: 0.9,

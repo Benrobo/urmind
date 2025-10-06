@@ -1,6 +1,7 @@
 import { BgScriptMessageHandlerActions } from "@/services/bgs-services/bg-message-handler";
 import { MessageHandlerOperations } from "@/services/message-handler";
 import { PageMetadata } from "@/services/page-extraction/extraction";
+import { SaveToUrMindPayload } from "@/triggers/save-to-urmind";
 import { MessageResponse } from "@/types/background-messages";
 
 interface BaseProps {
@@ -51,6 +52,11 @@ interface PageMetadataExtractionMessage extends BaseProps {
   };
 }
 
+interface SaveToUrMindMessage extends BaseProps {
+  action: "save-to-urmind";
+  payload: SaveToUrMindPayload;
+}
+
 export function sendMessageToBackgroundScript(
   message:
     | NavigationDetectedMessage
@@ -58,6 +64,7 @@ export function sendMessageToBackgroundScript(
     | DBOperationMessage
     | ContentScriptReadyMessage
     | PageMetadataExtractionMessage
+    | SaveToUrMindMessage
 ) {
   chrome.runtime.sendMessage(message);
 }
@@ -76,7 +83,7 @@ export function sendMessageToContentScript(
  * Send message to background script and wait for response
  */
 export function sendMessageToBackgroundScriptWithResponse(
-  message: DBOperationMessage
+  message: DBOperationMessage | SaveToUrMindMessage
 ): Promise<MessageResponse> {
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(message, (response) => {

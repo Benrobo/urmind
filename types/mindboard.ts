@@ -11,6 +11,16 @@ export interface WebPageNodeData extends Node {
   };
 }
 
+export interface TextNodeData extends Node {
+  id: string;
+  position: { x: number; y: number };
+  type: "text";
+  data: {
+    context: SavedContext;
+    metadata: {};
+  };
+}
+
 export type CombinedNodes = WebPageNodeData;
 
 export type NodeProps = WebPageNodeData;

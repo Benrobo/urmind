@@ -1,4 +1,8 @@
-import { sendMessageToBackgroundScriptWithResponse } from "@/helpers/messaging";
+import {
+  sendMessageToBackgroundScript,
+  sendMessageToBackgroundScriptWithResponse,
+} from "@/helpers/messaging";
+import saveToUrMindJob from "@/triggers/save-to-urmind";
 
 export class ContextMenuService {
   private static instance: ContextMenuService;
@@ -29,44 +33,53 @@ export class ContextMenuService {
     info: chrome.contextMenus.OnClickData,
     tab: chrome.tabs.Tab
   ): Promise<void> {
-    if (info.menuItemId === "save-to-urmind" && info.selectionText) {
-      await this.handleSaveToUrMind(info.selectionText, tab);
+    switch (info.menuItemId) {
+      case "save-to-urmind":
+        console.log("handleContextMenuClick", info, tab);
+        if (info.selectionText) {
+          await this.handleSaveToUrMind({
+            selectedText: info.selectionText,
+            tab,
+          });
+        } else if (info.mediaType === "image") {
+          await this.handleSaveToUrMind({
+            srcUrl: info.srcUrl,
+            tab,
+          });
+        }
+        // else if(info.linkUrl){
+        //   await this.handleSaveToUrMind({
+        //     linkUrl: info.linkUrl,
+        //     tab,
+        //   });
+        // }
+        break;
+      default:
+        break;
     }
   }
 
-  private async handleSaveToUrMind(
-    selectedText: string,
-    tab: chrome.tabs.Tab
-  ): Promise<void> {
+  private async handleSaveToUrMind(props: {
+    selectedText?: string;
+    srcUrl?: string;
+    linkUrl?: string;
+    tab: chrome.tabs.Tab;
+  }): Promise<void> {
     try {
-      // For now, just log the action - you can expand this later
-      console.log("Saving to UrMind:", {
-        text: selectedText,
-        url: tab.url,
-        title: tab.title,
+      await saveToUrMindJob.trigger({
+        type: "text",
+        url: props.tab.url!,
+        selectedText: props.selectedText,
+        tabId: props.tab.id || 0,
+        srcUrl: props.srcUrl,
+        linkUrl: props.linkUrl,
       });
 
-      // TODO: Implement actual saving to database
-      // await sendMessageToBackgroundScriptWithResponse({
-      //   action: "db-operation",
-      //   payload: {
-      //     operation: "createContext",
-      //     data: {
-      //       content: selectedText,
-      //       url: tab.url,
-      //       title: tab.title,
-      //       type: "highlight",
-      //       summary: this.generateSummary(selectedText),
-      //       createdAt: Date.now()
-      //     }
-      //   }
-      // });
-
       // Show success notification
-      this.showNotification(
-        "Saved to UrMind",
-        "Text has been saved to your memory"
-      );
+      // this.showNotification(
+      //   "Saved to UrMind",
+      //   "Text has been saved to your memory"
+      // );
     } catch (error) {
       console.error("Failed to save to UrMind:", error);
       this.showNotification("Error", "Failed to save to UrMind");

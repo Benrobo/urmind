@@ -9,10 +9,14 @@ import type {
 } from "@/types/background-messages";
 import { UrmindDB } from "@/types/database";
 import { PageMetadata } from "../page-extraction/extraction";
+import saveToUrMindJob, {
+  SaveToUrMindPayload,
+} from "@/triggers/save-to-urmind";
 
 type BgScriptMessageHandlerOperations =
   // page metadata extraction
   | "page-metadata-extraction"
+  | "save-to-urmind"
 
   // db operations
   | "getAllConversations"
@@ -35,6 +39,7 @@ type BgScriptMessageHandlerOperations =
 export type BgScriptMessageHandlerActions =
   | "content-script-ready"
   | "page-metadata-extraction"
+  | "save-to-urmind"
   | "navigation-detected"
   | "openOptionsPage"
   | "db-operation"
@@ -331,6 +336,27 @@ export class BackgroundMessageHandler {
   }
 
   /**
+   * Handle add to urmind
+   */
+  async handleSaveToUrMind(
+    payload: {
+      selectedText?: string;
+      srcUrl?: string;
+      linkUrl?: string;
+      url: string;
+      type: SaveToUrMindPayload["type"];
+    },
+    tabId: number
+  ): Promise<MessageResponse> {
+    console.log("🔍 Saving to UrMind:", payload);
+    await saveToUrMindJob.trigger({
+      tabId,
+      ...payload,
+    });
+    return { success: true, result: payload };
+  }
+
+  /**
    * Clean up when a tab is closed
    */
   cleanupTab(tabId: number): void {
@@ -380,12 +406,14 @@ export class BackgroundMessageHandler {
               );
               break;
 
+            case "save-to-urmind":
+              result = await this.handleSaveToUrMind(request.payload, tabId);
+              break;
+
             case "page-metadata-extraction":
               const pageMetadataPayload = request.payload as {
                 pageMetadata: PageMetadata;
               };
-              console.log("🔍 Page metadata extracted:", pageMetadataPayload);
-
               await pageIndexerJob.trigger({
                 pageMetadata: pageMetadataPayload.pageMetadata,
                 tabId: tabId!,

@@ -15,6 +15,7 @@ import ContextInfoSidebar from "./ContextInfoSidebar";
 import { ContextType } from "@/types/context";
 import { CombinedNodes, NodeProps } from "@/types/mindboard";
 import { useMindboardContext } from "@/context/MindboardCtx";
+import TextNode from "./nodes/TextNode";
 
 const initialNodes = [
   {
@@ -42,6 +43,7 @@ const initialEdges = [];
 
 const nodeTypes = {
   "artifact:web-page": WebPageNode,
+  text: TextNode,
   // todos: TodoNode,
   // brainstorm: BrainstormNode,
 } as Record<ContextType, any>;

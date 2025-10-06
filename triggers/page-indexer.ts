@@ -20,7 +20,6 @@ import { PageIndexingSemanticSearchThreshold } from "@/constant/internal";
 import { semanticCache } from "@/services/semantic-cache.service";
 import { semanticCacheStore } from "@/store/semantic-cache.store";
 
-// Types
 type PageIndexerPayload = {
   url: string;
   pageMetadata: PageMetadata;
@@ -30,6 +29,8 @@ type PageIndexerPayload = {
 const pageIndexerJob: Task<PageIndexerPayload> = task<PageIndexerPayload>({
   id: "page-indexer",
   run: async (payload: PageIndexerPayload) => {
+    return console.log("🛑 STOPPED FOR NOW");
+
     const { url, pageMetadata, tabId } = payload;
     logger.log("🔍 Indexing page:", url);
     logger.log("📄 Page metadata:", pageMetadata);
@@ -340,7 +341,6 @@ async function generateTextContext(
 ): Promise<PageIndexerResponse> {
   return retry(
     async () => {
-      // Get user preferences for model selection
       const preferences = await preferencesStore.get();
 
       let llmResponse: string;
@@ -383,8 +383,8 @@ async function generateTextContext(
       return sanitizedResponse;
     },
     {
-      retries: 3,
-      factor: 2,
+      retries: 5,
+      factor: 5,
       minTimeout: 1000,
       maxTimeout: 10000,
       onRetry: (e, attempt) => {
