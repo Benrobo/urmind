@@ -21,7 +21,14 @@ import { Context } from "@/types/context";
 import ConversationNavigation from "./ConversationNavigation";
 import MessageTabs from "./MessageTabs";
 import SourcesDisplay from "./SourcesDisplay";
-import { Loader, MessageSquare } from "lucide-react";
+import {
+  Loader,
+  MessageSquare,
+  Trash2,
+  Copy,
+  Check,
+  CheckCheck,
+} from "lucide-react";
 import Sources from "./Sources";
 
 export type DeepResearchResultProps = {
@@ -72,6 +79,13 @@ const DeepResearchResult = memo(
       string,
       Context[]
     > | null>(null);
+
+    const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(
+      null
+    );
+    const [copiedMessageIds, setCopiedMessageIds] = useState<Set<string>>(
+      new Set()
+    );
 
     const conversationHistory = useMemo(() => {
       if (!activeConversation) return [];
@@ -412,6 +426,149 @@ const DeepResearchResult = memo(
       }
     };
 
+    const handleCopyMessage = async (content: string, messageId: string) => {
+      try {
+        await navigator.clipboard.writeText(content);
+        setCopiedMessageIds((prev) => new Set(prev).add(messageId));
+        setTimeout(() => {
+          setCopiedMessageIds((prev) => {
+            const newSet = new Set(prev);
+            newSet.delete(messageId);
+            return newSet;
+          });
+        }, 2000);
+
+        console.log("Message copied to clipboard");
+      } catch (error) {
+        console.error("Failed to copy message:", error);
+      }
+    };
+
+    const handleDeleteMessage = async (messageId: string) => {
+      try {
+        const currentConversation = conversations.find(
+          (conv) => conv.id === activeConversationId
+        );
+
+        if (!currentConversation) {
+          console.error("Current conversation not found");
+          return;
+        }
+
+        // Check if this is the only message pair in the conversation
+        // A message pair consists of a user message followed by an assistant message
+        const userMessages = currentConversation.messages.filter(
+          (msg) => msg.role === "user"
+        );
+        const assistantMessages = currentConversation.messages.filter(
+          (msg) => msg.role === "assistant"
+        );
+        const isOnlyMessagePair =
+          userMessages.length === 1 && assistantMessages.length === 1;
+
+        if (isOnlyMessagePair) {
+          // Delete the entire conversation
+          await sendMessageToBackgroundScriptWithResponse({
+            action: "db-operation",
+            payload: {
+              operation: "deleteConversation",
+              data: {
+                conversationId: activeConversationId,
+              },
+            },
+          });
+
+          // Update local state - remove the conversation
+          setConversations((prev) =>
+            prev.filter((conv) => conv.id !== activeConversationId)
+          );
+
+          // Check if there are other conversations
+          const remainingConversations = conversations.filter(
+            (conv) => conv.id !== activeConversationId
+          );
+
+          if (remainingConversations.length > 0) {
+            // Switch to the first available conversation (since SpotlightConversations doesn't have updatedAt)
+            const nextConversation = remainingConversations[0];
+            if (nextConversation) {
+              setActiveConversationId(nextConversation.id);
+              setActiveConversation(nextConversation);
+            }
+          } else {
+            // No conversations left, switch back to saved contexts view
+            setActiveConversationId(null);
+            setActiveConversation(null);
+            resetState();
+          }
+        } else {
+          // Find the message pair (user message + corresponding assistant message)
+          const userMessageIndex = currentConversation.messages.findIndex(
+            (msg) => msg.id === messageId
+          );
+          const userMessage = currentConversation.messages[userMessageIndex];
+
+          if (!userMessage || userMessage.role !== "user") {
+            console.error("User message not found");
+            return;
+          }
+
+          // Find the corresponding assistant message (usually the next message)
+          const assistantMessage =
+            currentConversation.messages[userMessageIndex + 1];
+          const messageIdsToDelete = [messageId];
+
+          if (assistantMessage && assistantMessage.role === "assistant") {
+            messageIdsToDelete.push(assistantMessage.id);
+          }
+
+          // Delete both messages from the database
+          for (const msgId of messageIdsToDelete) {
+            await sendMessageToBackgroundScriptWithResponse({
+              action: "db-operation",
+              payload: {
+                operation: "deleteMessage",
+                data: {
+                  conversationId: activeConversationId,
+                  messageId: msgId,
+                },
+              },
+            });
+          }
+
+          // Update local state - remove both messages
+          setConversations((prev) => {
+            return prev.map((conversation) => {
+              if (conversation.id === activeConversationId) {
+                return {
+                  ...conversation,
+                  messages: conversation.messages.filter(
+                    (msg) => !messageIdsToDelete.includes(msg.id)
+                  ),
+                };
+              }
+              return conversation;
+            });
+          });
+
+          // Update active conversation
+          setActiveConversation((prev) => {
+            if (prev && prev.id === activeConversationId) {
+              return {
+                ...prev,
+                messages: prev.messages.filter(
+                  (msg) => !messageIdsToDelete.includes(msg.id)
+                ),
+              };
+            }
+            return prev;
+          });
+        }
+      } catch (error) {
+        console.error("Failed to delete message:", error);
+      }
+    };
+
     // Memoize font size calculation
     const getQueryFontSize = useCallback((text: string) => {
       const length = text.length;
@@ -467,7 +624,11 @@ const DeepResearchResult = memo(
                   )}
                 >
                   {msg?.role === "user" && (
-                    <div className="w-full flex flex-col gap-1 px-4 pb-2">
+                    <div
+                      className="w-full flex flex-col gap-1 px-4 pb-2 relative group"
+                      onMouseEnter={() => setHoveredMessageId(msg.id)}
+                      onMouseLeave={() => setHoveredMessageId(null)}
+                    >
                       <p
                         className={cn(
                           "text-white font-geistmono",
@@ -476,6 +637,36 @@ const DeepResearchResult = memo(
                       >
                         {msg?.content ?? ""}
                       </p>
+
+                      {/* Hover Menu */}
+                      {hoveredMessageId === msg.id && (
+                        <div className="absolute bottom-0 right-4 flex items-center gap-1 bg-white/10 backdrop-blur-sm border border-white/20 rounded-md px-[3px] py-1 shadow-lg">
+                          <button
+                            onClick={() =>
+                              handleCopyMessage(msg.content, msg.id)
+                            }
+                            className="flex items-center justify-center w-6 h-6 text-white/60 hover:text-white hover:bg-white/10 rounded transition-colors"
+                            title={
+                              copiedMessageIds.has(msg.id)
+                                ? "Copied!"
+                                : "Copy message"
+                            }
+                          >
+                            {copiedMessageIds.has(msg.id) ? (
+                              <CheckCheck size={12} />
+                            ) : (
+                              <Copy size={12} />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteMessage(msg.id)}
+                            className="flex items-center justify-center w-6 h-6 text-white/60 hover:text-white hover:bg-white/10 rounded transition-colors"
+                            title="Delete message"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
 

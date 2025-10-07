@@ -139,10 +139,10 @@ async function processTextBatch(props: {
 
   // Get user preferences for threshold
   const preferences = await preferencesStore.get();
-  const threshold =
-    preferences.embeddingStyle === "online"
-      ? PageIndexingSemanticSearchThreshold.online
-      : PageIndexingSemanticSearchThreshold.offline;
+  const hasApiKey = preferences?.geminiApiKey?.trim();
+  const threshold = hasApiKey
+    ? PageIndexingSemanticSearchThreshold.online
+    : PageIndexingSemanticSearchThreshold.offline;
 
   const similarContexts = semanticSearchResults?.filter(
     (c) => c.score >= threshold
@@ -345,8 +345,8 @@ async function generateTextContext(
 
       let llmResponse: string;
 
-      // Try online model first if user prefers online
-      if (preferences.embeddingStyle === "online" && preferences.geminiApiKey) {
+      // Try online model first if API key is available
+      if (preferences.geminiApiKey?.trim()) {
         try {
           llmResponse = await generateWithOnlineModel(
             batch,

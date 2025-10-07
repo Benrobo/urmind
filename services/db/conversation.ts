@@ -111,6 +111,23 @@ export class ConversationService {
     });
   }
 
+  async deleteMessage(
+    conversationId: string,
+    messageId: string
+  ): Promise<void> {
+    const conversation = await this.getConversation(conversationId);
+    if (!conversation)
+      throw new Error("[deleting-message] Conversation not found");
+
+    await this.db.put("conversations", {
+      ...conversation,
+      messages: conversation.messages.filter(
+        (message) => message.id !== messageId
+      ),
+      updatedAt: Date.now(),
+    });
+  }
+
   async getConversation(
     id: string
   ): Promise<UrmindDB["conversations"]["value"] | undefined> {

@@ -1,4 +1,5 @@
 import logger from "@/lib/logger";
+import { constructUrlTextFragment } from "@/lib/utils";
 import urmindDb from "@/services/db";
 import { Context } from "@/types/context";
 
@@ -140,10 +141,20 @@ export class ContextNavigationService {
     }
 
     const url = new URL(context.fullUrl || context.url);
+    let finalUrl = url.toString();
     if (context?.highlightElements?.length > 0) {
       url.searchParams.set("ctx", context.id);
+      finalUrl = url.toString();
     }
-    window.open(url.toString(), "_blank");
+
+    if (context?.highlightText?.length > 0) {
+      finalUrl = constructUrlTextFragment(
+        url.toString(),
+        context.highlightText
+      );
+    }
+
+    window.open(finalUrl, "_blank");
     logger.log("🎯 Navigating to context:", context.id, "at", url.toString());
   }
 }

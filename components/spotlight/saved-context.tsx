@@ -27,15 +27,15 @@ export default function SavedContext({ query, uiState }: SavedContextProps) {
 
   const debouncedSetQuery = useCallback(async (newQuery: string) => {
     const preferences = await preferencesStore.get();
-    const embeddingStyle = preferences?.embeddingStyle;
+    const hasApiKey = preferences?.geminiApiKey?.trim();
 
     debounce(
       (value) => {
         setDebouncedQuery(value);
       },
-      embeddingStyle === "local"
-        ? SearchContextDebounceTimeMs.offline
-        : SearchContextDebounceTimeMs.online,
+      hasApiKey
+        ? SearchContextDebounceTimeMs.online
+        : SearchContextDebounceTimeMs.offline,
       false
     )(newQuery);
   }, []);

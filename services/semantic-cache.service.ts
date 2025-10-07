@@ -84,14 +84,16 @@ export class SemanticAwareCache {
     const topResult = searchResults[0];
 
     // Use different thresholds based on user preferences
-    const threshold =
-      preferences.embeddingStyle === "online"
-        ? PageIndexingSemanticDeduplicationThreshold.online
-        : PageIndexingSemanticDeduplicationThreshold.offline;
+    const hasApiKey = preferences?.geminiApiKey?.trim();
+    const threshold = hasApiKey
+      ? PageIndexingSemanticDeduplicationThreshold.online
+      : PageIndexingSemanticDeduplicationThreshold.offline;
 
     if (topResult && topResult.score >= threshold) {
       logger.warn(
-        `⏭️ Too similar (${topResult.score} >= ${threshold}) [${preferences.embeddingStyle}]`
+        `⏭️ Too similar (${topResult.score} >= ${threshold}) [${
+          hasApiKey ? "online" : "offline"
+        }]`
       );
       return false;
     }

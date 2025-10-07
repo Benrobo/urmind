@@ -1,10 +1,8 @@
 import { StorageStore } from "@/helpers/storage-store";
 
-export type EmbeddingStyle = "local" | "online";
 export type GenerationStyle = "online" | "offline";
 
 export interface PreferencesState {
-  embeddingStyle: EmbeddingStyle;
   generationStyle: GenerationStyle;
   geminiApiKey: string;
   showPreferences: boolean;
@@ -13,16 +11,10 @@ export interface PreferencesState {
 export class PreferencesStore extends StorageStore<PreferencesState> {
   constructor() {
     super("local:preferences", {
-      embeddingStyle: "local",
       generationStyle: "offline",
       geminiApiKey: "",
       showPreferences: false,
     });
-  }
-
-  async setEmbeddingStyle(style: EmbeddingStyle): Promise<void> {
-    const currentState = await this.get();
-    await this.set({ ...currentState, embeddingStyle: style });
   }
 
   async setGenerationStyle(style: GenerationStyle): Promise<void> {
@@ -47,11 +39,6 @@ export class PreferencesStore extends StorageStore<PreferencesState> {
     return newValue;
   }
 
-  async getEmbeddingStyle(): Promise<EmbeddingStyle> {
-    const state = await this.get();
-    return state.embeddingStyle;
-  }
-
   async getGenerationStyle(): Promise<GenerationStyle> {
     const state = await this.get();
     return state.generationStyle;
@@ -65,6 +52,11 @@ export class PreferencesStore extends StorageStore<PreferencesState> {
   async isPreferencesVisible(): Promise<boolean> {
     const state = await this.get();
     return state.showPreferences;
+  }
+
+  async hasValidApiKey(): Promise<boolean> {
+    const state = await this.get();
+    return state.geminiApiKey.trim().length > 0;
   }
 }
 

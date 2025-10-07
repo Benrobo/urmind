@@ -130,10 +130,10 @@ export default function useAiMessageStream({
 
       // Get user preferences for threshold
       const preferences = await preferencesStore.get();
-      const threshold =
-        preferences.embeddingStyle === "online"
-          ? GeneralSemanticSearchThreshold.online
-          : GeneralSemanticSearchThreshold.offline;
+      const hasApiKey = preferences?.geminiApiKey?.trim();
+      const threshold = hasApiKey
+        ? GeneralSemanticSearchThreshold.online
+        : GeneralSemanticSearchThreshold.offline;
 
       const matchedContexts = (
         contextSearch?.result as Array<Context & { score: number }>

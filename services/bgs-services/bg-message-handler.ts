@@ -30,6 +30,8 @@ type BgScriptMessageHandlerOperations =
   | "appendMessageToConversation"
   | "appendMessagesToConversation"
   | "updateMessageContextIds"
+  | "deleteMessage"
+  | "deleteConversation"
   | "semanticSearch"
   | "clearContexts"
   | "clearEmbeddings"
@@ -318,6 +320,32 @@ export class BackgroundMessageHandler {
             updateContextIdsPayload.conversationId,
             updateContextIdsPayload.messageId,
             updateContextIdsPayload.contextIds
+          );
+          break;
+
+        case "deleteMessage":
+          const deleteMessagePayload = data as {
+            conversationId: string;
+            messageId: string;
+          };
+          if (!urmindDb.conversations) {
+            throw new Error("Conversations service not initialized");
+          }
+          result = await urmindDb.conversations.deleteMessage(
+            deleteMessagePayload.conversationId,
+            deleteMessagePayload.messageId
+          );
+          break;
+
+        case "deleteConversation":
+          const deleteConversationPayload = data as {
+            conversationId: string;
+          };
+          if (!urmindDb.conversations) {
+            throw new Error("Conversations service not initialized");
+          }
+          result = await urmindDb.conversations.deleteConversation(
+            deleteConversationPayload.conversationId
           );
           break;
 

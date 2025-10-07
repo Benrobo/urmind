@@ -32,10 +32,7 @@ export class EmbeddingHelper {
 
     return retry(
       async () => {
-        if (
-          preferences.embeddingStyle === "online" &&
-          preferences.geminiApiKey
-        ) {
+        if (preferences.geminiApiKey?.trim()) {
           try {
             return await this.generateWithOnlineModel(
               text,

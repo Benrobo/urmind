@@ -49,13 +49,9 @@ export default defineContentScript({
   cssInjectionMode: "ui",
   runAt: "document_start",
   async main(ctx) {
-    // Set up database message handler (includes embedding operations)
     const dbMessageHandler = useMessageHandler();
     dbMessageHandler.setupListener();
 
-    // Context menu functionality is handled in background script
-
-    // Check for context navigation on page load
     setTimeout(async () => {
       await contextNavigationService.handleContextNavigation();
     }, 1000);
@@ -69,43 +65,8 @@ export default defineContentScript({
       },
     });
 
-    // DEBUG: testing message handler CS->BS BS->CS
-    // const response = await sendMessageToBackgroundScriptWithResponse({
-    //   action: "db-operation",
-    //   payload: { operation: "getAllContexts" },
-    // });
-
-    // console.log("🔍 getAllConversations response:", response);
-
     // wait for dom to get settled
     await sleep(1000);
-
-    // NO NEED TO LISTEN FOR NAVIGATION CHANGE SINCE IT CAN BE HANDLED IN BACKGROUND SCRIPT
-    // VIA chrome.tabs.onUpdated listener
-    // const pageMetadata = await pageExtractionService.extractPageMetadata();
-
-    // navigationMonitor = new NavigationMonitor({
-    //   onNavigationChange: (newUrl, oldUrl) => {
-    //     sendMessageToBackgroundScript({
-    //       action: "navigation-detected",
-    //       payload: {
-    //         url: newUrl,
-    //         pageMetadata,
-    //       },
-    //     });
-    //   },
-    // });
-    // await navigationMonitor.startMonitoring();
-
-    window.addEventListener("DOMContentLoaded", () => {
-      // sendMessageToBackgroundScript({
-      //   action: "navigation-detected",
-      //   payload: {
-      //     url: location.href,
-      //     pageMetadata,
-      //   },
-      // });
-    });
 
     const mountUi = async () => {
       await renderMainAppUi(ctx);

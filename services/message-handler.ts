@@ -24,7 +24,9 @@ export type MessageHandlerOperations =
   | "updateMessageContent"
   | "appendMessageToConversation"
   | "appendMessagesToConversation"
-  | "updateMessageContextIds";
+  | "updateMessageContextIds"
+  | "deleteMessage"
+  | "deleteConversation";
 
 /**
  *  operation handler for content script message listeners
