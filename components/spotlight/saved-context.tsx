@@ -109,7 +109,7 @@ export default function SavedContext({ query, uiState }: SavedContextProps) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-white truncate">
-                      {item.title}
+                      {item?.type === "text" ? item.summary : item.title}
                     </div>
                     <div className="text-xs text-white/60 truncate">
                       {item.description}
