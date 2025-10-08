@@ -1,5 +1,6 @@
 export type ContextType =
   | "text"
+  | "raw-text" // text pasted directly into the board.
   | "url"
   | "artifact:web-page"
   | "artifact:document"

@@ -58,9 +58,7 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
   const fingerprint = md5Hash(cleanUrl);
 
   if (type === "text" && selectedText) {
-    // save the text directly to the database while embedding the content
     const contentFingerprint = md5Hash(selectedText);
-    logger.log("🔍 Content fingerprint:", contentFingerprint);
 
     if (!urmindDb.contexts || !urmindDb.embeddings) {
       logger.error("❌ Contexts or embeddings service not available");
@@ -89,7 +87,10 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
       return;
     }
 
+    let matchedCategorySlug: string | null = null;
     if (categorySlug) {
+      logger.warn("🔍 Category slug provided [save-to-urmind]:", categorySlug);
+      matchedCategorySlug = categorySlug;
     } else {
       const semanticSearchResults = await urmindDb.embeddings.semanticSearch(
         searchText,
@@ -117,7 +118,6 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
         similarContexts
       );
 
-      let matchedCategorySlug: string | null = null;
       if (similarContexts?.length > 0) {
         matchedCategorySlug = similarContexts?.[0]?.categorySlug || null;
         logger.info(

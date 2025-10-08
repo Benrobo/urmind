@@ -16,6 +16,9 @@ import { ContextType } from "@/types/context";
 import { CombinedNodes, NodeProps } from "@/types/mindboard";
 import { useMindboardContext } from "@/context/MindboardCtx";
 import TextNode from "./nodes/TextNode";
+import usePaste from "@/hooks/usePaste";
+import saveToUrMindJob from "@/triggers/save-to-urmind";
+import { sendMessageToBackgroundScript } from "@/helpers/messaging";
 
 const nodeTypes = {
   "artifact:web-page": WebPageNode,
@@ -40,6 +43,31 @@ export default function MindboardCanvas() {
     selectedContext,
     closeRightSidebar,
   } = useMindboardContext();
+
+  const { handlePaste, pastedText, clearPastedText } = usePaste();
+
+  useEffect(() => {
+    console.log({ pastedText, selectedCategory });
+    if (pastedText && pastedText.trim() !== "") {
+      const activeCategory = selectedCategory;
+      sendMessageToBackgroundScript({
+        action: "save-to-urmind",
+        payload: {
+          tabId: 0,
+          type: "text",
+          categorySlug: activeCategory!,
+          url: location.href,
+          selectedText: pastedText,
+        },
+      });
+
+      // dont clear the pasted text for now as this would prevent pasting same text multiple times.
+      // clearPastedText();
+
+      // TODO: After pasting, show a promise toast inside the mindboard with loading animation
+      // which tells the user that the content is being processed.
+    }
+  }, [pastedText, selectedCategory, clearPastedText]);
 
   useEffect(() => {
     if (contexts && contexts.length > 0) {
@@ -119,7 +147,7 @@ export default function MindboardCanvas() {
 
   return (
     <>
-      <div className="w-[calc(100%-250px)] h-screen">
+      <div className="w-[calc(100%-250px)] h-screen" onPaste={handlePaste}>
         <ReactFlow
           nodes={nodes}
           // edges={edges}
