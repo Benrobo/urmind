@@ -17,30 +17,6 @@ import { CombinedNodes, NodeProps } from "@/types/mindboard";
 import { useMindboardContext } from "@/context/MindboardCtx";
 import TextNode from "./nodes/TextNode";
 
-const initialNodes = [
-  {
-    id: "1",
-    position: { x: 0, y: 0 },
-    type: "artifact:web-page" as const,
-    data: {
-      title: "React Hooks Best Practices",
-      subtitle:
-        "Overview of the react markdown library rendering text and components",
-    },
-  },
-  {
-    id: "2",
-    position: { x: 200, y: 100 },
-    type: "artifact:web-page" as const,
-    data: {
-      title: "TypeScript Documentation",
-      subtitle: "Comprehensive guide to TypeScript features and best practices",
-    },
-  },
-];
-
-const initialEdges = [];
-
 const nodeTypes = {
   "artifact:web-page": WebPageNode,
   text: TextNode,

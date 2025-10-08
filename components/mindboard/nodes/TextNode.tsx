@@ -23,8 +23,6 @@ export default function TextNode(props: TextNodeProps) {
     openRightSidebar({ id, type, data });
   };
 
-  console.log("nodetext", props);
-
   return (
     <NodeWrapper
       type="text"

@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { ImageWithFallback } from "../ImageWithFallback";
-import { cn, shortenText } from "@/lib/utils";
+import { cn, constructUrlTextFragment, shortenText } from "@/lib/utils";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { useMindboardContext } from "@/context/MindboardCtx";
@@ -200,7 +200,14 @@ export default function ContextInfoSidebar({
                             <div className="min-w-0 flex-1">
                               <p className="text-white/50 text-xs mb-1">URL</p>
                               <a
-                                href={context.url}
+                                href={
+                                  context.highlightText?.length > 0
+                                    ? constructUrlTextFragment(
+                                        context?.url,
+                                        context?.highlightText
+                                      )
+                                    : context.url
+                                }
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-blue-400 hover:text-blue-300 text-sm break-all"
