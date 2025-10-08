@@ -37,6 +37,7 @@ export default function useContextsByCategory({
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     refetchIntervalInBackground: true,
+    refetchInterval: 1000,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,

@@ -42,12 +42,12 @@ export default function MindboardCanvas() {
     isRightSidebarOpen,
     selectedContext,
     closeRightSidebar,
+    refetchContexts,
   } = useMindboardContext();
 
   const { handlePaste, pastedText, clearPastedText } = usePaste();
 
   useEffect(() => {
-    console.log({ pastedText, selectedCategory });
     if (pastedText && pastedText.trim() !== "") {
       const activeCategory = selectedCategory;
       sendMessageToBackgroundScript({
@@ -66,6 +66,11 @@ export default function MindboardCanvas() {
 
       // TODO: After pasting, show a promise toast inside the mindboard with loading animation
       // which tells the user that the content is being processed.
+
+      clearPastedText();
+
+      // refetch contexts
+      refetchContexts();
     }
   }, [pastedText, selectedCategory, clearPastedText]);
 

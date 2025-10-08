@@ -87,10 +87,52 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
       return;
     }
 
+    const contextId = shortId.generate();
+    const genericContextData: Omit<
+      UrmindDB["contexts"]["value"],
+      "createdAt" | "updatedAt" | "categorySlug"
+    > = {
+      id: contextId,
+      fingerprint,
+      contentFingerprint,
+      type: "text",
+      title: "",
+      description: "",
+      summary: selectedText,
+      og: {
+        title: null,
+        description: null,
+        image: null,
+        favicon: null,
+      },
+      url: cleanUrl,
+      fullUrl: url,
+      image: null,
+      highlightText: selectedText, // Legacy field
+      highlightElements: [], // Empty for text-based approach
+    };
+
     let matchedCategorySlug: string | null = null;
     if (categorySlug) {
-      logger.warn("🔍 Category slug provided [save-to-urmind]:", categorySlug);
       matchedCategorySlug = categorySlug;
+      const contextData: Omit<
+        UrmindDB["contexts"]["value"],
+        "createdAt" | "updatedAt"
+      > = {
+        ...genericContextData,
+        categorySlug: matchedCategorySlug,
+      };
+
+      await urmindDb.contexts?.createContext(contextData);
+
+      await urmindDb.embeddings?.generateAndStore(selectedText, tabId, {
+        contextId,
+        type: "context",
+        category: matchedCategorySlug,
+        url: cleanUrl,
+      });
+
+      logger.info("✅ Context created with ID:", contextId);
     } else {
       const semanticSearchResults = await urmindDb.embeddings.semanticSearch(
         searchText,
@@ -124,31 +166,6 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
           `🔍 Matched context [save-to-urmind]: ${similarContexts?.[0]?.categorySlug} with score: ${similarContexts?.[0]?.score}`
         );
       }
-
-      const contextId = shortId.generate();
-      const genericContextData: Omit<
-        UrmindDB["contexts"]["value"],
-        "createdAt" | "updatedAt" | "categorySlug"
-      > = {
-        id: contextId,
-        fingerprint,
-        contentFingerprint,
-        type: "text",
-        title: "",
-        description: "",
-        summary: selectedText,
-        og: {
-          title: null,
-          description: null,
-          image: null,
-          favicon: null,
-        },
-        url: cleanUrl,
-        fullUrl: url,
-        image: null,
-        highlightText: selectedText, // Legacy field
-        highlightElements: [], // Empty for text-based approach
-      };
 
       if (matchedCategorySlug) {
         logger.info(

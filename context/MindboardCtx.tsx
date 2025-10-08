@@ -33,6 +33,7 @@ interface BoardContextValuesProps {
   contextToDelete: SavedContext | null;
   openDeleteModal: (context: SavedContext) => void;
   closeDeleteModal: () => void;
+  refetchContexts: () => void;
 }
 
 export const MindboardCtx = createContext<BoardContextValuesProps>(
@@ -70,6 +71,7 @@ export default function MindboardCtxProvider({
     contexts,
     loading: contextsLoading,
     error: contextsError,
+    refetch: refetchContexts,
   } = useContextsByCategory({
     categorySlug: selectedCategory,
     mounted: true,
@@ -151,6 +153,7 @@ export default function MindboardCtxProvider({
     contextToDelete,
     openDeleteModal,
     closeDeleteModal,
+    refetchContexts,
   };
 
   return (
