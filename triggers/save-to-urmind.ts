@@ -125,35 +125,42 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
         );
       }
 
+      const contextId = shortId.generate();
+      const genericContextData: Omit<
+        UrmindDB["contexts"]["value"],
+        "createdAt" | "updatedAt" | "categorySlug"
+      > = {
+        id: contextId,
+        fingerprint,
+        contentFingerprint,
+        type: "text",
+        title: "",
+        description: "",
+        summary: selectedText,
+        og: {
+          title: null,
+          description: null,
+          image: null,
+          favicon: null,
+        },
+        url: cleanUrl,
+        fullUrl: url,
+        image: null,
+        highlightText: selectedText, // Legacy field
+        highlightElements: [], // Empty for text-based approach
+      };
+
       if (matchedCategorySlug) {
         logger.info(
           `🔍 Matched category [save-to-urmind]: ${matchedCategorySlug}`
         );
-        const contextId = shortId.generate();
 
         const contextData: Omit<
           UrmindDB["contexts"]["value"],
           "createdAt" | "updatedAt"
         > = {
-          id: contextId,
-          fingerprint,
-          contentFingerprint,
+          ...genericContextData,
           categorySlug: matchedCategorySlug,
-          type: "text",
-          title: "",
-          description: "",
-          summary: selectedText,
-          og: {
-            title: null,
-            description: null,
-            image: null,
-            favicon: null,
-          },
-          url: cleanUrl,
-          fullUrl: url,
-          image: null,
-          highlightText: selectedText, // Legacy field
-          highlightElements: [], // Empty for text-based approach
         };
 
         await urmindDb.contexts?.createContext(contextData);
@@ -170,16 +177,13 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
         logger.warn(
           "🔍 Caching content so that it doesn't get processed again"
         );
+
         // cache this content so that it doesn't get processed again
-        const semanticSignature = await semanticCache.generateSemanticSignature(
-          selectedText
-        );
-        const urlFingerprint = md5Hash(cleanUrl);
-        const signatureKey = `${urlFingerprint}:${semanticSignature}`;
-        await semanticCacheStore.addSignature(
-          signatureKey,
-          similarContexts?.[0]?.score ?? 0
-        );
+        await cacheContent({
+          score: similarContexts?.[0]?.score ?? 0,
+          cleanUrl,
+          content: selectedText,
+        });
       } else {
         const contextId = shortId.generate();
         const { category } = await generateCategory(selectedText);
@@ -198,25 +202,8 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
           UrmindDB["contexts"]["value"],
           "createdAt" | "updatedAt"
         > = {
-          id: contextId,
-          fingerprint,
-          contentFingerprint,
+          ...genericContextData,
           categorySlug: category.slug,
-          type: "text",
-          title: "",
-          description: "",
-          summary: "",
-          og: {
-            title: null,
-            description: null,
-            image: null,
-            favicon: null,
-          },
-          url: cleanUrl,
-          fullUrl: url,
-          image: null,
-          highlightText: selectedText, // Legacy field
-          highlightElements: [], // Empty for text-based approach
         };
 
         await urmindDb.contexts?.createContext(contextData);
@@ -233,19 +220,30 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
         logger.warn(
           "🔍 Caching content so that it doesn't get processed again"
         );
+
         // cache this content so that it doesn't get processed again
-        const semanticSignature = await semanticCache.generateSemanticSignature(
-          selectedText
-        );
-        const urlFingerprint = md5Hash(cleanUrl);
-        const signatureKey = `${urlFingerprint}:${semanticSignature}`;
-        await semanticCacheStore.addSignature(
-          signatureKey,
-          similarContexts?.[0]?.score ?? 0
-        );
+        await cacheContent({
+          score: similarContexts?.[0]?.score ?? 0,
+          cleanUrl,
+          content: selectedText,
+        });
       }
     }
   }
+}
+
+async function cacheContent(props: {
+  content: string;
+  cleanUrl: string;
+  score: number;
+}) {
+  const { content, cleanUrl, score } = props;
+  const semanticSignature = await semanticCache.generateSemanticSignature(
+    content
+  );
+  const urlFingerprint = md5Hash(cleanUrl);
+  const signatureKey = `${urlFingerprint}:${semanticSignature}`;
+  await semanticCacheStore.addSignature(signatureKey, score ?? 0);
 }
 
 async function generateCategory(text: string) {
