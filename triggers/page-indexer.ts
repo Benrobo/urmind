@@ -29,6 +29,13 @@ const pageIndexerJob: Task<PageIndexerPayload> = task<PageIndexerPayload>({
   id: "page-indexer",
   run: async (payload: PageIndexerPayload) => {
     const { url, pageMetadata, tabId } = payload;
+
+    const indexingEnabled = await preferencesStore.getIndexingEnabled();
+    if (!indexingEnabled) {
+      logger.warn("🚫 Indexing is disabled, skipping tab checks");
+      return;
+    }
+
     logger.log("🔍 Indexing page:", url);
     logger.log("📄 Page metadata:", pageMetadata);
 

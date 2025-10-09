@@ -13,6 +13,7 @@ export interface PreferencesState {
   geminiApiKey: string;
   showPreferences: boolean;
   tabTiming: TabTimingPreferences;
+  indexingEnabled: boolean;
 }
 
 export class PreferencesStore extends StorageStore<PreferencesState> {
@@ -25,6 +26,7 @@ export class PreferencesStore extends StorageStore<PreferencesState> {
         duration: 2,
         timeUnit: "minutes",
       },
+      indexingEnabled: true,
     });
   }
 
@@ -94,6 +96,16 @@ export class PreferencesStore extends StorageStore<PreferencesState> {
       default:
         return 1 * 60 * 1000; // fallback to 1 minute
     }
+  }
+
+  async setIndexingEnabled(enabled: boolean): Promise<void> {
+    const currentState = await this.get();
+    await this.set({ ...currentState, indexingEnabled: enabled });
+  }
+
+  async getIndexingEnabled(): Promise<boolean> {
+    const state = await this.get();
+    return state.indexingEnabled;
   }
 }
 

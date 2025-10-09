@@ -19,6 +19,9 @@ import {
   CheckCircle,
   Info,
   Clock,
+  Pause,
+  Play,
+  AlertTriangle as Warning,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { geminiAi } from "@/helpers/agent/utils";
@@ -38,7 +41,15 @@ export default function Popup() {
   const [setupAccordionOpen, setSetupAccordionOpen] = useState(true);
   const [modeAccordionOpen, setModeAccordionOpen] = useState(false);
   const [timingAccordionOpen, setTimingAccordionOpen] = useState(false);
+  const [manualOverrideAccordionOpen, setManualOverrideAccordionOpen] =
+    useState(false);
   const [localTiming, setLocalTiming] = useState<TabTimingPreferences>(
+    preferences.tabTiming || {
+      duration: 2,
+      timeUnit: "minutes",
+    }
+  );
+  const [originalTiming, setOriginalTiming] = useState<TabTimingPreferences>(
     preferences.tabTiming || {
       duration: 2,
       timeUnit: "minutes",
@@ -52,6 +63,7 @@ export default function Popup() {
   useEffect(() => {
     if (preferences.tabTiming) {
       setLocalTiming(preferences.tabTiming);
+      setOriginalTiming(preferences.tabTiming);
     }
   }, [preferences.tabTiming]);
 
@@ -132,17 +144,40 @@ export default function Popup() {
     }
   };
 
-  const handleTimingChange = async (timing: TabTimingPreferences) => {
+  const handleTimingChange = (timing: TabTimingPreferences) => {
     if (!timing) return;
     setLocalTiming(timing);
-    await preferencesStore.setTabTiming(timing);
+  };
+
+  const handleSaveTiming = async () => {
+    if (!localTiming) return;
+    await preferencesStore.setTabTiming(localTiming);
+    setOriginalTiming(localTiming);
+  };
+
+  const hasTimingChanged = () => {
+    if (!localTiming || !originalTiming) return false;
+    return (
+      localTiming.duration !== originalTiming.duration ||
+      localTiming.timeUnit !== originalTiming.timeUnit
+    );
+  };
+
+  const isTimingValid = () => {
+    if (!localTiming) return false;
+    return localTiming.duration > 0;
+  };
+
+  const handleToggleIndexing = async () => {
+    const newState = !preferences.indexingEnabled;
+    await preferencesStore.setIndexingEnabled(newState);
   };
 
   return (
     <div
       className={cn(
         "w-[400px] h-[600px] flex flex-col",
-        "bg-gray-100/80 backdrop-blur-xl",
+        "bg-gray-100/80-- bg-dark-100.2 backdrop-blur-xl",
         "border border-gray-102/30",
         "shadow-2xl shadow-black/20"
       )}
@@ -197,7 +232,7 @@ export default function Popup() {
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-3 mt-2">
             <div className="text-sm font-medium text-white">Gemini API Key</div>
             <div className="relative">
               <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/60" />
@@ -209,7 +244,7 @@ export default function Popup() {
                 className="w-full pl-10 pr-4 py-2 bg-dark-103 border border-dark-101.1 rounded-lg text-white placeholder-white/60 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               />
             </div>
-            <p className="text-xs text-white/60">
+            <p className="text-xs text-white/60 pb-2">
               Your API key is stored locally and never shared.
             </p>
           </div>
@@ -294,7 +329,7 @@ export default function Popup() {
           </div>
 
           {/* Online Mode */}
-          <div className="space-y-3">
+          <div className="space-y-3 mt-2">
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-white">
@@ -388,6 +423,18 @@ export default function Popup() {
                   <option value="minutes">Minutes</option>
                   <option value="hours">Hours</option>
                 </select>
+                <button
+                  onClick={handleSaveTiming}
+                  disabled={!hasTimingChanged() || !isTimingValid()}
+                  className={cn(
+                    "px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                    hasTimingChanged() && isTimingValid()
+                      ? "bg-orange-500 hover:bg-orange-600 text-white"
+                      : "bg-gray-500 text-gray-300 cursor-not-allowed"
+                  )}
+                >
+                  Save
+                </button>
               </div>
             </div>
 
@@ -449,6 +496,97 @@ export default function Popup() {
           </div>
         )}
       </div>
+
+      {/* Manual Override Accordion */}
+      <Accordion
+        title="Manual Override"
+        subtitle={
+          preferences.indexingEnabled
+            ? "Indexing is active"
+            : "Indexing is paused"
+        }
+        icon={
+          <div className="w-8 h-8 rounded bg-red-500/20 flex items-center justify-center border-[.1px] border-red-102/30">
+            <Warning size={16} className="text-red-305" />
+          </div>
+        }
+        isOpen={manualOverrideAccordionOpen}
+        onToggle={() =>
+          setManualOverrideAccordionOpen(!manualOverrideAccordionOpen)
+        }
+        className="border-t-[1px] border-white-400/60"
+      >
+        <div className="space-y-4 mt-3">
+          {/* Warning Box */}
+          <div className="p-3 bg-orange-300/10 border border-orange-300 rounded-lg">
+            <div className="flex items-start gap-2">
+              <Warning className="w-4 h-4 text-orange-300 mt-0.5 flex-shrink-0" />
+              <div className="text-xs text-white-100">
+                <strong>Danger Zone:</strong> This section allows you to
+                manually control when UrMind indexes pages. Use with caution as
+                it affects the core functionality of the extension.
+              </div>
+            </div>
+          </div>
+
+          {/* Indexing Status */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-white">
+                  Current Status
+                </div>
+                <div className="text-xs text-white/70">
+                  {preferences.indexingEnabled
+                    ? "UrMind is actively monitoring and indexing pages"
+                    : "UrMind is paused and not indexing any pages"}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div
+                  className={cn(
+                    "w-3 h-3 rounded-full animate-pulse",
+                    preferences.indexingEnabled ? "bg-green-100" : "bg-red-305"
+                  )}
+                />
+                <span
+                  className={cn(
+                    "text-sm font-medium",
+                    preferences.indexingEnabled
+                      ? "text-green-100"
+                      : "text-red-301"
+                  )}
+                >
+                  {preferences.indexingEnabled ? "ACTIVE" : "PAUSED"}
+                </span>
+              </div>
+            </div>
+
+            {/* Toggle Button */}
+            <button
+              onClick={handleToggleIndexing}
+              className={cn(
+                "w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
+                preferences.indexingEnabled
+                  ? "border border-red-305/30 text-white-100 bg-red-305 hover:bg-red-305/90"
+                  : "bg-purple-100 border border-purple-100/30 text-white-100 hover:bg-purple-100/90"
+              )}
+            >
+              {preferences.indexingEnabled ? (
+                <>
+                  <Pause size={16} />
+                  Stop Indexing
+                </>
+              ) : (
+                <>
+                  <Play size={16} />
+                  Start Indexing
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </Accordion>
 
       {/* Footer */}
       <div className="border-t border-white-400/60 px-4 py-3 bg-gray-100/50 backdrop-blur-sm">
