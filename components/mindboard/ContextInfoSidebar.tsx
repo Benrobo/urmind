@@ -203,7 +203,7 @@ export default function ContextInfoSidebar({
                                 href={
                                   context.highlightText?.length > 0
                                     ? constructUrlTextFragment(
-                                        context?.url,
+                                        context?.fullUrl!,
                                         context?.highlightText
                                       )
                                     : context.url
@@ -212,7 +212,15 @@ export default function ContextInfoSidebar({
                                 rel="noopener noreferrer"
                                 className="text-blue-400 hover:text-blue-300 text-sm break-all"
                               >
-                                {context.url}
+                                {shortenText(
+                                  context.highlightText?.length > 0
+                                    ? constructUrlTextFragment(
+                                        context?.fullUrl!,
+                                        context?.highlightText
+                                      )
+                                    : context.url,
+                                  70
+                                )}
                               </a>
                             </div>
                           </div>

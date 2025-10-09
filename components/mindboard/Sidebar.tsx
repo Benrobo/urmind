@@ -7,6 +7,7 @@ import {
   Trash2,
   X,
   CheckCheck,
+  RefreshCw,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import useContextCategories from "@/hooks/useContextCategories";
@@ -21,7 +22,11 @@ import DeleteConfirmationModal from "./DeleteConfirmationModal";
 export default function MindBoardSidebar() {
   const { value: mindboardState } = useStorageStore(mindboardStore);
   const [searchQuery, setSearchQuery] = useState("");
-  const { categories, loading, refetch } = useContextCategories({
+  const {
+    categories,
+    loading: loadingCategories,
+    refetch,
+  } = useContextCategories({
     query: searchQuery,
   });
   const [selectedCategory, setSelectedCategory] = useState<string | null>();
@@ -142,6 +147,10 @@ export default function MindBoardSidebar() {
     }
   };
 
+  const handleRefresh = async () => {
+    await refetch();
+  };
+
   const handleEditCategory = (category: any) => {
     setEditingCategory(category.id);
     setEditName(category.name);
@@ -240,16 +249,34 @@ export default function MindBoardSidebar() {
           <h2 className="text-white/50 text-sm font-medium uppercase tracking-wide">
             Categories
           </h2>
-          <button
-            onClick={handleCreateCategory}
-            className="text-white/50 hover:text-white transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <motion.button
+              onClick={handleRefresh}
+              className="text-white/50 hover:text-white transition-colors enableMiniBounceEffect"
+              title="Refresh categories"
+              whileHover={{ scale: 1.1 }}
+              transition={{ duration: 0.2 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <RefreshCw
+                className={cn(
+                  "w-4 h-4 transition-transform duration-500",
+                  loadingCategories && "animate-spin"
+                )}
+              />
+            </motion.button>
+            <button
+              onClick={handleCreateCategory}
+              className="text-white/50 hover:text-white transition-colors"
+              title="Add new category"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         <div className="space-y-2">
-          {loading ? (
+          {loadingCategories ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
