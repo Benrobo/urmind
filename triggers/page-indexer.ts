@@ -28,6 +28,7 @@ type PageIndexerPayload = {
 const pageIndexerJob: Task<PageIndexerPayload> = task<PageIndexerPayload>({
   id: "page-indexer",
   run: async (payload: PageIndexerPayload) => {
+    return console.log("🛑 STOPPED FOR NOW");
     const { url, pageMetadata, tabId } = payload;
     logger.log("🔍 Indexing page:", url);
     logger.log("📄 Page metadata:", pageMetadata);

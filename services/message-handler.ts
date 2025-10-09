@@ -90,39 +90,53 @@ export class MessageHandler {
     ) => {
       console.log("🔍 Content script message listener:", request);
       if (request.action === "db-operation") {
-        const { operation } = request.payload;
         const embeddingOperations = ["generateEmbedding", "semanticSearch"];
+        (async () => {
+          try {
+            const { operation, data, contextId } = request.payload;
+            const result = await this.handleOperation(
+              operation,
+              data,
+              contextId
+            );
+            sendResponse({ result });
+          } catch (error) {
+            logger.error("❌ DB operation failed:", error);
+            sendResponse({
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        })();
 
-        if (embeddingOperations.includes(operation)) {
-          (async () => {
-            try {
-              const { operation, data, contextId } = request.payload;
+        return true;
 
-              // console.log("🔍 DB operation:", operation, { data, contextId });
+        // if (embeddingOperations.includes(operation)) {
+        //   (async () => {
+        //     try {
+        //       const { operation, data, contextId } = request.payload;
+        //       const result = await this.handleOperation(
+        //         operation,
+        //         data,
+        //         contextId
+        //       );
+        //       sendResponse({ result });
+        //     } catch (error) {
+        //       logger.error("❌ DB operation failed:", error);
+        //       sendResponse({
+        //         error: error instanceof Error ? error.message : String(error),
+        //       });
+        //     }
+        //   })();
 
-              const result = await this.handleOperation(
-                operation,
-                data,
-                contextId
-              );
-              sendResponse({ result });
-            } catch (error) {
-              logger.error("❌ DB operation failed:", error);
-              sendResponse({
-                error: error instanceof Error ? error.message : String(error),
-              });
-            }
-          })();
-
-          return true; // Keep message channel open for async response
-        } else {
-          // Let other db operations pass through to background script
-          console.log(
-            "🔄 Content script passing through to background script:",
-            operation
-          );
-          return false;
-        }
+        //   return true; // Keep message channel open for async response
+        // } else  {
+        //   // Let other db operations pass through to background script
+        //   console.log(
+        //     "🔄 Content script passing through to background script:",
+        //     operation
+        //   );
+        //   return true;
+        // }
       }
       if (request.action === "client-operation") {
         const { operation } = request.payload;
@@ -158,9 +172,9 @@ export function useMessageHandler() {
     // logger.log("📡  message handler initialized");
 
     // Return cleanup function
-    return () => {
-      chrome.runtime.onMessage.removeListener(listener);
-    };
+    // return () => {
+    //   chrome.runtime.onMessage.removeListener(listener);
+    // };
   };
 
   return {

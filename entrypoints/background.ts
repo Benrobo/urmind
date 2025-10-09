@@ -7,35 +7,24 @@ import { INVALID_TAB_URLS } from "@/constant/internal";
 import { sendMessageToContentScript } from "@/helpers/messaging";
 import { sleep } from "@/lib/utils";
 import logger from "@/lib/logger";
+import { tabTimingService } from "@/services/tab-timing.service";
 
 export default defineBackground(async () => {
   console.log("🚀 Background script loaded");
 
-  // * Leaving this here for future reference when we need to track how long users spent on a tab to further decide if that page is worth indexing or not.
-  chrome.tabs.onActivated.addListener((activeInfo) => {
-    console.log("Tab activated:", activeInfo.tabId);
-    // You can get tab details if needed:
-    chrome.tabs.get(activeInfo.tabId, (tab) => {
-      console.log("Active tab info:", tab);
-    });
+  chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+    if (
+      changeInfo.status === "complete" &&
+      tab.url &&
+      !INVALID_TAB_URLS.includes(tab.url)
+    ) {
+      await tabTimingService.handleTabUpdated(tabId, tab.url);
+      // logger.warn(`Tab updated: ${tabId}, ${tab.url}`);
+    }
   });
 
-  chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-    if (changeInfo.status === "complete") {
-      if (tab.url && !INVALID_TAB_URLS.includes(tab.url)) {
-        await sleep(1000);
-
-        sendMessageToContentScript(tabId, {
-          action: "client-operation",
-          payload: {
-            operation: "page-metadata-extraction",
-          },
-        });
-
-        logger.info(`Requested page metadata extraction for tab: ${tabId}`);
-      }
-      logger.info(`Tab updated: ${tabId}, ${tab.url}`);
-    }
+  chrome.tabs.onRemoved.addListener(async (tabId) => {
+    await tabTimingService.handleTabRemoved(tabId);
   });
 
   await initDb();
@@ -51,6 +40,9 @@ export default defineBackground(async () => {
   chrome.tabs.onRemoved.addListener((tabId) => {
     messageHandler.cleanupTab(tabId);
   });
+
+  // Start tab timing service for delayed indexing
+  await tabTimingService.start();
 
   // Initialize omnibox handling
   omniboxHandler.init();

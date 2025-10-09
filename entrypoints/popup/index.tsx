@@ -1,6 +1,11 @@
 import React from "react";
 import { cn, sleep } from "@/lib/utils";
-import { preferencesStore, GenerationStyle } from "@/store/preferences.store";
+import {
+  preferencesStore,
+  GenerationStyle,
+  TimeUnit,
+  TabTimingPreferences,
+} from "@/store/preferences.store";
 import useStorageStore from "@/hooks/useStorageStore";
 import {
   Settings,
@@ -13,6 +18,7 @@ import {
   ChevronUp,
   CheckCircle,
   Info,
+  Clock,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { geminiAi } from "@/helpers/agent/utils";
@@ -31,10 +37,23 @@ export default function Popup() {
   const [dismissTimer, setDismissTimer] = useState<NodeJS.Timeout | null>(null);
   const [setupAccordionOpen, setSetupAccordionOpen] = useState(true);
   const [modeAccordionOpen, setModeAccordionOpen] = useState(false);
+  const [timingAccordionOpen, setTimingAccordionOpen] = useState(false);
+  const [localTiming, setLocalTiming] = useState<TabTimingPreferences>(
+    preferences.tabTiming || {
+      duration: 2,
+      timeUnit: "minutes",
+    }
+  );
 
   useEffect(() => {
     setLocalApiKey(preferences.geminiApiKey);
   }, [preferences.geminiApiKey]);
+
+  useEffect(() => {
+    if (preferences.tabTiming) {
+      setLocalTiming(preferences.tabTiming);
+    }
+  }, [preferences.tabTiming]);
 
   // Auto-dismiss success messages
   useEffect(() => {
@@ -111,6 +130,12 @@ export default function Popup() {
       await sleep(1000);
       setIsSaving(false);
     }
+  };
+
+  const handleTimingChange = async (timing: TabTimingPreferences) => {
+    if (!timing) return;
+    setLocalTiming(timing);
+    await preferencesStore.setTabTiming(timing);
   };
 
   return (
@@ -306,6 +331,75 @@ export default function Popup() {
                 <strong>Best Experience:</strong> Online mode provides the most
                 accurate and consistent results. Uses Google's latest Gemini 2.5
                 Flash model for superior performance.
+              </div>
+            </div>
+          </div>
+        </Accordion>
+
+        {/* Timing Accordion */}
+        <Accordion
+          title="Indexing Timing"
+          subtitle={`Index pages after ${localTiming?.duration || 2} ${
+            localTiming?.timeUnit || "minutes"
+          }`}
+          icon={
+            <div className="w-8 h-8 rounded bg-orange-500/20 flex items-center justify-center border-[.5px] border-orange-102">
+              <Clock size={16} className="text-white-100" />
+            </div>
+          }
+          isOpen={timingAccordionOpen}
+          onToggle={() => setTimingAccordionOpen(!timingAccordionOpen)}
+        >
+          <div className="space-y-4 mt-3">
+            {/* Duration and Time Unit */}
+            <div className="space-y-3">
+              <div className="text-sm font-medium text-white">Index After</div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  min="1"
+                  max="60"
+                  value={localTiming?.duration || 2}
+                  onChange={(e) =>
+                    handleTimingChange({
+                      ...(localTiming || {
+                        duration: 2,
+                        timeUnit: "minutes",
+                      }),
+                      duration: parseInt(e.target.value) || 1,
+                    })
+                  }
+                  className="w-20 px-3 py-2 bg-dark-103 border border-dark-101.1 rounded-lg text-white text-center focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
+                />
+                <select
+                  value={localTiming?.timeUnit || "minutes"}
+                  onChange={(e) =>
+                    handleTimingChange({
+                      ...(localTiming || {
+                        duration: 2,
+                        timeUnit: "minutes",
+                      }),
+                      timeUnit: e.target.value as TimeUnit,
+                    })
+                  }
+                  className="px-3 py-2 bg-dark-103 border border-dark-101.1 rounded-lg text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
+                >
+                  <option value="seconds">Seconds</option>
+                  <option value="minutes">Minutes</option>
+                  <option value="hours">Hours</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Info Box */}
+            <div className="p-3 bg-orange-500/10 border border-orange-400/30 rounded-lg">
+              <div className="flex items-start gap-2">
+                <Info className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-white-100">
+                  <strong>How it works:</strong> UrMind waits for you to spend
+                  time on a page before indexing it. This ensures only
+                  meaningful content gets saved to your knowledge base.
+                </div>
               </div>
             </div>
           </div>

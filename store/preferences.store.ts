@@ -1,11 +1,18 @@
 import { StorageStore } from "@/helpers/storage-store";
 
 export type GenerationStyle = "online" | "offline";
+export type TimeUnit = "seconds" | "minutes" | "hours";
+
+export interface TabTimingPreferences {
+  duration: number;
+  timeUnit: TimeUnit;
+}
 
 export interface PreferencesState {
   generationStyle: GenerationStyle;
   geminiApiKey: string;
   showPreferences: boolean;
+  tabTiming: TabTimingPreferences;
 }
 
 export class PreferencesStore extends StorageStore<PreferencesState> {
@@ -14,6 +21,10 @@ export class PreferencesStore extends StorageStore<PreferencesState> {
       generationStyle: "offline",
       geminiApiKey: "",
       showPreferences: false,
+      tabTiming: {
+        duration: 2,
+        timeUnit: "minutes",
+      },
     });
   }
 
@@ -57,6 +68,32 @@ export class PreferencesStore extends StorageStore<PreferencesState> {
   async hasValidApiKey(): Promise<boolean> {
     const state = await this.get();
     return state.geminiApiKey.trim().length > 0;
+  }
+
+  async setTabTiming(tabTiming: TabTimingPreferences): Promise<void> {
+    const currentState = await this.get();
+    await this.set({ ...currentState, tabTiming });
+  }
+
+  async getTabTiming(): Promise<TabTimingPreferences> {
+    const state = await this.get();
+    return state.tabTiming;
+  }
+
+  async getTabTimingInMs(): Promise<number> {
+    const tabTiming = await this.getTabTiming();
+    const { duration, timeUnit } = tabTiming;
+
+    switch (timeUnit) {
+      case "seconds":
+        return duration * 1000;
+      case "minutes":
+        return duration * 60 * 1000;
+      case "hours":
+        return duration * 60 * 60 * 1000;
+      default:
+        return 1 * 60 * 1000; // fallback to 1 minute
+    }
   }
 }
 

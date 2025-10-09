@@ -74,3 +74,7 @@ export const EMBEDDING_CONFIG = {
   LOCAL_MODEL: "Xenova/all-MiniLM-L6-v2",
   VECTOR_DIMENSION: 384,
 } as const;
+
+// Tab Timing Configuration
+export const MINIMUM_TAB_TIME_MS = 2 * 60 * 1000; // 2 minutes
+export const TAB_TIMING_CHECK_INTERVAL_MS = 5 * 1000; // 30 seconds
