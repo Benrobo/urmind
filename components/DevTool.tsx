@@ -5,6 +5,7 @@ import {
   MessageSquare,
   FileText,
   Loader2,
+  Brain,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sendMessageToBackgroundScriptWithResponse } from "@/helpers/messaging";
@@ -39,6 +40,13 @@ export default function DevTool({ className }: DevToolProps) {
       icon: MessageSquare,
       operation: "clearConversations",
       color: "bg-red-500 hover:bg-red-600",
+    },
+    {
+      id: "semantic-cache",
+      label: "Clear Semantic Cache",
+      icon: Brain,
+      operation: "clearSemanticCache",
+      color: "bg-purple-500 hover:bg-purple-600",
     },
   ];
 
