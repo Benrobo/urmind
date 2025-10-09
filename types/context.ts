@@ -27,7 +27,7 @@ export type Context = {
     description: string | null;
     image: string | null;
     favicon: string | null;
-  };
+  } | null;
   highlightText: string; // Legacy field for backwards compatibility
   highlightElements: Array<{
     xpath: string;

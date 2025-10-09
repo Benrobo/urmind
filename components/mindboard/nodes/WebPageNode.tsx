@@ -31,7 +31,7 @@ export default function WebPageNode(props: WebPageNodeProps) {
         title: context?.title,
         subtitle: context?.summary,
         createdAt: dayjs(context?.createdAt).fromNow(),
-        favicon: context?.og?.favicon,
+        favicon: context?.og?.favicon ?? null,
       }}
     >
       <button

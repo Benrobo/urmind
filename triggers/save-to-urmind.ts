@@ -1,28 +1,24 @@
-import pageExtractionService, {
-  PageMetadata,
-} from "@/services/page-extraction/extraction";
 import { Task, task } from "./task";
 import { chromeAi, geminiAi } from "@/helpers/agent/utils";
 import { preferencesStore } from "@/store/preferences.store";
-import { generateText, streamText } from "ai";
+import { generateText } from "ai";
 import {
   ai_models,
   SaveToUrmindSemanticSearchThreshold,
 } from "@/constant/internal";
 import { md5Hash, cleanUrlForFingerprint } from "@/lib/utils";
 import urmindDb from "@/services/db";
-import { embeddingHelper } from "@/services/embedding-helper";
-import { InitialContextCreatorPrompt } from "@/data/prompt/system/page-indexer.system";
 import retry from "async-retry";
 import cleanLLMResponse from "@/helpers/clean-llm-response";
-import { PageIndexerResponse } from "@/types/page-indexing";
 import shortId from "short-uuid";
 import logger from "@/lib/logger";
 import { UrmindDB } from "@/types/database";
-import { PageIndexingSemanticSearchThreshold } from "@/constant/internal";
 import { semanticCache } from "@/services/semantic-cache.service";
 import { semanticCacheStore } from "@/store/semantic-cache.store";
-import { GenerateCategoryPrompt } from "@/data/prompt/system/save-to-urmind.system";
+import {
+  GenerateCategoryPrompt,
+  TextContextCreatorPrompt,
+} from "@/data/prompt/system/save-to-urmind.system";
 
 export type SaveToUrMindPayload = {
   categorySlug?: string; // this would be available if the user tries save context directly via mindboard
@@ -65,10 +61,14 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
       return;
     }
 
+    // Generate contextId early so we can use it for cache operations
+    const contextId = shortId.generate();
+
     const shouldProcess = await semanticCache.shouldProcessContent(
       selectedText,
       tabId,
-      cleanUrl
+      cleanUrl,
+      contextId
     );
     if (!shouldProcess) {
       logger.warn(
@@ -87,7 +87,9 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
       return;
     }
 
-    const contextId = shortId.generate();
+    // Generate context metadata using LLM
+    const contextResponse = await generateTextContext(selectedText);
+
     const genericContextData: Omit<
       UrmindDB["contexts"]["value"],
       "createdAt" | "updatedAt" | "categorySlug"
@@ -96,15 +98,11 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
       fingerprint,
       contentFingerprint,
       type: "text",
-      title: "",
-      description: "",
-      summary: selectedText,
-      og: {
-        title: null,
-        description: null,
-        image: null,
-        favicon: null,
-      },
+      title: contextResponse.context.title,
+      description: contextResponse.context.description,
+      summary: contextResponse.context.summary,
+      rawContent: selectedText,
+      og: null,
       url: cleanUrl,
       fullUrl: url,
       image: null,
@@ -113,6 +111,9 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
     };
 
     let matchedCategorySlug: string | null = null;
+
+    // If category slug is provided,
+    // It means the user tries saving context within mindboard
     if (categorySlug) {
       matchedCategorySlug = categorySlug;
       const contextData: Omit<
@@ -200,9 +201,9 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
           score: similarContexts?.[0]?.score ?? 0,
           cleanUrl,
           content: selectedText,
+          contextId,
         });
       } else {
-        const contextId = shortId.generate();
         const { category } = await generateCategory(selectedText);
 
         if (!urmindDb.contextCategories) {
@@ -243,6 +244,7 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
           score: similarContexts?.[0]?.score ?? 0,
           cleanUrl,
           content: selectedText,
+          contextId,
         });
       }
     }
@@ -253,14 +255,15 @@ async function cacheContent(props: {
   content: string;
   cleanUrl: string;
   score: number;
+  contextId: string;
 }) {
-  const { content, cleanUrl, score } = props;
+  const { content, cleanUrl, score, contextId } = props;
   const semanticSignature = await semanticCache.generateSemanticSignature(
     content
   );
   const urlFingerprint = md5Hash(cleanUrl);
   const signatureKey = `${urlFingerprint}:${semanticSignature}`;
-  await semanticCacheStore.addSignature(signatureKey, score ?? 0);
+  await semanticCacheStore.addSignature(signatureKey, contextId, score ?? 0);
 }
 
 async function generateCategory(text: string) {
@@ -330,5 +333,82 @@ async function generateWithLocalModel(text: string): Promise<string> {
   const result = await chromeAi.invoke(GenerateCategoryPrompt(text));
 
   logger.log("✅ Local category generation completed");
+  return result;
+}
+
+async function generateTextContext(text: string) {
+  return await retry(
+    async () => {
+      const preferences = await preferencesStore.get();
+
+      let llmResponse: string;
+
+      // Try online model first if API key is available
+      if (preferences.geminiApiKey?.trim()) {
+        try {
+          llmResponse = await generateTextContextWithOnlineModel(
+            text,
+            preferences
+          );
+        } catch (onlineError) {
+          console.warn(
+            "Online model failed, falling back to local model:",
+            onlineError
+          );
+          llmResponse = await generateTextContextWithLocalModel(text);
+        }
+      } else {
+        llmResponse = await generateTextContextWithLocalModel(text);
+      }
+
+      const sanitizedResponse = cleanLLMResponse({
+        response: llmResponse,
+        requiredFields: ["context"],
+        preserveFormatting: false,
+      }) as unknown as {
+        context: { title: string; description: string; summary: string };
+      };
+
+      logger.info("Text context generation response:", sanitizedResponse);
+      return sanitizedResponse;
+    },
+    {
+      retries: 3,
+      factor: 1,
+      minTimeout: 1000,
+      maxTimeout: 5000,
+      onRetry: (error, attempt) => {
+        logger.error(`🔄 Text context generation retry ${attempt}:`, error);
+      },
+    }
+  );
+}
+
+async function generateTextContextWithOnlineModel(
+  text: string,
+  preferences: any
+): Promise<string> {
+  const genAI = geminiAi(preferences.geminiApiKey);
+  const modelName = ai_models.generation.gemini_flash; // Always use Flash for online generation
+
+  logger.log(`🤖 Using online model for text context generation: ${modelName}`);
+
+  const result = await generateText({
+    model: genAI(modelName),
+    prompt: TextContextCreatorPrompt(text),
+  });
+
+  logger.log("✅ Online text context generation completed");
+  return result.text;
+}
+
+async function generateTextContextWithLocalModel(
+  text: string
+): Promise<string> {
+  logger.log("🏠 Using local ChromeAI for text context generation");
+
+  const result = await chromeAi.invoke(TextContextCreatorPrompt(text));
+
+  logger.log("✅ Local text context generation completed");
   return result;
 }

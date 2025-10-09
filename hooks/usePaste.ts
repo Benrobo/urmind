@@ -1,14 +1,25 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 const usePaste = () => {
   const [pastedText, setPastedText] = useState("");
 
   const handlePaste = useCallback(
     (event: React.ClipboardEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLElement;
+      const isInputElement =
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.contentEditable === "true" ||
+        target.closest("input, textarea, [contenteditable='true']");
+
+      if (isInputElement) return;
+
       const pastedData = event.clipboardData.getData("text");
-      setPastedText(pastedData);
+      if (pastedData && pastedData.trim() !== "") {
+        setPastedText(pastedData);
+      }
     },
-    [pastedText]
+    []
   );
 
   useEffect(() => {

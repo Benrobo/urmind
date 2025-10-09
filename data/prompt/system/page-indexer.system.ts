@@ -43,7 +43,7 @@ ${
     },
     "title": "string",  // VERY SHORT, READABLE TITLE (2-6 words max) DESCRIBING WHAT THIS CONTEXT IS ABOUT
     "description": "string",  // DESCRIPTION OF THE CONTEXT
-    "summary": "string" // DETAILED SUMMARY WITH ALL IMPORTANT INFORMATION.
+    "summary": "string", // DETAILED SUMMARY WITH ALL IMPORTANT INFORMATION.
   } | null,
   "retentionDecision": {"keep": boolean, "reason": "string"}
 }

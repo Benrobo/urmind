@@ -13,6 +13,8 @@ export function ImageWithFallback({ src, className }: ImageWithFallbackProps) {
     "loading"
   );
 
+  const isOptionsPage = window.location.pathname === "/options.html";
+
   useEffect(() => {
     if (!src) {
       setStatus("error");
@@ -84,7 +86,9 @@ export function ImageWithFallback({ src, className }: ImageWithFallbackProps) {
     // return <Globe className="w-[32px] h-[32px] text-gray-400" />;
     return (
       <img
-        src={chrome.runtime.getURL("icons/icon32.png")}
+        src={
+          isOptionsPage ? chrome.runtime.getURL("icons/icon32.png") : urmindLogo
+        }
         alt="Favicon"
         className={cn("w-full h-full object-contain", className)}
         onError={() => setStatus("error")}

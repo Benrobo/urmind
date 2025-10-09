@@ -1,17 +1,42 @@
-import React, { useState, useEffect } from "react";
-import { Search, Plus } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Search,
+  Plus,
+  MoreHorizontal,
+  Edit,
+  Trash2,
+  X,
+  CheckCheck,
+} from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import useContextCategories from "@/hooks/useContextCategories";
 import { cn, shortenText } from "@/lib/utils";
 import { ImageWithFallback } from "../ImageWithFallback";
 import { mindboardStore } from "@/store/mindboard.store";
 import useStorageStore from "@/hooks/useStorageStore";
+import { sendMessageToBackgroundScriptWithResponse } from "@/helpers/messaging";
+import useClickOutside from "@/hooks/useClickOutside";
+import DeleteConfirmationModal from "./DeleteConfirmationModal";
 
 export default function MindBoardSidebar() {
   const { value: mindboardState } = useStorageStore(mindboardStore);
   const [searchQuery, setSearchQuery] = useState("");
-  const { categories, loading } = useContextCategories({ query: searchQuery });
+  const { categories, loading, refetch } = useContextCategories({
+    query: searchQuery,
+  });
   const [selectedCategory, setSelectedCategory] = useState<string | null>();
+  const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
+  const [showPopover, setShowPopover] = useState<string | null>(null);
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Use click outside hook to close popover
+  const popoverClickOutsideRef = useClickOutside<HTMLDivElement>(() => {
+    setShowPopover(null);
+  });
 
   useEffect(() => {
     if (selectedCategory) {
@@ -30,6 +55,129 @@ export default function MindBoardSidebar() {
       setSelectedCategory(null);
     } else {
       setSelectedCategory(categorySlug);
+    }
+  };
+
+  const handleDeleteCategory = (category: any) => {
+    setCategoryToDelete(category);
+    setDeleteModalOpen(true);
+    setShowPopover(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!categoryToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      // Delete all contexts in this category
+      await sendMessageToBackgroundScriptWithResponse({
+        action: "db-operation",
+        payload: {
+          operation: "deleteContextsByCategory",
+          data: { categorySlug: categoryToDelete.id },
+        },
+      });
+
+      // Delete the category itself
+      await sendMessageToBackgroundScriptWithResponse({
+        action: "db-operation",
+        payload: {
+          operation: "deleteCategory",
+          data: { categorySlug: categoryToDelete.id },
+        },
+      });
+
+      // Refetch categories to update the UI first
+      await refetch();
+
+      // Handle selection if this category was selected
+      if (selectedCategory === categoryToDelete.id) {
+        // Get the updated categories list after refetch
+        const updatedCategories =
+          await sendMessageToBackgroundScriptWithResponse({
+            action: "db-operation",
+            payload: {
+              operation: "getAllContextCategories",
+            },
+          });
+
+        const categoriesList = (updatedCategories?.result as any[]) || [];
+        if (categoriesList.length > 0) {
+          // Select the first available category
+          const firstCategory = categoriesList[0];
+          setSelectedCategory(firstCategory.slug);
+          await mindboardStore.setSelectedCategory(firstCategory.slug);
+        } else {
+          // No categories left, clear selection
+          setSelectedCategory(null);
+          await mindboardStore.clearSelectedCategory();
+        }
+      }
+
+      setDeleteModalOpen(false);
+      setCategoryToDelete(null);
+    } catch (error) {
+      console.error("Failed to delete category:", error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCreateCategory = async () => {
+    try {
+      await sendMessageToBackgroundScriptWithResponse({
+        action: "db-operation",
+        payload: {
+          operation: "createCategory",
+          data: {
+            label: "Untitled",
+            slug: "untitled",
+          },
+        },
+      });
+
+      await refetch();
+    } catch (error) {
+      console.error("Failed to create category:", error);
+    }
+  };
+
+  const handleEditCategory = (category: any) => {
+    setEditingCategory(category.id);
+    setEditName(category.name);
+    setShowPopover(null);
+  };
+
+  const handleSaveEdit = async (categorySlug: string) => {
+    try {
+      let updates: { label: string; slug?: string } = { label: editName };
+
+      if (categorySlug === "untitled") {
+        const newSlug = editName
+          .toLowerCase()
+          .replace(/\s+/g, "-")
+          .replace(/[^a-z0-9-]/g, "");
+        updates.slug = newSlug;
+      }
+
+      await sendMessageToBackgroundScriptWithResponse({
+        action: "db-operation",
+        payload: {
+          operation: "updateCategory",
+          data: {
+            categorySlug,
+            updates,
+          },
+        },
+      });
+
+      await refetch();
+
+      setEditingCategory(null);
+      setEditName("");
+    } catch (error) {
+      console.error("Failed to update category:", error);
+      await refetch();
     }
   };
 
@@ -92,7 +240,10 @@ export default function MindBoardSidebar() {
           <h2 className="text-white/50 text-sm font-medium uppercase tracking-wide">
             Categories
           </h2>
-          <button className="text-white/50 hover:text-white transition-colors">
+          <button
+            onClick={handleCreateCategory}
+            className="text-white/50 hover:text-white transition-colors"
+          >
             <Plus className="w-4 h-4" />
           </button>
         </div>
@@ -118,7 +269,7 @@ export default function MindBoardSidebar() {
                 className="space-y-2"
               >
                 {categories.map((category: any, index: number) => (
-                  <motion.button
+                  <motion.div
                     key={category.id}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -128,31 +279,129 @@ export default function MindBoardSidebar() {
                       delay: index * 0.02,
                       ease: "easeOut",
                     }}
-                    onClick={() => handleCategorySelect(category.id)}
-                    className={cn(
-                      "w-full flex items-center text-start gap-3 px-3 py-2 rounded-lg transition-all duration-200 enableBounceEffect",
-                      selectedCategory === category.id
-                        ? "bg-white/10"
-                        : "hover:bg-white/10"
-                    )}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    className="relative"
+                    onMouseEnter={() => setHoveredCategory(category.id)}
+                    onMouseLeave={() => {
+                      // Only clear hover if popover is not active for this category
+                      if (showPopover !== category.id) {
+                        setHoveredCategory(null);
+                      }
+                    }}
                   >
-                    <motion.div
-                      className="w-4 h-4 rounded flex-shrink-0"
-                      style={{ backgroundColor: category.color }}
-                      whileHover={{ scale: 1.1 }}
-                      transition={{ duration: 0.2 }}
-                    />
-                    <span
-                      className={cn(
-                        "text-white font-medium",
-                        "text-xs text-nowrap"
-                      )}
-                    >
-                      {shortenText(category.name, 28)}
-                    </span>
-                  </motion.button>
+                    {editingCategory === category.id ? (
+                      <div className="flex items-center gap-2 px-3 py-2">
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleSaveEdit(category.id);
+                            } else if (e.key === "Escape") {
+                              setEditingCategory(null);
+                              setEditName("");
+                            }
+                          }}
+                          className="flex-1 bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => handleSaveEdit(category.id)}
+                          className="text-green-400 hover:text-green-300 p-1 rounded transition-colors"
+                          title="Save"
+                        >
+                          <CheckCheck size={14} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingCategory(null);
+                            setEditName("");
+                          }}
+                          className="text-red-305 hover:text-red-400 p-1 rounded transition-colors"
+                          title="Cancel"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <motion.button
+                        onClick={() => handleCategorySelect(category.id)}
+                        className={cn(
+                          "w-full flex items-center text-start gap-3 px-3 py-2 rounded-lg transition-all duration-200 enableBounceEffect",
+                          selectedCategory === category.id ||
+                            showPopover === category.id
+                            ? "bg-white/10"
+                            : "hover:bg-white/10"
+                        )}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <motion.div
+                          className="w-4 h-4 rounded flex-shrink-0"
+                          style={{ backgroundColor: category.color }}
+                          whileHover={{ scale: 1.1 }}
+                          transition={{ duration: 0.2 }}
+                        />
+                        <span
+                          className={cn(
+                            "text-white font-medium flex-1",
+                            "text-xs text-nowrap"
+                          )}
+                        >
+                          {shortenText(category.name, 20)}
+                        </span>
+
+                        <motion.button
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowPopover(
+                              showPopover === category.id ? null : category.id
+                            );
+                          }}
+                          className={cn(
+                            "text-white/50 hover:text-white transition-colors p-1",
+                            hoveredCategory === category.id ||
+                              showPopover === category.id
+                              ? "opacity-100"
+                              : "opacity-0"
+                          )}
+                        >
+                          <MoreHorizontal size={14} />
+                        </motion.button>
+                      </motion.button>
+                    )}
+
+                    {/* Popover */}
+                    {showPopover === category.id && (
+                      <motion.div
+                        ref={popoverClickOutsideRef}
+                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                        className="absolute right-0 top-full mt-1 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg shadow-lg z-50 min-w-[120px]"
+                      >
+                        <div className="py-1">
+                          <button
+                            onClick={() => handleEditCategory(category)}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-white hover:bg-white/10 transition-colors"
+                          >
+                            <Edit size={14} />
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCategory(category)}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-white/60 hover:bg-white/10 transition-colors"
+                          >
+                            <Trash2 size={14} />
+                            Delete
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </motion.div>
                 ))}
               </motion.div>
             </AnimatePresence>
@@ -184,6 +433,18 @@ export default function MindBoardSidebar() {
           <span className="text-xs text-white/40">UrMind v1.0.0</span>
         </motion.div>
       </motion.div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setCategoryToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        contextTitle={categoryToDelete?.name || "this category"}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }

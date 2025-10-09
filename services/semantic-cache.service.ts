@@ -9,7 +9,8 @@ export class SemanticAwareCache {
   async shouldProcessContent(
     batch: string,
     tabId: number,
-    url: string
+    url: string,
+    contextId: string
   ): Promise<boolean> {
     try {
       const semanticSignature = await this.generateSemanticSignature(batch);
@@ -37,7 +38,7 @@ export class SemanticAwareCache {
       if (!shouldProcess) {
         const topResult = searchResults[0];
         const score = topResult ? topResult.score : 0;
-        await semanticCacheStore.addSignature(signatureKey, score);
+        await semanticCacheStore.addSignature(signatureKey, contextId, score);
         logger.warn(
           `💾 Cached negative result for future reference (score: ${score})`
         );
@@ -108,6 +109,10 @@ export class SemanticAwareCache {
 
   async getCacheStats(): Promise<{ size: number; signatures: string[] }> {
     return await semanticCacheStore.getCacheStats();
+  }
+
+  async deleteCacheEntriesByContextId(contextId: string): Promise<void> {
+    await semanticCacheStore.deleteByContextId(contextId);
   }
 }
 

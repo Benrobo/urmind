@@ -2,6 +2,7 @@ import { StorageStore } from "@/helpers/storage-store";
 
 type CacheEntry = {
   signature: string;
+  contextId: string;
   score: number;
   timestamp: number;
 };
@@ -11,10 +12,15 @@ export class SemanticCacheStore extends StorageStore<CacheEntry[]> {
     super("local:semantic_cache_signatures", []);
   }
 
-  async addSignature(signature: string, score: number): Promise<void> {
+  async addSignature(
+    signature: string,
+    contextId: string,
+    score: number
+  ): Promise<void> {
     const currentEntries = await this.get();
     const newEntry: CacheEntry = {
       signature,
+      contextId,
       score,
       timestamp: Date.now(),
     };
@@ -49,6 +55,22 @@ export class SemanticCacheStore extends StorageStore<CacheEntry[]> {
 
   async clearCache(): Promise<void> {
     await this.set([]);
+  }
+
+  async deleteSignature(signature: string): Promise<void> {
+    const currentEntries = await this.get();
+    const filteredEntries = currentEntries.filter(
+      (entry) => entry.signature !== signature
+    );
+    await this.set(filteredEntries);
+  }
+
+  async deleteByContextId(contextId: string): Promise<void> {
+    const currentEntries = await this.get();
+    const filteredEntries = currentEntries.filter(
+      (entry) => entry.contextId !== contextId
+    );
+    await this.set(filteredEntries);
   }
 
   async getCacheStats(): Promise<{ size: number; signatures: string[] }> {

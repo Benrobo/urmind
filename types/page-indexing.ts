@@ -7,6 +7,7 @@ export type PageIndexerResponse = {
     title: string;
     description: string;
     summary: string;
+    rawContent: string;
   } | null;
   retentionDecision: {
     keep: boolean;

@@ -38,6 +38,17 @@ export class EmbeddingsStore {
     await this.db.delete("embeddings", id);
   }
 
+  async deleteEmbeddingsByContextId(contextId: string): Promise<void> {
+    const embeddings = await this.getAll();
+    const contextEmbeddings = embeddings.filter(
+      (embedding) => embedding.metadata?.contextId === contextId
+    );
+
+    for (const embedding of contextEmbeddings) {
+      await this.delete(embedding.id);
+    }
+  }
+
   /**
    * Generate embedding for text using content script
    * Background -> Content: Generate embedding

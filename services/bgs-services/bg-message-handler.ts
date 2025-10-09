@@ -24,6 +24,10 @@ type BgScriptMessageHandlerOperations =
   | "getAllContextCategories"
   | "getContextsByCategory"
   | "deleteContext"
+  | "deleteContextsByCategory"
+  | "deleteCategory"
+  | "updateCategory"
+  | "createCategory"
   | "createConversation"
   | "updateMessageContent"
   | "updateMessageInConversation"
@@ -211,6 +215,60 @@ export class BackgroundMessageHandler {
             throw new Error("Context ID is required for deleteContext");
           }
           result = await urmindDb.contexts.deleteContext(data.id);
+          break;
+
+        case "deleteContextsByCategory":
+          if (!urmindDb.contexts) {
+            throw new Error("Contexts service not available");
+          }
+          if (!data?.categorySlug) {
+            throw new Error(
+              "Category slug is required for deleteContextsByCategory"
+            );
+          }
+          result = await urmindDb.contexts.deleteContextsByCategory(
+            data.categorySlug
+          );
+          break;
+
+        case "deleteCategory":
+          if (!urmindDb.contextCategories) {
+            throw new Error("Context categories service not available");
+          }
+          if (!data?.categorySlug) {
+            throw new Error("Category slug is required for deleteCategory");
+          }
+          result = await urmindDb.contextCategories.deleteCategory(
+            data.categorySlug
+          );
+          break;
+
+        case "updateCategory":
+          if (!urmindDb.contextCategories) {
+            throw new Error("Context categories service not available");
+          }
+          if (!data?.categorySlug || !data?.updates) {
+            throw new Error(
+              "Category slug and updates are required for updateCategory"
+            );
+          }
+          result = await urmindDb.contextCategories.updateCategory(
+            data.categorySlug,
+            data.updates
+          );
+          break;
+
+        case "createCategory":
+          if (!urmindDb.contextCategories) {
+            throw new Error("Context categories service not available");
+          }
+          if (!data?.label || !data?.slug) {
+            throw new Error("Label and slug are required for createCategory");
+          }
+          result = await urmindDb.contextCategories.createCategory({
+            label: data.label,
+            slug: data.slug,
+          });
           break;
 
         case "semanticSearch":

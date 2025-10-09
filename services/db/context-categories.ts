@@ -54,7 +54,7 @@ export class ContextCategoriesService {
    */
   async updateCategory(
     slug: string,
-    updates: Partial<Omit<ContextCategory, "slug" | "createdAt">>
+    updates: Partial<Omit<ContextCategory, "createdAt">>
   ): Promise<void> {
     const existing = await this.getCategoryBySlug(slug);
     if (!existing) {
@@ -73,8 +73,15 @@ export class ContextCategoriesService {
     );
     const store = transaction.objectStore("context_categories");
 
-    await store.put(updatedCategory);
-    logger.info("✅ Category updated:", slug);
+    // If slug is being changed, delete the old one and add the new one
+    if (updates.slug && updates.slug !== slug) {
+      await store.delete(slug);
+      await store.add(updatedCategory);
+      logger.info("✅ Category updated with new slug:", updates.slug);
+    } else {
+      await store.put(updatedCategory);
+      logger.info("✅ Category updated:", slug);
+    }
   }
 
   /**

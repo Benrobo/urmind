@@ -20,7 +20,7 @@ export default function SourcesDisplay({ message }: SourcesDisplayProps) {
           >
             <div className="max-w-[20px] rounded-full mr-1">
               <ImageWithFallback
-                src={ctx.og.favicon!}
+                src={ctx.og?.favicon ?? null}
                 className="object-contain min-w-[20px] min-h-[20px] rounded-full"
               />
             </div>

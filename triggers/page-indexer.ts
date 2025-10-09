@@ -8,7 +8,6 @@ import { generateText, streamText } from "ai";
 import { ai_models } from "@/constant/internal";
 import { md5Hash, cleanUrlForFingerprint } from "@/lib/utils";
 import urmindDb from "@/services/db";
-import { embeddingHelper } from "@/services/embedding-helper";
 import { InitialContextCreatorPrompt } from "@/data/prompt/system/page-indexer.system";
 import retry from "async-retry";
 import cleanLLMResponse from "@/helpers/clean-llm-response";
@@ -29,8 +28,6 @@ type PageIndexerPayload = {
 const pageIndexerJob: Task<PageIndexerPayload> = task<PageIndexerPayload>({
   id: "page-indexer",
   run: async (payload: PageIndexerPayload) => {
-    return console.log("🛑 STOPPED FOR NOW");
-
     const { url, pageMetadata, tabId } = payload;
     logger.log("🔍 Indexing page:", url);
     logger.log("📄 Page metadata:", pageMetadata);
@@ -52,7 +49,7 @@ const pageIndexerJob: Task<PageIndexerPayload> = task<PageIndexerPayload>({
       }
 
       await processTextBatch({
-        batch,
+        batch: batch as string,
         batchIndex: i,
         totalBatches: pageMetadata.pageContentBatches.length,
         pageMetadata,
@@ -103,10 +100,13 @@ async function processTextBatch(props: {
     return;
   }
 
+  const contextId = shortId.generate();
+
   const shouldProcess = await semanticCache.shouldProcessContent(
     batch,
     tabId,
-    cleanUrl
+    cleanUrl,
+    contextId
   );
   if (!shouldProcess) {
     logger.warn(
@@ -123,8 +123,7 @@ async function processTextBatch(props: {
     existingContext
   );
 
-  // Perform semantic search using messaging
-  const searchText = `${contextResponse.context?.title} ${contextResponse.context?.description} ${contextResponse.context?.summary}`;
+  const searchText = `${contextResponse.context?.title} ${contextResponse.context?.description} ${contextResponse.context?.rawContent}`;
 
   if (!urmindDb.embeddings) {
     logger.error("❌ Embeddings service not available");
@@ -151,20 +150,48 @@ async function processTextBatch(props: {
   logger.info(`🔍 Semantic search results:`, semanticSearchResults);
   logger.info(`🔍 Closely similar contexts:`, similarContexts);
 
+  // Check for very high similarity (0.9+) - update existing context instead of creating new one
+  const verySimilarContext = semanticSearchResults?.find((c) => c.score >= 0.9);
+  if (verySimilarContext) {
+    logger.warn(
+      `🚨 Very high similarity (${verySimilarContext.score}) - updating existing context instead of creating new one`
+    );
+
+    await updateExistingContext(
+      verySimilarContext.id,
+      {
+        title: contextResponse.context?.title || verySimilarContext.title,
+        description:
+          contextResponse.context?.description ||
+          verySimilarContext.description,
+        summary: contextResponse.context?.summary || verySimilarContext.summary,
+        rawContent: contextResponse.context?.rawContent || batch,
+      },
+      tabId,
+      cleanUrl,
+      verySimilarContext.categorySlug
+    );
+
+    // Cache this content to prevent reprocessing
+    await cacheContent({
+      score: verySimilarContext.score,
+      cleanUrl,
+      content: batch,
+      contextId,
+    });
+
+    return;
+  }
+
   let matchedCategorySlug: string | null = null;
   if (similarContexts?.length > 0) {
-    if (similarContexts?.length > 0) {
-      matchedCategorySlug = similarContexts?.[0]?.categorySlug || null;
-      logger.info(
-        `🔍 Matched context: ${similarContexts?.[0]?.categorySlug} with score: ${similarContexts?.[0]?.score}`
-      );
-    }
+    matchedCategorySlug = similarContexts?.[0]?.categorySlug || null;
+    logger.info(
+      `🔍 Matched context: ${similarContexts?.[0]?.categorySlug} with score: ${similarContexts?.[0]?.score}`
+    );
   }
 
   if (contextResponse.retentionDecision.keep && contextResponse.context) {
-    const contextId = shortId.generate();
-
-    // Get or create category
     const categoryLabel = matchedCategorySlug
       ? await getCategoryLabelBySlug(matchedCategorySlug)
       : contextResponse.context.category.label;
@@ -173,7 +200,6 @@ async function processTextBatch(props: {
       matchedCategorySlug ||
       contextResponse.context.category.slug.toLowerCase().replace(/\s/g, "-");
 
-    // Ensure category exists in context_categories table
     if (!urmindDb.contextCategories) {
       throw new Error("Context categories service not available");
     }
@@ -195,6 +221,7 @@ async function processTextBatch(props: {
       title: contextResponse.context.title,
       description: contextResponse.context.description,
       summary: contextResponse.context.summary,
+      rawContent: contextResponse.context.rawContent,
       og: {
         title: pageMetadata.og.title,
         description: pageMetadata.og.description,
@@ -212,21 +239,13 @@ async function processTextBatch(props: {
       logger.info("💾 Creating new text context:", contextData);
       await createContextWithEmbedding(contextData, cleanUrl, tabId);
 
-      if (matchedCategorySlug) {
-        logger.warn(
-          "🔍 Caching content so that it doesn't get processed again"
-        );
-        // cache this content so that it doesn't get processed again
-        const semanticSignature = await semanticCache.generateSemanticSignature(
-          batch
-        );
-        const urlFingerprint = md5Hash(cleanUrl);
-        const signatureKey = `${urlFingerprint}:${semanticSignature}`;
-        await semanticCacheStore.addSignature(
-          signatureKey,
-          similarContexts?.[0]?.score ?? 0
-        );
-      }
+      // Always cache content after processing to prevent reprocessing
+      await cacheContent({
+        score: similarContexts?.[0]?.score ?? 0,
+        cleanUrl,
+        content: batch,
+        contextId,
+      });
     } catch (error) {
       logger.error("❌ Failed to create text context:", error);
     }
@@ -253,13 +272,20 @@ async function getCategoryLabelBySlug(slug: string): Promise<string> {
   return category?.label || slug;
 }
 
-type ContextWithEmbedding = {
-  id: string;
-  title: string;
-  description: string;
-  summary: string;
-  embedding?: number[];
-};
+async function cacheContent(props: {
+  content: string;
+  cleanUrl: string;
+  score: number;
+  contextId: string;
+}) {
+  const { content, cleanUrl, score, contextId } = props;
+  const semanticSignature = await semanticCache.generateSemanticSignature(
+    content
+  );
+  const urlFingerprint = md5Hash(cleanUrl);
+  const signatureKey = `${urlFingerprint}:${semanticSignature}`;
+  await semanticCacheStore.addSignature(signatureKey, contextId, score ?? 0);
+}
 
 async function getExistingContext(
   fingerprint: string
@@ -303,7 +329,7 @@ async function createContextWithEmbedding(
       return newContextId;
     }
 
-    const embeddingText = `${contextData.title} ${contextData.description} ${contextData.summary}`;
+    const embeddingText = `${contextData.title} ${contextData.description} ${contextData.rawContent}`;
     await urmindDb.embeddings.generateAndStore(embeddingText, tabId, {
       contextId: newContextId,
       type: "context",
@@ -329,6 +355,58 @@ async function createContextWithEmbedding(
   }
 
   return newContextId;
+}
+
+/**
+ * Update existing context with new content
+ */
+async function updateExistingContext(
+  contextId: string,
+  updates: {
+    title: string;
+    description: string;
+    summary: string;
+    rawContent: string;
+  },
+  tabId: number,
+  cleanUrl: string,
+  categorySlug: string
+): Promise<void> {
+  if (!urmindDb.contexts) {
+    logger.error("❌ Contexts service not available");
+    return;
+  }
+
+  try {
+    // Update the context
+    await urmindDb.contexts.updateContext(contextId, {
+      title: updates.title,
+      description: updates.description,
+      summary: updates.summary,
+      rawContent: updates.rawContent,
+    });
+    logger.info("✅ Updated existing context:", contextId);
+
+    // Delete old embedding
+    if (urmindDb.embeddings) {
+      await urmindDb.embeddings.deleteEmbeddingsByContextId(contextId);
+      logger.info("🗑️ Deleted old embedding for context:", contextId);
+    }
+
+    // Generate new embedding with updated content
+    if (urmindDb.embeddings) {
+      const embeddingText = `${updates.title} ${updates.description} ${updates.rawContent}`;
+      await urmindDb.embeddings.generateAndStore(embeddingText, tabId, {
+        contextId: contextId,
+        type: "context",
+        category: categorySlug,
+        url: cleanUrl,
+      });
+      logger.info("🔮 Generated new embedding for updated context:", contextId);
+    }
+  } catch (error) {
+    logger.error("❌ Failed to update context:", error);
+  }
 }
 
 /**

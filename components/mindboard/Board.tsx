@@ -45,10 +45,10 @@ export default function MindboardCanvas() {
     refetchContexts,
   } = useMindboardContext();
 
-  const { handlePaste, pastedText, clearPastedText } = usePaste();
+  const { pastedText, clearPastedText } = usePaste();
 
   useEffect(() => {
-    if (pastedText && pastedText.trim() !== "") {
+    if (pastedText && pastedText.trim() !== "" && selectedCategory) {
       const activeCategory = selectedCategory;
       sendMessageToBackgroundScript({
         action: "save-to-urmind",
@@ -60,9 +60,6 @@ export default function MindboardCanvas() {
           selectedText: pastedText,
         },
       });
-
-      // dont clear the pasted text for now as this would prevent pasting same text multiple times.
-      // clearPastedText();
 
       // TODO: After pasting, show a promise toast inside the mindboard with loading animation
       // which tells the user that the content is being processed.
@@ -152,7 +149,7 @@ export default function MindboardCanvas() {
 
   return (
     <>
-      <div className="w-[calc(100%-250px)] h-screen" onPaste={handlePaste}>
+      <div className="w-[calc(100%-250px)] h-screen">
         <ReactFlow
           nodes={nodes}
           // edges={edges}

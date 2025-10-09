@@ -28,12 +28,12 @@ export default function Sources({ sources }: SourcesProps) {
             <div className="w-full text-start flex flex-col items-start justify-start">
               <div className="w-full flex items-center justify-between gap-1">
                 <div className="w-[33px] h-[32px] rounded-full overflow-hidden bg-dark-102">
-                  <ImageWithFallback src={s.og.favicon!} />
+                  <ImageWithFallback src={s.og?.favicon ?? null} />
                 </div>
                 <div className="w-full flex flex-col items-start justify-start">
                   <div className="w-full flex flex-nowrap items-center justify-start gap-4">
                     <span className="text-white-100 text-[11px] font-medium">
-                      {shortenText(s.og.title ?? "", 70)}
+                      {shortenText(s.og?.title ?? "", 70)}
                     </span>
                     {/* tag */}
                     <span className="text-[8px] px-1 py-[2px] rounded-full bg-white-100/10 text-white-100 border border-white-100/10">
