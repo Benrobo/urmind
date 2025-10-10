@@ -28,16 +28,13 @@ import { geminiAi } from "@/helpers/agent/utils";
 import { generateText } from "ai";
 import { ai_models } from "@/constant/internal";
 import Accordion from "@/components/Accordion";
+import toast, { Toaster } from "react-hot-toast";
 
 export default function Popup() {
   const { value: preferences } = useStorageStore(preferencesStore);
 
   const [localApiKey, setLocalApiKey] = useState(preferences.geminiApiKey);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">(
-    "idle"
-  );
-  const [dismissTimer, setDismissTimer] = useState<NodeJS.Timeout | null>(null);
   const [setupAccordionOpen, setSetupAccordionOpen] = useState(true);
   const [modeAccordionOpen, setModeAccordionOpen] = useState(false);
   const [timingAccordionOpen, setTimingAccordionOpen] = useState(false);
@@ -67,35 +64,10 @@ export default function Popup() {
     }
   }, [preferences.tabTiming]);
 
-  // Auto-dismiss success messages
-  useEffect(() => {
-    if (saveStatus === "success") {
-      // Clear any existing timer
-      if (dismissTimer) {
-        clearTimeout(dismissTimer);
-      }
-
-      // Set new timer to dismiss after 3 seconds
-      const timer = setTimeout(() => {
-        setSaveStatus("idle");
-        setDismissTimer(null);
-      }, 3000);
-
-      setDismissTimer(timer);
-    }
-
-    // Cleanup timer on unmount or status change
-    return () => {
-      if (dismissTimer) {
-        clearTimeout(dismissTimer);
-      }
-    };
-  }, [saveStatus, dismissTimer]);
-
   const handleGenerationStyleChange = async (style: GenerationStyle) => {
     // Prevent switching to online mode without API key
     if (style === "online" && !preferences.geminiApiKey.trim()) {
-      setSaveStatus("error");
+      toast.error("API key is required for online mode");
       return;
     }
     await preferencesStore.setGenerationStyle(style);
@@ -118,30 +90,31 @@ export default function Popup() {
 
   const handleSaveApiKey = async () => {
     setIsSaving(true);
-    setSaveStatus("idle");
 
-    try {
-      if (!localApiKey.trim()) {
-        setSaveStatus("error");
-        return;
-      }
+    toast
+      .promise(
+        async () => {
+          if (!localApiKey.trim()) {
+            throw new Error("API key is required");
+          }
 
-      // Test API key before saving
-      const isValid = await testApiKey(localApiKey);
-      if (!isValid) {
-        setSaveStatus("error");
-        return;
-      }
+          // Test API key before saving
+          const isValid = await testApiKey(localApiKey);
+          if (!isValid) {
+            throw new Error("API key test failed");
+          }
 
-      await preferencesStore.setGeminiApiKey(localApiKey);
-      setSaveStatus("success");
-    } catch (error) {
-      console.error("Failed to save API key:", error);
-      setSaveStatus("error");
-    } finally {
-      await sleep(1000);
-      setIsSaving(false);
-    }
+          await preferencesStore.setGeminiApiKey(localApiKey);
+        },
+        {
+          loading: "Testing API key...",
+          success: "API key saved successfully!",
+          error: (err) => `API key test failed: ${err.message}`,
+        }
+      )
+      .finally(() => {
+        setIsSaving(false);
+      });
   };
 
   const handleTimingChange = (timing: TabTimingPreferences) => {
@@ -451,50 +424,6 @@ export default function Popup() {
             </div>
           </div>
         </Accordion>
-
-        {/* Status Messages */}
-        {saveStatus === "success" && (
-          <div className="px-4 py-3">
-            <div className="p-3 bg-green-500/10 border border-green-400/30 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="text-xs text-white-100">
-                  ✅ API key saved successfully!
-                </div>
-                <button
-                  onClick={() => {
-                    setSaveStatus("idle");
-                    if (dismissTimer) {
-                      clearTimeout(dismissTimer);
-                      setDismissTimer(null);
-                    }
-                  }}
-                  className="text-white-100/60 hover:text-white-100 transition-colors"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {saveStatus === "error" && (
-          <div className="px-4 py-3">
-            <div className="p-3 bg-red-500/20 border border-red-400/30 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="text-xs text-red-200">
-                  ❌ API key test failed or save error. Please check your key
-                  and try again.
-                </div>
-                <button
-                  onClick={() => setSaveStatus("idle")}
-                  className="text-red-200/60 hover:text-red-200 transition-colors"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Manual Override Accordion */}
@@ -602,6 +531,33 @@ export default function Popup() {
           </div>
         </div>
       </div>
+
+      {/* Toast Notifications */}
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: "rgba(0, 0, 0, 0.8)",
+            color: "#fff",
+            border: "1px solid rgba(255, 255, 255, 0.1)",
+            borderRadius: "8px",
+            backdropFilter: "blur(10px)",
+          },
+          success: {
+            iconTheme: {
+              primary: "#10b981",
+              secondary: "#fff",
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: "#ef4444",
+              secondary: "#fff",
+            },
+          },
+        }}
+      />
     </div>
   );
 }

@@ -138,7 +138,7 @@ const DeepResearchResult = memo(
 
     // handle semantic matched contexts
     useEffect(() => {
-      if (relatedContexts.length > 0 && activeMessageId) {
+      if (relatedContexts && relatedContexts.length > 0 && activeMessageId) {
         const matchedContexts = relatedContexts.map((ctx) => ({
           id: ctx.id,
           fingerprint: ctx.fingerprint,

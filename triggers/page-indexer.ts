@@ -29,8 +29,15 @@ const pageIndexerJob: Task<PageIndexerPayload> = task<PageIndexerPayload>({
   id: "page-indexer",
   run: async (payload: PageIndexerPayload) => {
     const { url, pageMetadata, tabId } = payload;
-
+    const preferences = await preferencesStore.get();
     const indexingEnabled = await preferencesStore.getIndexingEnabled();
+    const hasApiKey = preferences?.geminiApiKey?.trim();
+
+    if (!hasApiKey) {
+      logger.warn("🚫 No API key found, skipping page indexing");
+      return;
+    }
+
     if (!indexingEnabled) {
       logger.warn("🚫 Indexing is disabled, skipping tab checks");
       return;

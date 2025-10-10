@@ -4,9 +4,6 @@ import { OmniboxHandler } from "@/services/bgs-services/omnibox-handler";
 import { ContextMenuService } from "@/services/context-menu.service";
 import { initDb } from "@/services/db";
 import { INVALID_TAB_URLS } from "@/constant/internal";
-import { sendMessageToContentScript } from "@/helpers/messaging";
-import { sleep } from "@/lib/utils";
-import logger from "@/lib/logger";
 import { tabTimingService } from "@/services/tab-timing.service";
 
 export default defineBackground(async () => {

@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { Globe } from "lucide-react";
 import { useEffect, useState } from "react";
-import urmindLogo from "~/public/icons/icon128.png";
+import urmindLogo from "~/assets/icons/icon128.png?url";
 
 type ImageWithFallbackProps = {
   src: string | null;

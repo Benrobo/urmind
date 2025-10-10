@@ -21,6 +21,10 @@ interface OpenOptionsPageMessage extends BaseProps {
   action: "openOptionsPage";
 }
 
+interface OpenPopupMessage extends BaseProps {
+  action: "openPopup";
+}
+
 interface ContentScriptReadyMessage extends BaseProps {
   action: "content-script-ready";
   payload: {
@@ -61,6 +65,7 @@ export function sendMessageToBackgroundScript(
   message:
     | NavigationDetectedMessage
     | OpenOptionsPageMessage
+    | OpenPopupMessage
     | DBOperationMessage
     | ContentScriptReadyMessage
     | PageMetadataExtractionMessage

@@ -11,6 +11,9 @@ import React, { useCallback, useState } from "react";
 import CustomLoader from "@/components/Loader";
 import { SearchContextDebounceTimeMs } from "@/constant/internal";
 import { preferencesStore } from "@/store/preferences.store";
+import useStorageStore from "@/hooks/useStorageStore";
+import { Key, Settings } from "lucide-react";
+import { sendMessageToBackgroundScript } from "@/helpers/messaging";
 
 dayjs.extend(relativeTime);
 
@@ -24,6 +27,7 @@ type SavedContextProps = {
 
 export default function SavedContext({ query, uiState }: SavedContextProps) {
   const [debouncedQuery, setDebouncedQuery] = useState(query);
+  const { value: preferences } = useStorageStore(preferencesStore);
 
   const debouncedSetQuery = useCallback(async (newQuery: string) => {
     const preferences = await preferencesStore.get();
@@ -126,6 +130,30 @@ export default function SavedContext({ query, uiState }: SavedContextProps) {
                 </button>
               );
             })
+          ) : !preferences?.geminiApiKey?.trim() ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center mb-3 border border-blue-400/30">
+                <Key size={20} className="text-blue-201" />
+              </div>
+              <h4 className="text-sm font-medium text-white mb-2">
+                API Key Required
+              </h4>
+              <p className="text-xs text-white/70 max-w-sm mb-4">
+                UrMind needs a Gemini API key to save and search your content.
+                Set it up in the popup to start building your knowledge base.
+              </p>
+              <button
+                onClick={() => {
+                  contextSpotlightVisibilityStore.hide();
+                  // Open popup using the messaging system
+                  sendMessageToBackgroundScript({ action: "openPopup" });
+                }}
+                className="flex items-center space-x-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30 text-blue-201 px-4 py-2 rounded-lg text-xs font-medium transition-colors"
+              >
+                <Settings size={14} />
+                <span>Open Settings</span>
+              </button>
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-3">

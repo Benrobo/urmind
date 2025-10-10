@@ -50,6 +50,7 @@ export type BgScriptMessageHandlerActions =
   | "save-to-urmind"
   | "navigation-detected"
   | "openOptionsPage"
+  | "openPopup"
   | "db-operation"
   | "client-operation";
 
@@ -159,6 +160,19 @@ export class BackgroundMessageHandler {
         resolve({ success: true });
       });
     });
+  }
+
+  /**
+   * Handle popup opening
+   */
+  async handleOpenPopup(): Promise<MessageResponse> {
+    try {
+      chrome.action.openPopup();
+      return { success: true };
+    } catch (error) {
+      logger.error("Failed to open popup:", error);
+      return { success: false, error: "Failed to open popup" };
+    }
   }
 
   /**
@@ -491,6 +505,10 @@ export class BackgroundMessageHandler {
 
             case "openOptionsPage":
               result = await this.handleOpenOptionsPage();
+              break;
+
+            case "openPopup":
+              result = await this.handleOpenPopup();
               break;
 
             case "db-operation":

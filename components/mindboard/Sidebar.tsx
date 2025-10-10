@@ -378,7 +378,7 @@ export default function MindBoardSidebar() {
                           {shortenText(category.name, 20)}
                         </span>
 
-                        <motion.button
+                        <motion.span
                           initial={{ opacity: 0, scale: 0.8 }}
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.8 }}
@@ -397,7 +397,7 @@ export default function MindBoardSidebar() {
                           )}
                         >
                           <MoreHorizontal size={14} />
-                        </motion.button>
+                        </motion.span>
                       </motion.button>
                     )}
 
