@@ -5,6 +5,7 @@ import { ContextMenuService } from "@/services/context-menu.service";
 import { initDb } from "@/services/db";
 import { INVALID_TAB_URLS } from "@/constant/internal";
 import { tabTimingService } from "@/services/tab-timing.service";
+import { activityManagerStore } from "@/store/activity-manager.store";
 
 export default defineBackground(async () => {
   console.log("🚀 Background script loaded");
@@ -46,6 +47,11 @@ export default defineBackground(async () => {
 
   // Initialize context menu
   await contextMenuService.createContextMenus();
+
+  // Start activity cleanup interval (every 30 seconds)
+  setInterval(async () => {
+    await activityManagerStore.cleanupOldActivities();
+  }, 5000);
 
   // Set up context menu click handling
   chrome.contextMenus.onClicked.addListener((info, tab) => {

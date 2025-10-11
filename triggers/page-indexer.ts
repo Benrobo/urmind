@@ -18,6 +18,7 @@ import { UrmindDB } from "@/types/database";
 import { PageIndexingSemanticSearchThreshold } from "@/constant/internal";
 import { semanticCache } from "@/services/semantic-cache.service";
 import { semanticCacheStore } from "@/store/semantic-cache.store";
+import { activityManagerStore } from "@/store/activity-manager.store";
 
 type PageIndexerPayload = {
   url: string;
@@ -46,6 +47,13 @@ const pageIndexerJob: Task<PageIndexerPayload> = task<PageIndexerPayload>({
     logger.log("🔍 Indexing page:", url);
     logger.log("📄 Page metadata:", pageMetadata);
 
+    // Track the indexing activity
+    const activityId = await activityManagerStore.track({
+      title: "Page Indexing",
+      description: `Indexing ${url}`,
+      status: "in-progress",
+    });
+
     const cleanUrl = cleanUrlForFingerprint(url);
     const fingerprint = md5Hash(cleanUrl);
 
@@ -54,25 +62,42 @@ const pageIndexerJob: Task<PageIndexerPayload> = task<PageIndexerPayload>({
 
     const existingContext = await getExistingContext(fingerprint);
 
-    // Process text content batches using text-based approach
-    for (let i = 0; i < pageMetadata.pageContentBatches.length; i++) {
-      const batch = pageMetadata.pageContentBatches[i];
-      if (!batch) {
-        logger.warn(`⚠️ Skipping empty batch ${i + 1}`);
-        continue;
+    try {
+      // Process text content batches using text-based approach
+      for (let i = 0; i < pageMetadata.pageContentBatches.length; i++) {
+        const batch = pageMetadata.pageContentBatches[i];
+        if (!batch) {
+          logger.warn(`⚠️ Skipping empty batch ${i + 1}`);
+          continue;
+        }
+
+        await processTextBatch({
+          batch: batch as string,
+          batchIndex: i,
+          totalBatches: pageMetadata.pageContentBatches.length,
+          pageMetadata,
+          fingerprint,
+          cleanUrl,
+          tabId,
+          existingContext,
+          fullUrl: url,
+        });
       }
 
-      await processTextBatch({
-        batch: batch as string,
-        batchIndex: i,
-        totalBatches: pageMetadata.pageContentBatches.length,
-        pageMetadata,
-        fingerprint,
-        cleanUrl,
-        tabId,
-        existingContext,
-        fullUrl: url,
+      // Mark activity as completed
+      await activityManagerStore.updateActivity(activityId, {
+        status: "completed",
+        description: `Successfully indexed ${url}`,
       });
+    } catch (error) {
+      // Mark activity as failed
+      await activityManagerStore.updateActivity(activityId, {
+        status: "failed",
+        description: `Failed to index ${url}: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      });
+      throw error;
     }
   },
   onFailure: (error: Error) => {

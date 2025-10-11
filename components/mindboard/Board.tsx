@@ -61,9 +61,6 @@ export default function MindboardCanvas() {
         },
       });
 
-      // TODO: After pasting, show a promise toast inside the mindboard with loading animation
-      // which tells the user that the content is being processed.
-
       clearPastedText();
 
       // refetch contexts

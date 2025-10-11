@@ -6,7 +6,7 @@ import {
   ai_models,
   SaveToUrmindSemanticSearchThreshold,
 } from "@/constant/internal";
-import { md5Hash, cleanUrlForFingerprint } from "@/lib/utils";
+import { md5Hash, cleanUrlForFingerprint, sleep } from "@/lib/utils";
 import urmindDb from "@/services/db";
 import retry from "async-retry";
 import cleanLLMResponse from "@/helpers/clean-llm-response";
@@ -15,6 +15,7 @@ import logger from "@/lib/logger";
 import { UrmindDB } from "@/types/database";
 import { semanticCache } from "@/services/semantic-cache.service";
 import { semanticCacheStore } from "@/store/semantic-cache.store";
+import { activityManagerStore } from "@/store/activity-manager.store";
 import {
   GenerateCategoryPrompt,
   TextContextCreatorPrompt,
@@ -38,9 +39,30 @@ const saveToUrMindJob: Task<SaveToUrMindPayload> = task<SaveToUrMindPayload>({
 
     console.log("Saving to UrMind:", payload);
 
+    // Track the save activity
+    const activityId = await activityManagerStore.track({
+      title: "Saving to Urmind...",
+      description: `Saving "${selectedText || url}" to Urmind`,
+      status: "in-progress",
+    });
+
     if (type === "text") {
-      // save the text directly to the database while embedding the content
-      await processSaveToUrMind(payload);
+      try {
+        await processSaveToUrMind(payload);
+
+        await activityManagerStore.updateActivity(activityId, {
+          status: "completed",
+          description: `Successfully saved "${selectedText || url}" to Urmind`,
+        });
+      } catch (error) {
+        await activityManagerStore.updateActivity(activityId, {
+          status: "failed",
+          description: `Failed to save "${selectedText || url}" to Urmind: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`,
+        });
+        throw error;
+      }
     }
   },
 });
