@@ -20,7 +20,7 @@ export const PageIndexingSemanticDeduplicationThreshold = {
 
 export const SearchContextDebounceTimeMs = {
   offline: 1,
-  online: 300,
+  online: 500,
 };
 
 // Gemini Nano token limits

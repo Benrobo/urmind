@@ -17,27 +17,26 @@ import {
   ChevronUp,
   ChevronDown,
   CornerDownLeft,
-  ArrowDown,
 } from "lucide-react";
-import { SearchResult, SpotlightProps, SearchResultType } from "@/types/search";
+import { SearchResult, SpotlightProps } from "@/types/search";
 import { useHotkeys } from "react-hotkeys-hook";
-import { contextSpotlightVisibilityStore } from "@/store/context.store";
+import { useSpotlightVisibility } from "@/hooks/useSpotlightVisibility";
 import { uiStore } from "@/store/ui.store";
 import useStorageStore from "@/hooks/useStorageStore";
 import DeepResearchResult, { DeepResearchResultProps } from "./deep-research";
-import useSavedContext from "@/hooks/useContext";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import SavedContext from "./saved-context";
 import { ContextType } from "@/types/context";
-import urmindDb from "@/services/db";
-import shortUUID from "short-uuid";
-import { sendMessageToBackgroundScriptWithResponse } from "@/helpers/messaging";
+import {
+  sendMessageToBackgroundScript,
+  sendMessageToBackgroundScriptWithResponse,
+} from "@/helpers/messaging";
 import { SpotlightConversations } from "@/types/spotlight";
+import useClickOutside from "@/hooks/useClickOutside";
 
 dayjs.extend(relativeTime);
 
-// Message and Source interfaces
 interface Message {
   id: string;
   type: "user" | "ai";
@@ -65,12 +64,14 @@ export default function SpotlightSearch({
   const [deepResearchState, setDeepResearchState] =
     useState<DeepResearchResultProps["deepResearchState"]>(null);
   const [disableInput, setDisableInput] = useState(false);
-  const { value: isVisible } = useStorageStore(contextSpotlightVisibilityStore);
+  const { isVisible, show, hide } = useSpotlightVisibility();
+  const spotlightSearchRef = useClickOutside(() => {
+    handleClose();
+  });
 
-  // Focus management hooks
   const { ref: inputRef, eventHandlers: inputEventHandlers } =
     useInputFocusManagement(isVisible && !disableInput, {
-      excludeElements: [".urmind-wrapper", "[data-urmind]"], // Exclude our own components
+      excludeElements: [".urmind-wrapper", "[data-urmind]"],
     });
 
   const { eventHandlers: containerEventHandlers } =
@@ -89,7 +90,6 @@ export default function SpotlightSearch({
     return (response?.result as SpotlightConversations[]).length;
   }, []);
 
-  // Hotkey configuration
   const hotKeysConfigOptions = {
     enableOnFormTags: true,
     enableOnContentEditable: true,
@@ -109,9 +109,9 @@ export default function SpotlightSearch({
     "ctrl+u, meta+u",
     () => {
       if (isVisible) {
-        contextSpotlightVisibilityStore.hide();
+        hide();
       } else {
-        contextSpotlightVisibilityStore.show();
+        show();
       }
     },
     hotKeysConfigOptions
@@ -121,19 +121,17 @@ export default function SpotlightSearch({
     "escape",
     () => {
       if (isVisible) {
-        contextSpotlightVisibilityStore.hide();
+        hide();
       }
     },
     hotKeysConfigOptions
   );
 
-  // Toggle between SavedContext and DeepResearch on Cmd+Enter
   useHotkeys(
     "meta+enter, ctrl+enter",
     async (e) => {
       e.preventDefault();
       console.log("🔍 UI State:", uiState);
-      // switch between ui states
       if (!uiState.showDeepResearch) {
         await toggleDeepResearch();
       } else {
@@ -198,7 +196,7 @@ export default function SpotlightSearch({
         !uiState.showDeepResearch ? "new" : convCount > 0 ? "follow-up" : "new"
       );
       setSearchQuery("");
-      scrollToBottom();
+      // scrollToBottom();
     }
   };
 
@@ -207,7 +205,7 @@ export default function SpotlightSearch({
   };
 
   const handleClose = () => {
-    contextSpotlightVisibilityStore.hide();
+    hide();
     onClose?.();
   };
 
@@ -221,23 +219,21 @@ export default function SpotlightSearch({
   };
 
   const openMindboard = async () => {
-    console.log("Opening mindboard...");
     try {
-      chrome.runtime.sendMessage({
+      sendMessageToBackgroundScript({
         action: "openOptionsPage",
       });
+      hide();
     } catch (error) {
       console.error("Error opening options:", error);
     }
-
-    contextSpotlightVisibilityStore.hide();
   };
 
   const handleScroll = useCallback(() => {
     if (deepResearchScrollRef.current) {
       const { scrollTop, scrollHeight, clientHeight } =
         deepResearchScrollRef.current;
-      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10; // 10px threshold
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10;
       setIsUserAtBottom(isAtBottom);
     }
   }, []);
@@ -245,7 +241,6 @@ export default function SpotlightSearch({
   const scrollToBottom = useCallback(
     (offset: number = 450) => {
       if (deepResearchScrollRef.current && isUserAtBottom) {
-        // Use setTimeout to ensure DOM has updated
         setTimeout(() => {
           if (deepResearchScrollRef.current) {
             deepResearchScrollRef.current.scrollTo({
@@ -259,7 +254,6 @@ export default function SpotlightSearch({
     [isUserAtBottom]
   );
 
-  // Reset scroll position when starting new conversation
   useEffect(() => {
     if (deepResearchState === "new") {
       setIsUserAtBottom(true);
@@ -294,15 +288,6 @@ export default function SpotlightSearch({
     ]
   );
 
-  // const startNewConversation = () => {
-  //   const query = searchQuery.trim();
-  //   urmindDb.conversations?.createConversation({
-  //     id: shortUUID.generate(),
-  //     messages: [{ id: shortUUID.generate(), role: "user", content: query }],
-  //   });
-  // };
-
-  // Don't render if not visible
   if (!isVisible) {
     return null;
   }
@@ -322,6 +307,7 @@ export default function SpotlightSearch({
         transform: "translate(-50%, -50%) scale(1)",
       }}
       onKeyDown={handleKeyDown}
+      ref={spotlightSearchRef}
     >
       {/* Search Header */}
       <div className="px-4 py-3 border-b border-white-400/60">

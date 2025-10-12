@@ -1,6 +1,7 @@
 import { Context } from "@/types/context";
 import { SearchQueryGenerationPrompt } from "@/data/prompt/system/deep-research.system";
 import { AIService } from "@/services/ai.service";
+import { sendMessageToBackgroundScriptWithResponse } from "./messaging";
 
 /**
  * Extracts and deduplicates categories from all saved contexts
@@ -8,7 +9,7 @@ import { AIService } from "@/services/ai.service";
 export async function getAllContextCategories(): Promise<string[]> {
   try {
     // Get all contexts from the database
-    const response = await chrome.runtime.sendMessage({
+    const response = await sendMessageToBackgroundScriptWithResponse({
       action: "db-operation",
       payload: { operation: "getAllContexts" },
     });
@@ -22,7 +23,7 @@ export async function getAllContextCategories(): Promise<string[]> {
 
     // Extract categories from all contexts
     const allCategories = contexts
-      .map((context) => context.category.label)
+      .map((context) => context.categorySlug)
       .filter((category) => category && category.trim().length > 0)
       .map((category) => category.trim());
 

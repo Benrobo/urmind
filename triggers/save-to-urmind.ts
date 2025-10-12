@@ -148,7 +148,7 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
 
       await urmindDb.contexts?.createContext(contextData);
 
-      await urmindDb.embeddings?.generateAndStore(selectedText, tabId, {
+      await urmindDb.embeddings?.generateAndStore(selectedText, {
         contextId,
         type: "context",
         category: matchedCategorySlug,
@@ -159,7 +159,6 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
     } else {
       const semanticSearchResults = await urmindDb.embeddings.semanticSearch(
         searchText,
-        tabId,
         { limit: 5 }
       );
 
@@ -205,7 +204,7 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
 
         await urmindDb.contexts?.createContext(contextData);
 
-        await urmindDb.embeddings?.generateAndStore(selectedText, tabId, {
+        await urmindDb.embeddings?.generateAndStore(selectedText, {
           contextId,
           type: "context",
           category: matchedCategorySlug,
@@ -248,7 +247,7 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
 
         await urmindDb.contexts?.createContext(contextData);
 
-        await urmindDb.embeddings?.generateAndStore(selectedText, tabId, {
+        await urmindDb.embeddings?.generateAndStore(selectedText, {
           contextId,
           type: "context",
           category: category.slug,

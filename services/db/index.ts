@@ -8,7 +8,7 @@ import { ContextCategoriesService } from "./context-categories";
 class UrmindDatabase {
   private db: IDBPDatabase<UrmindDB> | null = null;
   private dbName = "urmind-db";
-  private version = 4.0;
+  private version = 5.0;
   private initPromise: Promise<void> | null = null;
 
   // Service instances

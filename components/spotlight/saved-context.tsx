@@ -93,8 +93,13 @@ export default function SavedContext({ query, uiState }: SavedContextProps) {
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <CustomLoader
                 size="md"
-                text="Searching your mind..."
+                text={
+                  debouncedQuery.trim().length > 0
+                    ? "Searching your mind..."
+                    : "Loading your saved context..."
+                }
                 className="mb-3"
+                colorClass="bg-white-100"
               />
             </div>
           ) : filteredContext.length > 0 ? (

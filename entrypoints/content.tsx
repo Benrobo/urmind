@@ -14,7 +14,7 @@ import {
   sendMessageToBackgroundScriptWithResponse,
 } from "@/helpers/messaging";
 import NavigationMonitor from "@/helpers/navigation-monitor";
-import { useMessageHandler } from "@/services/message-handler";
+import { useMessageHandler } from "@/services/cs-message-handler";
 import { contextNavigationService } from "@/services/context-navigation.service";
 
 // initialize embedding model in content script

@@ -1,5 +1,8 @@
 import { BgScriptMessageHandlerActions } from "@/services/bgs-services/bg-message-handler";
-import { MessageHandlerOperations } from "@/services/message-handler";
+import {
+  ClientScriptOperations,
+  BgScriptMessageHandlerOperations,
+} from "@/services/cs-message-handler";
 import { PageMetadata } from "@/services/page-extraction/extraction";
 import { SaveToUrMindPayload } from "@/triggers/save-to-urmind";
 import { MessageResponse } from "@/types/background-messages";
@@ -7,6 +10,7 @@ import { MessageResponse } from "@/types/background-messages";
 interface BaseProps {
   action: BgScriptMessageHandlerActions;
   payload?: Record<string, any>;
+  responseRequired?: boolean;
 }
 
 interface NavigationDetectedMessage extends BaseProps {
@@ -36,16 +40,9 @@ interface ContentScriptReadyMessage extends BaseProps {
 interface DBOperationMessage extends BaseProps {
   action: "db-operation";
   payload: {
-    operation: MessageHandlerOperations;
+    operation: BgScriptMessageHandlerOperations;
     data?: any;
     contextId?: string;
-  };
-}
-
-interface ContentScriptMessageOperation extends BaseProps {
-  payload: {
-    operation: MessageHandlerOperations;
-    data?: any;
   };
 }
 
@@ -61,6 +58,14 @@ interface SaveToUrMindMessage extends BaseProps {
   payload: SaveToUrMindPayload;
 }
 
+interface ClientScriptMessageOperation extends BaseProps {
+  action: "client-operation";
+  payload: {
+    operation: ClientScriptOperations;
+    data?: any;
+  };
+}
+
 export function sendMessageToBackgroundScript(
   message:
     | NavigationDetectedMessage
@@ -68,10 +73,13 @@ export function sendMessageToBackgroundScript(
     | OpenPopupMessage
     | DBOperationMessage
     | ContentScriptReadyMessage
-    | PageMetadataExtractionMessage
     | SaveToUrMindMessage
 ) {
-  chrome.runtime.sendMessage(message);
+  chrome.runtime.sendMessage({
+    action: message.action,
+    payload: message.payload,
+    responseRequired: message.responseRequired ?? true,
+  });
 }
 
 /**
@@ -79,7 +87,7 @@ export function sendMessageToBackgroundScript(
  */
 export function sendMessageToContentScript(
   tabId: number,
-  message: ContentScriptMessageOperation
+  message: ClientScriptMessageOperation
 ) {
   chrome.tabs.sendMessage(tabId, message);
 }
@@ -91,13 +99,19 @@ export function sendMessageToBackgroundScriptWithResponse(
   message: DBOperationMessage | SaveToUrMindMessage
 ): Promise<MessageResponse> {
   return new Promise((resolve, reject) => {
-    chrome.runtime.sendMessage(message, (response) => {
-      if (chrome.runtime.lastError) {
-        reject(chrome.runtime.lastError);
-      } else {
-        resolve(response);
+    chrome.runtime.sendMessage(
+      {
+        ...message,
+        responseRequired: message.responseRequired ?? true,
+      },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(response);
+        }
       }
-    });
+    );
   });
 }
 
@@ -107,14 +121,13 @@ export function sendMessageToBackgroundScriptWithResponse(
  */
 export function sendMessageToContentScriptWithResponse(
   tabId: number,
-  operation: MessageHandlerOperations,
-  data?: any,
-  contextId?: string
+  operation: ClientScriptOperations,
+  data?: any
 ): Promise<any> {
   return new Promise((resolve, reject) => {
-    const message: DBOperationMessage = {
-      action: "db-operation",
-      payload: { operation, data, contextId },
+    const message: ClientScriptMessageOperation = {
+      action: "client-operation",
+      payload: { operation, data },
     };
 
     chrome.tabs.sendMessage(tabId, message, (response) => {

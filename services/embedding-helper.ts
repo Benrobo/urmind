@@ -32,18 +32,14 @@ export class EmbeddingHelper {
 
     return retry(
       async () => {
-        if (preferences.geminiApiKey?.trim()) {
-          try {
-            return await this.generateWithOnlineModel(
-              text,
-              preferences.geminiApiKey
-            );
-          } catch (onlineError) {
-            throw onlineError;
-          }
+        try {
+          return await this.generateWithOnlineModel(
+            text,
+            preferences.geminiApiKey
+          );
+        } catch (onlineError) {
+          throw onlineError;
         }
-
-        return await this.generateWithLocalModel(text);
       },
       {
         retries: 2,
@@ -58,11 +54,8 @@ export class EmbeddingHelper {
         },
       }
     ).catch(async (finalError) => {
-      logger.error(
-        "❌ All embedding attempts failed, using local model as final fallback:",
-        finalError
-      );
-      return await this.generateWithLocalModel(text);
+      logger.error("❌ All embedding attempts failed.", finalError);
+      return [];
     });
   }
 

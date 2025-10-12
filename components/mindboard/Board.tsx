@@ -59,6 +59,7 @@ export default function MindboardCanvas() {
           url: location.href,
           selectedText: pastedText,
         },
+        responseRequired: false,
       });
 
       clearPastedText();

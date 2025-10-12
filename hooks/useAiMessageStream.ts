@@ -66,6 +66,7 @@ export default function useAiMessageStream({
 
           // Generate an optimized search query using context categories and conversation history
           const availableCategories = await getAllContextCategories();
+
           const optimizedSearchQuery = await generateSearchQuery(
             userQuery,
             conversationHistory,

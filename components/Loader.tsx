@@ -1,6 +1,8 @@
 import React from "react";
 import { Loader as LoaderIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import ActivitySpinner from "./spinner";
+import { ClassValue } from "clsx";
 
 type LoaderSize = "sm" | "md" | "lg" | "xl";
 
@@ -8,6 +10,7 @@ interface LoaderProps {
   size?: LoaderSize;
   className?: string;
   text?: string;
+  colorClass?: string;
 }
 
 const sizeMap: Record<LoaderSize, string> = {
@@ -21,12 +24,15 @@ export default function CustomLoader({
   size = "md",
   className,
   text,
+  colorClass,
 }: LoaderProps) {
   return (
     <div className={cn("flex items-center justify-center", className)}>
       <div className="flex flex-col items-center space-y-2">
-        <LoaderIcon
-          className={cn("animate-spin text-white/80", sizeMap[size])}
+        <ActivitySpinner
+          size={size}
+          className={cn("text-white-100", sizeMap[size])}
+          color={colorClass as string}
         />
         {text && <p className="text-xs text-white-100 animate-pulse">{text}</p>}
       </div>

@@ -3,6 +3,8 @@ import { UrmindDB } from "@/types/database";
 import { sendMessageToContentScriptWithResponse } from "@/helpers/messaging";
 import urmindDb from "./db";
 import { Context } from "@/types/context";
+import { cos_sim } from "@xenova/transformers";
+import { AIService } from "./ai.service";
 
 /**
  * EmbeddingsStore - Background script only
@@ -54,14 +56,24 @@ export class EmbeddingsStore {
    * Background -> Content: Generate embedding
    * Content -> Background: Return embedding vector
    */
-  async generateEmbedding(text: string, tabId: number): Promise<number[]> {
-    const response = await sendMessageToContentScriptWithResponse(
-      tabId,
-      "generateEmbedding",
-      { text }
-    );
-
+  async generateEmbedding(text: string): Promise<number[]> {
+    const response = await AIService.generateEmbedding(text);
     return response;
+  }
+
+  cosineSimilarity(
+    queryEmbedding: number[],
+    vectors: { id: string; vector: number[]; metadata?: any }[],
+    limit = 10
+  ) {
+    return vectors
+      .map((e) => ({
+        id: e.id,
+        score: cos_sim(queryEmbedding, e.vector),
+        metadata: e.metadata,
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit);
   }
 
   /**
@@ -69,22 +81,15 @@ export class EmbeddingsStore {
    * Background -> Content: Send query + all embeddings
    * Content -> Background: Return similarity results
    */
-  async semanticSearch(
-    query: string,
-    tabId: number,
-    options: { limit?: number } = {}
-  ) {
+  async semanticSearch(query: string, options: { limit?: number } = {}) {
     const allEmbeddings = await this.getAll();
+    const queryEmbedding = await this.generateEmbedding(query);
 
-    const response = (await sendMessageToContentScriptWithResponse(
-      tabId,
-      "semanticSearch",
-      {
-        query,
-        embeddings: allEmbeddings,
-        limit: options.limit || 10,
-      }
-    )) as Array<{ id: string; score: number; metadata?: any }>;
+    const response = this.cosineSimilarity(
+      queryEmbedding,
+      allEmbeddings,
+      options.limit || 10
+    );
 
     const finalResponse: (Context & {
       score: number;
@@ -111,11 +116,9 @@ export class EmbeddingsStore {
    */
   async generateAndStore(
     text: string,
-    tabId: number,
     metadata: { contextId: string; type: string; category: string; url: string }
   ): Promise<string> {
-    // Generate embedding in content script
-    const embeddingVector = await this.generateEmbedding(text, tabId);
+    const embeddingVector = await this.generateEmbedding(text);
 
     // Store in background script
     const embedding: UrmindDB["embeddings"]["value"] = {

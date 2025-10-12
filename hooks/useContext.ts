@@ -28,6 +28,7 @@ export default function useSavedContext({
             operation: "semanticSearch",
             data: { query, limit: limit ?? 5 },
           },
+          responseRequired: true,
         });
         return (response?.result as SavedContext[]) || [];
       } else {

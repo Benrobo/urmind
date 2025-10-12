@@ -171,7 +171,6 @@ async function processTextBatch(props: {
 
   const semanticSearchResults = await urmindDb.embeddings.semanticSearch(
     searchText,
-    tabId,
     { limit: 5 }
   );
 
@@ -369,7 +368,7 @@ async function createContextWithEmbedding(
     }
 
     const embeddingText = `${contextData.title} ${contextData.description} ${contextData.rawContent}`;
-    await urmindDb.embeddings.generateAndStore(embeddingText, tabId, {
+    await urmindDb.embeddings.generateAndStore(embeddingText, {
       contextId: newContextId,
       type: "context",
       category: contextData.categorySlug,
@@ -435,7 +434,7 @@ async function updateExistingContext(
     // Generate new embedding with updated content
     if (urmindDb.embeddings) {
       const embeddingText = `${updates.title} ${updates.description} ${updates.rawContent}`;
-      await urmindDb.embeddings.generateAndStore(embeddingText, tabId, {
+      await urmindDb.embeddings.generateAndStore(embeddingText, {
         contextId: contextId,
         type: "context",
         category: categorySlug,

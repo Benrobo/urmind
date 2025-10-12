@@ -1,7 +1,7 @@
 import { preferencesStore } from "@/store/preferences.store";
 import { ai_models } from "@/constant/internal";
 import logger from "@/lib/logger";
-import { generateText, streamText } from "ai";
+import { embed, generateText, streamText } from "ai";
 import { geminiAi } from "@/helpers/agent/utils";
 import { chromeAi } from "@/helpers/agent/utils";
 import retry from "async-retry";
@@ -212,5 +212,21 @@ export class AIService {
       mode,
       maxRetries: 2,
     });
+  }
+
+  static async generateEmbedding(text: string) {
+    const preferences = await preferencesStore.get();
+
+    if (!preferences.geminiApiKey) {
+      throw new Error("Gemini API key not available for online generation");
+    }
+
+    const { embedding } = await embed({
+      model: geminiAi(preferences.geminiApiKey).textEmbeddingModel(
+        "gemini-embedding-001"
+      ),
+      value: text,
+    });
+    return embedding;
   }
 }

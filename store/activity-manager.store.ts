@@ -131,7 +131,7 @@ export class ActivityManagerStore extends StorageStore<{
         await sleep(1000 * 60);
       }
 
-      if (isOlderThanXMinute) {
+      if (isOlderThanXMinute && isCompleted) {
         const success = await this.delete(activity.id);
         if (success) {
           cleanedCount++;

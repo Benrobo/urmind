@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sendMessageToBackgroundScriptWithResponse } from "@/helpers/messaging";
-import { MessageHandlerOperations as DatabaseOperations } from "@/services/message-handler";
+import { MessageHandlerOperations as DatabaseOperations } from "@/services/cs-message-handler";
 
 interface DevToolProps {
   className?: string;

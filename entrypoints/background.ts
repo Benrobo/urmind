@@ -10,6 +10,29 @@ import { activityManagerStore } from "@/store/activity-manager.store";
 export default defineBackground(async () => {
   console.log("🚀 Background script loaded");
 
+  // Initialize services
+  const messageHandler = new BackgroundMessageHandler();
+  const omniboxHandler = new OmniboxHandler();
+  const contextMenuService = ContextMenuService.getInstance();
+
+  // Start tab timing service for delayed indexing
+  await tabTimingService.start();
+
+  // Initialize omnibox handling
+  omniboxHandler.init();
+
+  // Initialize context menu
+  await contextMenuService.createContextMenus();
+
+  await initDb();
+
+  // Set up message handling
+  chrome.runtime.onMessage.addListener(messageHandler.createMessageListener());
+
+  chrome.tabs.onRemoved.addListener((tabId) => {
+    messageHandler.cleanupTab(tabId);
+  });
+
   chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     if (
       changeInfo.status === "complete" &&
@@ -24,29 +47,6 @@ export default defineBackground(async () => {
   chrome.tabs.onRemoved.addListener(async (tabId) => {
     await tabTimingService.handleTabRemoved(tabId);
   });
-
-  await initDb();
-
-  // Initialize services
-  const messageHandler = new BackgroundMessageHandler();
-  const omniboxHandler = new OmniboxHandler();
-  const contextMenuService = ContextMenuService.getInstance();
-
-  // Set up message handling
-  chrome.runtime.onMessage.addListener(messageHandler.createMessageListener());
-
-  chrome.tabs.onRemoved.addListener((tabId) => {
-    messageHandler.cleanupTab(tabId);
-  });
-
-  // Start tab timing service for delayed indexing
-  await tabTimingService.start();
-
-  // Initialize omnibox handling
-  omniboxHandler.init();
-
-  // Initialize context menu
-  await contextMenuService.createContextMenus();
 
   // Start activity cleanup interval (every 30 seconds)
   setInterval(async () => {

@@ -71,7 +71,7 @@ export class SemanticAwareCache {
       throw new Error("Embeddings service not available");
     }
 
-    return await urmindDb.embeddings.semanticSearch(batch, tabId, { limit: 4 });
+    return await urmindDb.embeddings.semanticSearch(batch, { limit: 4 });
   }
 
   private evaluateResults(

@@ -1,29 +1,47 @@
-import { StorageStore } from "@/helpers/storage-store";
-
-// store for context spotlight visibility
-export class ContextSpotlightVisibilityStore extends StorageStore<boolean> {
-  constructor() {
-    super("local:context_spotlight_visibility", false);
-    // this.hide(); // hide on initial load
-  }
+export class ContextSpotlightVisibilityStore {
+  private readonly STORAGE_KEY = "context_spotlight_visibility";
 
   async show(): Promise<void> {
-    await this.set(true);
+    localStorage.setItem(this.STORAGE_KEY, "true");
   }
 
   async hide(): Promise<void> {
-    await this.set(false);
+    localStorage.setItem(this.STORAGE_KEY, "false");
   }
 
   async toggle(): Promise<boolean> {
-    const current = await this.get();
+    const current = await this.isVisible();
     const newState = !current;
     await this.set(newState);
     return newState;
   }
 
+  async set(visible: boolean): Promise<void> {
+    localStorage.setItem(this.STORAGE_KEY, visible.toString());
+  }
+
   async isVisible(): Promise<boolean> {
-    return await this.get();
+    const value = localStorage.getItem(this.STORAGE_KEY);
+    return value === "true";
+  }
+
+  getValue(): boolean {
+    const value = localStorage.getItem(this.STORAGE_KEY);
+    return value === "true";
+  }
+
+  addStorageListener(callback: (visible: boolean) => void): () => void {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === this.STORAGE_KEY) {
+        callback(e.newValue === "true");
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+    };
   }
 }
 

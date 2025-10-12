@@ -11,25 +11,16 @@ import { SpotlightConversations } from "@/types/spotlight";
 import MarkdownRenderer from "@/components/markdown";
 import { activeConversationStore } from "@/store/conversation.store";
 import useStorageStore from "@/hooks/useStorageStore";
-import useConversations from "@/hooks/useConversations";
 import { sendMessageToBackgroundScriptWithResponse } from "@/helpers/messaging";
 import shortUUID from "short-uuid";
-import { useQuery } from "@tanstack/react-query";
-import queryClient from "@/config/tanstack-query";
 import useAiMessageStream from "@/hooks/useAiMessageStream";
 import { Context } from "@/types/context";
 import ConversationNavigation from "./ConversationNavigation";
 import MessageTabs from "./MessageTabs";
 import SourcesDisplay from "./SourcesDisplay";
-import {
-  Loader,
-  MessageSquare,
-  Trash2,
-  Copy,
-  Check,
-  CheckCheck,
-} from "lucide-react";
+import { Loader, MessageSquare, Trash2, Copy, CheckCheck } from "lucide-react";
 import Sources from "./Sources";
+import { AnimatePresence, motion } from "framer-motion";
 
 export type DeepResearchResultProps = {
   deepResearchState: "new" | "follow-up" | null;
@@ -58,7 +49,6 @@ const DeepResearchResult = memo(
       refresh: refreshActiveConversation,
     } = useStorageStore(activeConversationStore);
     const [activeTab, setActiveTab] = useState<Record<string, string>>({});
-    const [contextLength, setContextLength] = useState(0);
 
     // local copy of query before resetState is called
     const [userQuery, setUserQuery] = useState<string | null>(null);
@@ -194,7 +184,7 @@ const DeepResearchResult = memo(
     }, []);
 
     useEffect(() => {
-      onScrollToBottom?.(450);
+      onScrollToBottom?.(150);
     }, []);
 
     useEffect(() => {
@@ -234,7 +224,7 @@ const DeepResearchResult = memo(
     // Auto-scroll when streaming text updates
     useEffect(() => {
       if (isStreaming && onScrollToBottom) {
-        onScrollToBottom();
+        // onScrollToBottom();
       }
     }, [messageStream, isStreaming, onScrollToBottom]);
 
@@ -268,6 +258,7 @@ const DeepResearchResult = memo(
     // TODO: Move to background script to persist message content on UI refresh
     // update message content in database when streaming
     useEffect(() => {
+      // console.log(content);
       if (content && activeMessageId && activeConversationId) {
         sendMessageToBackgroundScriptWithResponse({
           action: "db-operation",
@@ -334,7 +325,6 @@ const DeepResearchResult = memo(
         setIsStreaming(true);
         setUserQuery(query!);
         resetState();
-        onScrollToBottom?.();
       } catch (err: any) {
         console.error("Failed to create new conversation:", err);
       }
@@ -389,13 +379,11 @@ const DeepResearchResult = memo(
           });
         });
 
-        console.log("🔄 Setting activeMessageId to:", emptyAssistantMessage.id);
-
-        onScrollToBottom?.(150);
         setActiveMessageId(emptyAssistantMessage.id);
         setIsStreaming(true);
         setUserQuery(query!);
         resetState();
+        onScrollToBottom?.(350);
       } catch (err: any) {
         console.error("Failed to append message:", err);
       }
@@ -585,7 +573,7 @@ const DeepResearchResult = memo(
 
     return (
       <>
-        <div className="w-full min-h-[550px] flex flex-col relative top-0 left-0 py-4 pb-[10em]">
+        <div className="w-full min-h-auto flex flex-col relative top-0 left-0 py-4 pb-[10em]">
           <div className="w-full flex items-center justify-end pr-1 mb-4">
             <ConversationNavigation
               hasMoreConversations={hasMoreConversations}
@@ -609,8 +597,11 @@ const DeepResearchResult = memo(
           </div>
           {activeConversation &&
             activeConversation?.messages.map((msg, idx) => (
-              <React.Fragment key={msg.id}>
-                <div
+              <AnimatePresence key={msg.id}>
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
                   key={msg.id}
                   className={cn(
                     idx !== 0 && msg.role === "user" && "mt-5",
@@ -745,8 +736,8 @@ const DeepResearchResult = memo(
                         />
                       </div>
                     )}
-                </div>
-              </React.Fragment>
+                </motion.div>
+              </AnimatePresence>
             ))}
         </div>
       </>

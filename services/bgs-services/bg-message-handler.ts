@@ -150,6 +150,7 @@ export class BackgroundMessageHandler {
    * Handle options page opening
    */
   async handleOpenOptionsPage(): Promise<MessageResponse> {
+    console.log("🔍 Opening options page...");
     return new Promise((resolve) => {
       chrome.runtime.openOptionsPage(() => {
         if (chrome.runtime.lastError) {
@@ -293,7 +294,6 @@ export class BackgroundMessageHandler {
           }
           result = await urmindDb.embeddings.semanticSearch(
             data.query,
-            tabId,
             data.limit
           );
           break;
@@ -484,11 +484,15 @@ export class BackgroundMessageHandler {
     ) => {
       (async () => {
         try {
-          // logger.log("📨 Received message:", request.action, request.payload);
+          const { action, payload, responseRequired } = request as {
+            action: BgScriptMessageHandlerActions;
+            payload: any;
+            responseRequired: boolean;
+          };
           const tabId = sender.tab?.id!;
           let result: MessageResponse = { success: false };
 
-          switch (request.action as BgScriptMessageHandlerActions) {
+          switch (action) {
             case "content-script-ready":
               result = await this.handleContentScriptReady(
                 request.payload,
@@ -537,7 +541,10 @@ export class BackgroundMessageHandler {
               logger.warn("🤷‍♂️ Unknown action:", request.action);
               break;
           }
-          sendResponse(result);
+
+          if (responseRequired) {
+            sendResponse(result);
+          }
         } catch (error) {
           logger.error("❌ Background message handler error:", error);
           sendResponse({
