@@ -1,4 +1,5 @@
 import { StorageStore } from "@/helpers/storage-store";
+import { cleanUrlForFingerprint, md5Hash } from "@/lib/utils";
 import { PageMetadata } from "@/services/page-extraction/extraction";
 import { preferencesStore } from "@/store/preferences.store";
 import dayjs from "dayjs";
@@ -6,6 +7,8 @@ import dayjs from "dayjs";
 export interface TabTimingData {
   tabId: number;
   url: string;
+  cleanUrl: string;
+  hash: string;
   startTime: number;
   pageMetadata: PageMetadata;
 }
@@ -21,12 +24,18 @@ export class TabTimingStore extends StorageStore<TabTimingData[]> {
     pageMetadata: PageMetadata
   ): Promise<void> {
     const currentTabs = await this.get();
-    const existingTab = currentTabs.find((tab) => tab.tabId === tabId);
+    const cleanTabUrl = cleanUrlForFingerprint(url);
+    const hash = md5Hash(cleanTabUrl);
+    // this uses url fingerprint to dedupe instead of tabId
+    const existingTab = currentTabs.find((tab) => tab.url === cleanTabUrl);
+    // const existingTab = currentTabs.find((tab) => tab.tabId === tabId);
 
     const now = Date.now();
     const tabData: TabTimingData = {
       tabId,
       url,
+      cleanUrl: cleanTabUrl,
+      hash,
       startTime: now,
       pageMetadata,
     };
@@ -34,7 +43,7 @@ export class TabTimingStore extends StorageStore<TabTimingData[]> {
     if (existingTab) {
       // Update existing tab
       const updatedTabs = currentTabs.map((tab) =>
-        tab.tabId === tabId
+        tab.hash === hash
           ? { ...tabData, startTime: tab.startTime } // Keep original start time
           : tab
       );

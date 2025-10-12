@@ -15,7 +15,7 @@ export const SaveToUrmindSemanticSearchThreshold = {
 
 export const PageIndexingSemanticDeduplicationThreshold = {
   offline: 0.6,
-  online: 0.9,
+  online: 0.8,
 };
 
 export const SearchContextDebounceTimeMs = {
