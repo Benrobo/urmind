@@ -159,28 +159,37 @@ export default function MindBoardSidebar() {
 
   const handleSaveEdit = async (categorySlug: string) => {
     try {
-      let updates: { label: string; slug?: string } = { label: editName };
+      // Always generate new slug from the edited label
+      const newSlug = editName
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, "") // Remove special characters first
+        .replace(/\s+/g, "-") // Replace spaces with hyphens
+        .replace(/-+/g, "-") // Replace multiple hyphens with single
+        .replace(/^-+|-+$/g, ""); // Remove leading/trailing hyphens
 
-      if (categorySlug === "untitled") {
-        const newSlug = editName
-          .toLowerCase()
-          .replace(/\s+/g, "-")
-          .replace(/[^a-z0-9-]/g, "");
-        updates.slug = newSlug;
-      }
+      const updates = {
+        label: editName,
+        slug: newSlug,
+      };
 
       await sendMessageToBackgroundScriptWithResponse({
         action: "db-operation",
         payload: {
           operation: "updateCategory",
           data: {
-            categorySlug,
+            categorySlug, // old slug
             updates,
           },
         },
       });
 
       await refetch();
+
+      // If the edited category was selected and the slug changed, update the selection
+      if (selectedCategory === categorySlug && newSlug !== categorySlug) {
+        setSelectedCategory(newSlug);
+        await mindboardStore.setSelectedCategory(newSlug);
+      }
 
       setEditingCategory(null);
       setEditName("");

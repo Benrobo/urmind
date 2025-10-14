@@ -68,18 +68,39 @@ export class ContextCategoriesService {
     };
 
     const transaction = this.db.transaction(
-      ["context_categories"],
+      ["context_categories", "contexts"],
       "readwrite"
     );
-    const store = transaction.objectStore("context_categories");
+    const categoryStore = transaction.objectStore("context_categories");
+    const contextStore = transaction.objectStore("contexts");
 
-    // If slug is being changed, delete the old one and add the new one
+    // If slug is being changed, update all related contexts and delete the old one
     if (updates.slug && updates.slug !== slug) {
-      await store.delete(slug);
-      await store.add(updatedCategory);
-      logger.info("✅ Category updated with new slug:", updates.slug);
+      // Get all contexts with the old category slug
+      const contexts = await this.db.getAll("contexts");
+      const relatedContexts = contexts.filter(
+        (context) => context.categorySlug === slug
+      );
+
+      // Update all related contexts with the new category slug
+      for (const context of relatedContexts) {
+        const updatedContext = {
+          ...context,
+          categorySlug: updates.slug!,
+          updatedAt: Date.now(),
+        };
+        await contextStore.put(updatedContext);
+      }
+
+      // Delete the old category and add the new one
+      await categoryStore.delete(slug);
+      await categoryStore.add(updatedCategory);
+
+      logger.info(
+        `✅ Category updated with new slug: ${updates.slug}, updated ${relatedContexts.length} contexts`
+      );
     } else {
-      await store.put(updatedCategory);
+      await categoryStore.put(updatedCategory);
       logger.info("✅ Category updated:", slug);
     }
   }
