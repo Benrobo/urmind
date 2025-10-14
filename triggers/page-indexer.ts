@@ -23,7 +23,7 @@ export type PageIndexerPayload = {
   internalTrigger?: boolean;
 };
 
-const pageIndexerQueue = new QueueStore<PageIndexerPayload>(
+export const pageIndexerQueue = new QueueStore<PageIndexerPayload>(
   "local:page_indexer_queue"
 );
 
@@ -315,31 +315,43 @@ async function generateParentContext(props: {
     continue: true,
     context: null,
   };
-  const contextResponse = await generateTextContext(
-    batch,
-    pageMetadata,
-    undefined
-  );
+  const contextResponse = await generateTextContext(batch, pageMetadata);
 
   if (contextResponse.retentionDecision.keep && contextResponse.context) {
-    const generatedCategorySlug = contextResponse.context.category.slug;
-    const categoryLabel = generatedCategorySlug
-      ? (await getCategoryLabelBySlug(generatedCategorySlug)) ??
-        contextResponse.context.category.label
-      : contextResponse.context.category.label;
+    const categoryLabel = contextResponse.context.category.label;
+    const llmGeneratedSlug = contextResponse.context.category.slug;
 
-    const categorySlug = generatedCategorySlug
+    const categorySlug = categoryLabel
       .toLowerCase()
-      .replace(/\s/g, "-");
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+    logger.info(
+      `Category generation - Label: "${categoryLabel}", LLM Slug: "${llmGeneratedSlug}", Auto Slug: "${categorySlug}"`
+    );
 
     if (!urmindDb.contextCategories) {
       throw new Error("Context categories service not available");
     }
 
-    await urmindDb.contextCategories.getOrCreateCategory(
-      categoryLabel,
+    const existingCategory = await urmindDb.contextCategories.getCategoryBySlug(
       categorySlug
     );
+    if (existingCategory) {
+      logger.info(
+        `Category already exists with slug "${categorySlug}": "${existingCategory.label}"`
+      );
+    } else {
+      await urmindDb.contextCategories.getOrCreateCategory(
+        categoryLabel,
+        categorySlug
+      );
+      logger.info(
+        `Created new category: "${categoryLabel}" with slug "${categorySlug}"`
+      );
+    }
 
     const contextId = shortId.generate();
     const contextData: Omit<
@@ -423,23 +435,24 @@ async function generateChunkContext(props: {
   }
 }
 
-type ExistingContext = {
-  title: string;
-  description: string;
-  category: string;
-};
-
 /**
  * Generate context from text batch using LLM
  */
 async function generateTextContext(
   batch: string,
-  pageMetadata: PageMetadata,
-  existingContext?: ExistingContext
+  pageMetadata: PageMetadata
 ): Promise<PageIndexerResponse> {
   return retry(
     async () => {
       const preferences = await preferencesStore.get();
+
+      // Fetch existing categories
+      const existingCategories =
+        (await urmindDb.contextCategories?.getAllCategories()) || [];
+      const categoriesList = existingCategories.map((cat) => ({
+        label: cat.label,
+        slug: cat.slug,
+      }));
 
       let llmResponse: string;
 
@@ -449,7 +462,7 @@ async function generateTextContext(
           llmResponse = await generateWithOnlineModel(
             batch,
             pageMetadata,
-            existingContext,
+            categoriesList,
             preferences
           );
         } catch (onlineError) {
@@ -460,14 +473,14 @@ async function generateTextContext(
           llmResponse = await generateWithLocalModel(
             batch,
             pageMetadata,
-            existingContext
+            categoriesList
           );
         }
       } else {
         llmResponse = await generateWithLocalModel(
           batch,
           pageMetadata,
-          existingContext
+          categoriesList
         );
       }
 
@@ -496,7 +509,7 @@ async function generateTextContext(
 async function generateWithOnlineModel(
   batch: string,
   pageMetadata: PageMetadata,
-  existingContext: ExistingContext | undefined,
+  existingCategories: Array<{ label: string; slug: string }>,
   preferences: any
 ): Promise<string> {
   const genAI = geminiAi(preferences.geminiApiKey);
@@ -509,13 +522,7 @@ async function generateWithOnlineModel(
     prompt: InitialContextCreatorPrompt({
       pageContent: batch,
       metadata: pageMetadata,
-      existingContext: existingContext
-        ? {
-            title: existingContext.title,
-            description: existingContext.description,
-            category: existingContext.category,
-          }
-        : undefined,
+      existingCategories: existingCategories,
     }),
   });
 
@@ -526,7 +533,7 @@ async function generateWithOnlineModel(
 async function generateWithLocalModel(
   batch: string,
   pageMetadata: PageMetadata,
-  existingContext: ExistingContext | undefined
+  existingCategories: Array<{ label: string; slug: string }>
 ): Promise<string> {
   logger.log("🏠 Using local ChromeAI for context generation");
 
@@ -534,13 +541,7 @@ async function generateWithLocalModel(
     InitialContextCreatorPrompt({
       pageContent: batch,
       metadata: pageMetadata,
-      existingContext: existingContext
-        ? {
-            title: existingContext.title,
-            description: existingContext.description,
-            category: existingContext.category,
-          }
-        : undefined,
+      existingCategories: existingCategories,
     })
   );
 
@@ -596,13 +597,4 @@ async function createParentContextWithEmbedding(
   }
 
   return newContextId;
-}
-
-async function getCategoryLabelBySlug(slug: string): Promise<string | null> {
-  if (!urmindDb.contextCategories) {
-    throw new Error("Context categories service not available");
-  }
-
-  const category = await urmindDb.contextCategories.getCategoryBySlug(slug);
-  return category?.label || null;
 }

@@ -1,5 +1,7 @@
 import { StorageStore } from "@/helpers/storage-store";
+import logger from "@/lib/logger";
 import { PageIndexerPayload } from "@/triggers/page-indexer";
+import dayjs from "dayjs";
 
 export type QueueItemStatus = "pending" | "processing" | "completed" | "failed";
 
@@ -92,5 +94,31 @@ export class QueueStore<T = any> extends StorageStore<QueueItem<T>[]> {
       completed: items.filter((item) => item.status === "completed").length,
       failed: items.filter((item) => item.status === "failed").length,
     };
+  }
+
+  /**
+   * Clean up old queue items (older than 2 minutes)
+   * Removes items that are completed, failed, or stuck in processing
+   */
+  async cleanupOldItems(): Promise<void> {
+    setInterval(() => {
+      (async () => {
+        logger.log("cleaning up");
+        const currentItems = await this.get();
+        const twoMinutesAgo = dayjs().subtract(2, "minutes").valueOf();
+
+        const filteredItems = currentItems.filter((item) => {
+          if (item.status === "pending") return true;
+          return item.createdAt > twoMinutesAgo;
+        });
+
+        await this.set(filteredItems);
+
+        const removedCount = currentItems.length - filteredItems.length;
+        if (removedCount > 0) {
+          logger.log(`🧹 Cleaned up ${removedCount} old queue items`);
+        }
+      })();
+    }, 10000);
   }
 }

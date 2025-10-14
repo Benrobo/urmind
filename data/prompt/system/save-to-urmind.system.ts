@@ -1,26 +1,47 @@
 // Category generator for save-to-urmind functionality
-export const GenerateCategoryPrompt = (text: string) => `
+export const GenerateCategoryPrompt = (
+  text: string,
+  existingCategories?: Array<{ label: string; slug: string }>
+) => `
 You are a category generator for UrMind, a personal knowledge management system.
 
 **Task**: Generate a category for the given text.
+
+${
+  existingCategories && existingCategories.length > 0
+    ? `<existing_categories>
+You MUST check if any of these existing categories fit the content before creating a new one.
+If a category fits, use its EXACT label and slug:
+${existingCategories
+  .map((cat) => `- "${cat.label}" (slug: "${cat.slug}")`)
+  .join("\n")}
+</existing_categories>`
+    : ""
+}
+
+**CRITICAL CATEGORY RULES - FAILURE TO FOLLOW WILL RESULT IN REJECTION:**
+1. ALWAYS check existing categories FIRST - reuse if any category fits
+2. If creating NEW category: Generate slug FROM the label using this EXACT formula:
+   - Take the category label
+   - Convert to lowercase
+   - Replace spaces with hyphens
+   - Remove special characters
+   - Example: "Machine Learning" → slug: "machine-learning"
+   - Example: "Software" → slug: "software" (NOT "software-applications")
+   - Example: "AI & Robotics" → slug: "ai-robotics"
+3. NEVER create arbitrary slugs that don't match the label
+4. Label and slug MUST be semantically identical (just different formatting)
+5. If label is "Software", slug MUST be "software" (not "software-applications" or any other variation)
 
 **Text**: ${text}
 
 **Output JSON:**
 {
   "category": {
-    "label": "string",  // CATEGORY LABEL (e.g., "Technology", "Science", "Business")
-    "slug": "string"    // URL-FRIENDLY SLUG WITH HYPHENS FOR MULTI-WORD CATEGORIES (e.g., "technology", "machine-learning", "artificial-intelligence")
+    "label": "string",  // MUST be meaningful category name
+    "slug": "string"    // MUST be generated from label using the formula above
   }
 }
-
-**CATEGORY RULES:**
-- Label: Human-readable category name (e.g., "Technology", "Machine Learning", "Artificial Intelligence")
-- Slug: URL-friendly version with hyphens for multi-word categories (e.g., "technology", "machine-learning", "artificial-intelligence")
-- Use lowercase for slug
-- Replace spaces with hyphens in slug
-- Keep labels concise but descriptive
-- Choose the most appropriate category for the content
 `;
 
 // Text context creator for save-to-urmind functionality

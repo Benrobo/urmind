@@ -1,14 +1,10 @@
 import { PageMetadata } from "@/services/page-extraction/extraction";
 
-// Context creator for content batches with existing context comparison
+// Context creator for content batches with existing categories
 export const InitialContextCreatorPrompt = (input: {
   pageContent: string;
   metadata: Omit<PageMetadata, "pageContent" | "og">;
-  existingContext?: {
-    title: string;
-    description: string;
-    category?: string;
-  };
+  existingCategories?: Array<{ label: string; slug: string }>;
 }) => `
 Analyze the page content. Generate NEW unique context or null.
 
@@ -23,28 +19,42 @@ This is your final opportunity to comply. Produce the required JSON now, exactly
 }
 
 ${
-  input.existingContext
-    ? `**Existing Context Reference:** ${input.existingContext.title} | ${
-        input.existingContext.description
-      }${
-        input.existingContext.category
-          ? ` | ${input.existingContext.category}`
-          : ""
-      }`
+  input.existingCategories && input.existingCategories.length > 0
+    ? `<existing_categories>
+You MUST check if any of these existing categories fit the content before creating a new one.
+If a category fits, use its EXACT label and slug:
+${input.existingCategories
+  .map((cat) => `- "${cat.label}" (slug: "${cat.slug}")`)
+  .join("\n")}
+</existing_categories>`
     : ""
 }
+
+**CRITICAL CATEGORY RULES - FAILURE TO FOLLOW WILL RESULT IN REJECTION:**
+1. ALWAYS check existing categories FIRST - reuse if any category fits
+2. If creating NEW category: Generate slug FROM the label using this EXACT formula:
+   - Take the category label
+   - Convert to lowercase
+   - Replace spaces with hyphens
+   - Remove special characters
+   - Example: "Machine Learning" → slug: "machine-learning"
+   - Example: "Software" → slug: "software" (NOT "software-applications")
+   - Example: "AI & Robotics" → slug: "ai-robotics"
+3. NEVER create arbitrary slugs that don't match the label
+4. Label and slug MUST be semantically identical (just different formatting)
+5. If label is "Software", slug MUST be "software" (not "software-applications" or any other variation)
 
 **Output JSON:**
 {
   "context": {
     "category": {
-      "label": "string",  // CATEGORY LABEL (e.g., "Technology", "Science", "Business")
-      "slug": "string"  // URL-FRIENDLY SLUG WITH HYPHENS FOR MULTI-WORD CATEGORIES (e.g., "technology", "machine-learning", "artificial-intelligence")
+      "label": "string",  // MUST be meaningful category name
+      "slug": "string"    // MUST be generated from label OR from existing category
     },
     "title": "string",  // VERY SHORT, READABLE TITLE (2-6 words max) DESCRIBING WHAT THIS CONTEXT IS ABOUT
-    "description": "string",  // DESCRIPTION OF THE CONTEXT
-    "summary": "string", // concise summary with all important information.
-  } | null,
+    "description": "string",  // brief description of the context
+    "summary": "string" // concise summary with all important information.
+  } | null, // null if the content is not worth saving or doesn't provide substantial value to the user
   "retentionDecision": {"keep": boolean}
 }
 

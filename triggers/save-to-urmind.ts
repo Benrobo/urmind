@@ -13,9 +13,8 @@ import cleanLLMResponse from "@/helpers/clean-llm-response";
 import shortId from "short-uuid";
 import logger from "@/lib/logger";
 import { UrmindDB } from "@/types/database";
-import { semanticCache } from "@/services/semantic-cache.service";
-import { semanticCacheStore } from "@/store/semantic-cache.store";
 import { activityManagerStore } from "@/store/activity-manager.store";
+import { QueueStore } from "@/store/queue.store";
 import {
   GenerateCategoryPrompt,
   TextContextCreatorPrompt,
@@ -31,6 +30,10 @@ export type SaveToUrMindPayload = {
   tabId: number;
 };
 
+export const saveToUrmindQueue = new QueueStore<SaveToUrMindPayload>(
+  "local:save_to_urmind_queue"
+);
+
 const saveToUrMindJob: Task<SaveToUrMindPayload> = task<SaveToUrMindPayload>({
   id: "save-to-urmind",
   run: async (payload: SaveToUrMindPayload) => {
@@ -39,22 +42,46 @@ const saveToUrMindJob: Task<SaveToUrMindPayload> = task<SaveToUrMindPayload>({
 
     console.log("Saving to UrMind:", payload);
 
-    // Track the save activity
-    const activityId = await activityManagerStore.track({
-      title: "Saving to Urmind...",
-      description: `Saving "${selectedText || url}" to Urmind`,
-      status: "in-progress",
-    });
+    if (type === "text" && selectedText) {
+      const contentFingerprint = md5Hash(selectedText);
 
-    if (type === "text") {
+      // Check if already in queue
+      const existingItem = await saveToUrmindQueue.find(contentFingerprint);
+      if (existingItem) {
+        if (existingItem.status === "completed") {
+          logger.log("Already saved:", contentFingerprint);
+          return;
+        }
+        if (existingItem.status === "processing") {
+          logger.log("Already processing:", contentFingerprint);
+          return;
+        }
+        if (existingItem.status === "failed") {
+          logger.log("Retrying failed save:", contentFingerprint);
+        }
+      }
+
+      // Add to queue
+      await saveToUrmindQueue.add(contentFingerprint, payload);
+      await saveToUrmindQueue.updateStatus(contentFingerprint, "processing");
+
+      // Track the save activity
+      const activityId = await activityManagerStore.track({
+        title: "Saving to Urmind...",
+        description: `Saving "${selectedText || url}" to Urmind`,
+        status: "in-progress",
+      });
+
       try {
         await processSaveToUrMind(payload);
 
+        await saveToUrmindQueue.updateStatus(contentFingerprint, "completed");
         await activityManagerStore.updateActivity(activityId, {
           status: "completed",
           description: `Successfully saved "${selectedText || url}" to Urmind`,
         });
       } catch (error) {
+        await saveToUrmindQueue.updateStatus(contentFingerprint, "failed");
         await activityManagerStore.updateActivity(activityId, {
           status: "failed",
           description: `Failed to save "${selectedText || url}" to Urmind: ${
@@ -83,25 +110,8 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
       return;
     }
 
-    // Generate contextId early so we can use it for cache operations
     const contextId = shortId.generate();
 
-    const shouldProcess = await semanticCache.shouldProcessContent(
-      selectedText,
-      tabId,
-      cleanUrl,
-      contextId
-    );
-    if (!shouldProcess) {
-      logger.warn(
-        `⏭️ Skipping text ${
-          selectedText.slice(0, 20) + "..."
-        } - content is too similar to existing contexts or already processed`
-      );
-      return;
-    }
-
-    // Perform semantic search using messaging
     const searchText = `${selectedText}`;
 
     if (!urmindDb.embeddings) {
@@ -109,7 +119,6 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
       return;
     }
 
-    // Generate context metadata using LLM
     const contextResponse = await generateTextContext(selectedText);
 
     const genericContextData: Omit<
@@ -134,8 +143,6 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
 
     let matchedCategorySlug: string | null = null;
 
-    // If category slug is provided,
-    // It means the user tries saving context within mindboard
     if (categorySlug) {
       matchedCategorySlug = categorySlug;
       const contextData: Omit<
@@ -150,7 +157,7 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
 
       await urmindDb.embeddings?.generateAndStore(selectedText, {
         contextId,
-        type: "context",
+        type: "parent",
         category: matchedCategorySlug,
         url: cleanUrl,
       });
@@ -162,7 +169,6 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
         { limit: 5 }
       );
 
-      // Get user preferences for threshold
       const preferences = await preferencesStore.get();
       const hasApiKey = preferences?.geminiApiKey?.trim();
       const threshold = hasApiKey
@@ -206,24 +212,12 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
 
         await urmindDb.embeddings?.generateAndStore(selectedText, {
           contextId,
-          type: "context",
+          type: "parent",
           category: matchedCategorySlug,
           url: cleanUrl,
         });
 
         logger.info("✅ Context created with ID:", contextId);
-
-        logger.warn(
-          "🔍 Caching content so that it doesn't get processed again"
-        );
-
-        // cache this content so that it doesn't get processed again
-        await cacheContent({
-          score: similarContexts?.[0]?.score ?? 0,
-          cleanUrl,
-          content: selectedText,
-          contextId,
-        });
       } else {
         const { category } = await generateCategory(selectedText);
 
@@ -232,59 +226,54 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
           return;
         }
 
-        await urmindDb.contextCategories?.getOrCreateCategory(
-          category.label,
-          category.slug
+        const categorySlug = category.label
+          .toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, "")
+          .replace(/\s+/g, "-")
+          .replace(/-+/g, "-")
+          .replace(/^-+|-+$/g, "");
+
+        logger.info(
+          `Category generation - Label: "${category.label}", LLM Slug: "${category.slug}", Auto Slug: "${categorySlug}"`
         );
+
+        const existingCategory =
+          await urmindDb.contextCategories?.getCategoryBySlug(categorySlug);
+        if (existingCategory) {
+          logger.info(
+            `Category already exists with slug "${categorySlug}": "${existingCategory.label}"`
+          );
+        } else {
+          await urmindDb.contextCategories?.getOrCreateCategory(
+            category.label,
+            categorySlug
+          );
+          logger.info(
+            `Created new category: "${category.label}" with slug "${categorySlug}"`
+          );
+        }
 
         const contextData: Omit<
           UrmindDB["contexts"]["value"],
           "createdAt" | "updatedAt"
         > = {
           ...genericContextData,
-          categorySlug: category.slug,
+          categorySlug: categorySlug,
         };
 
         await urmindDb.contexts?.createContext(contextData);
 
         await urmindDb.embeddings?.generateAndStore(selectedText, {
           contextId,
-          type: "context",
-          category: category.slug,
+          type: "parent",
+          category: categorySlug,
           url: cleanUrl,
         });
 
         logger.info("✅ Context created with ID:", contextId);
-
-        logger.warn(
-          "🔍 Caching content so that it doesn't get processed again"
-        );
-
-        // cache this content so that it doesn't get processed again
-        await cacheContent({
-          score: similarContexts?.[0]?.score ?? 0,
-          cleanUrl,
-          content: selectedText,
-          contextId,
-        });
       }
     }
   }
-}
-
-async function cacheContent(props: {
-  content: string;
-  cleanUrl: string;
-  score: number;
-  contextId: string;
-}) {
-  const { content, cleanUrl, score, contextId } = props;
-  const semanticSignature = await semanticCache.generateSemanticSignature(
-    content
-  );
-  const urlFingerprint = md5Hash(cleanUrl);
-  const signatureKey = `${urlFingerprint}:${semanticSignature}`;
-  await semanticCacheStore.addSignature(signatureKey, contextId, score ?? 0);
 }
 
 async function generateCategory(text: string) {
@@ -292,21 +281,31 @@ async function generateCategory(text: string) {
     async () => {
       const preferences = await preferencesStore.get();
 
+      const existingCategories =
+        (await urmindDb.contextCategories?.getAllCategories()) || [];
+      const categoriesList = existingCategories.map((cat) => ({
+        label: cat.label,
+        slug: cat.slug,
+      }));
+
       let llmResponse: string;
 
-      // Try online model first if API key is available
       if (preferences.geminiApiKey?.trim()) {
         try {
-          llmResponse = await generateWithOnlineModel(text, preferences);
+          llmResponse = await generateWithOnlineModel(
+            text,
+            categoriesList,
+            preferences
+          );
         } catch (onlineError) {
           console.warn(
             "Online model failed, falling back to local model:",
             onlineError
           );
-          llmResponse = await generateWithLocalModel(text);
+          llmResponse = await generateWithLocalModel(text, categoriesList);
         }
       } else {
-        llmResponse = await generateWithLocalModel(text);
+        llmResponse = await generateWithLocalModel(text, categoriesList);
       }
 
       const sanitizedResponse = cleanLLMResponse({
@@ -332,6 +331,7 @@ async function generateCategory(text: string) {
 
 async function generateWithOnlineModel(
   text: string,
+  existingCategories: Array<{ label: string; slug: string }>,
   preferences: any
 ): Promise<string> {
   const genAI = geminiAi(preferences.geminiApiKey);
@@ -341,17 +341,22 @@ async function generateWithOnlineModel(
 
   const result = await generateText({
     model: genAI(modelName),
-    prompt: GenerateCategoryPrompt(text),
+    prompt: GenerateCategoryPrompt(text, existingCategories),
   });
 
   logger.log("✅ Online category generation completed");
   return result.text;
 }
 
-async function generateWithLocalModel(text: string): Promise<string> {
+async function generateWithLocalModel(
+  text: string,
+  existingCategories: Array<{ label: string; slug: string }>
+): Promise<string> {
   logger.log("🏠 Using local ChromeAI for category generation");
 
-  const result = await chromeAi.invoke(GenerateCategoryPrompt(text));
+  const result = await chromeAi.invoke(
+    GenerateCategoryPrompt(text, existingCategories)
+  );
 
   logger.log("✅ Local category generation completed");
   return result;
@@ -364,7 +369,6 @@ async function generateTextContext(text: string) {
 
       let llmResponse: string;
 
-      // Try online model first if API key is available
       if (preferences.geminiApiKey?.trim()) {
         try {
           llmResponse = await generateTextContextWithOnlineModel(

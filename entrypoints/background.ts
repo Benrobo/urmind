@@ -6,6 +6,8 @@ import { initDb } from "@/services/db";
 import { INVALID_TAB_URLS } from "@/constant/internal";
 import { tabTimingService } from "@/services/tab-timing.service";
 import { activityManagerStore } from "@/store/activity-manager.store";
+import { pageIndexerQueue } from "@/triggers/page-indexer";
+import { saveToUrmindQueue } from "@/triggers/save-to-urmind";
 
 export default defineBackground(async () => {
   console.log("🚀 Background script loaded");
@@ -48,10 +50,11 @@ export default defineBackground(async () => {
     await tabTimingService.handleTabRemoved(tabId);
   });
 
-  // Start activity cleanup interval (every 30 seconds)
   await activityManagerStore.cleanupOldActivities();
-  // setInterval(async () => {
-  // }, 5000);
+
+  // Clean up old queue items
+  await pageIndexerQueue.cleanupOldItems();
+  await saveToUrmindQueue.cleanupOldItems();
 
   // Set up context menu click handling
   chrome.contextMenus.onClicked.addListener((info, tab) => {

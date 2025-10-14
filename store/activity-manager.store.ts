@@ -113,35 +113,39 @@ export class ActivityManagerStore extends StorageStore<{
    * Clean up old activities (older than 1 minute and completed/failed)
    */
   async cleanupOldActivities(): Promise<void> {
-    const currentState = await this.get();
-    const now = dayjs();
-    const xMinuteAgo = now.subtract(1, "minute");
+    setInterval(() => {
+      (async () => {
+        const currentState = await this.get();
+        const now = dayjs();
+        const xMinuteAgo = now.subtract(1, "minute");
 
-    let cleanedCount = 0;
+        let cleanedCount = 0;
 
-    // Process activities one by one
-    for (const activity of currentState.activities) {
-      const activityTime = dayjs(activity.createdAt);
-      const isOlderThanXMinute = activityTime.isBefore(xMinuteAgo);
-      const isCompleted =
-        activity.status === "completed" || activity.status === "failed";
+        // Process activities one by one
+        for (const activity of currentState.activities) {
+          const activityTime = dayjs(activity.createdAt);
+          const isOlderThanXMinute = activityTime.isBefore(xMinuteAgo);
+          const isCompleted =
+            activity.status === "completed" || activity.status === "failed";
 
-      if (activity.status === "failed") {
-        // wait 1 minute before deleting
-        await sleep(1000 * 60);
-      }
+          if (activity.status === "failed") {
+            // wait 1 minute before deleting
+            await sleep(1000 * 60);
+          }
 
-      if (isOlderThanXMinute && isCompleted) {
-        const success = await this.delete(activity.id);
-        if (success) {
-          cleanedCount++;
+          if (isOlderThanXMinute && isCompleted) {
+            const success = await this.delete(activity.id);
+            if (success) {
+              cleanedCount++;
+            }
+          }
         }
-      }
-    }
 
-    if (cleanedCount > 0) {
-      logger.info(`🧹 Cleaned up ${cleanedCount} old activities`);
-    }
+        if (cleanedCount > 0) {
+          logger.info(`🧹 Cleaned up ${cleanedCount} old activities`);
+        }
+      })();
+    }, 1000 * 10);
   }
 }
 
