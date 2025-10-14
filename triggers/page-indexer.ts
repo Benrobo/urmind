@@ -1,6 +1,4 @@
-import pageExtractionService, {
-  PageMetadata,
-} from "@/services/page-extraction/extraction";
+import { PageMetadata } from "@/services/page-extraction/extraction";
 import { Task, task } from "./task";
 import { chromeAi, geminiAi } from "@/helpers/agent/utils";
 import { preferencesStore } from "@/store/preferences.store";
@@ -15,37 +13,41 @@ import { PageIndexerResponse } from "@/types/page-indexing";
 import shortId from "short-uuid";
 import logger from "@/lib/logger";
 import { UrmindDB } from "@/types/database";
-import { PageIndexingSemanticSearchThreshold } from "@/constant/internal";
-import { semanticCache } from "@/services/semantic-cache.service";
-import { semanticCacheStore } from "@/store/semantic-cache.store";
 import { activityManagerStore } from "@/store/activity-manager.store";
+import { QueueStore } from "@/store/queue.store";
 
-type PageIndexerPayload = {
+export type PageIndexerPayload = {
   url: string;
   pageMetadata: PageMetadata;
   tabId: number;
+  internalTrigger?: boolean;
 };
+
+const pageIndexerQueue = new QueueStore<PageIndexerPayload>(
+  "local:page_indexer_queue"
+);
 
 const pageIndexerJob: Task<PageIndexerPayload> = task<PageIndexerPayload>({
   id: "page-indexer",
   run: async (payload: PageIndexerPayload) => {
     const { url, pageMetadata, tabId } = payload;
-    const preferences = await preferencesStore.get();
-    const indexingEnabled = await preferencesStore.getIndexingEnabled();
-    const hasApiKey = preferences?.geminiApiKey?.trim();
 
-    if (!hasApiKey) {
-      logger.warn("🚫 No API key found, skipping page indexing");
-      return;
-    }
-
-    if (!indexingEnabled) {
-      logger.warn("🚫 Indexing is disabled, skipping tab checks");
+    // Early validation checks
+    if (!(await validateIndexingRequirements())) {
       return;
     }
 
     logger.log("🔍 Indexing page:", url);
     logger.log("📄 Page metadata:", pageMetadata);
+
+    const cleanUrl = cleanUrlForFingerprint(url);
+    const fingerprint = md5Hash(cleanUrl);
+
+    // Handle queue logic
+    const shouldProcess = await handleQueueLogic(fingerprint, payload);
+    if (!shouldProcess) {
+      return;
+    }
 
     // Track the indexing activity
     const activityId = await activityManagerStore.track({
@@ -54,41 +56,26 @@ const pageIndexerJob: Task<PageIndexerPayload> = task<PageIndexerPayload>({
       status: "in-progress",
     });
 
-    const cleanUrl = cleanUrlForFingerprint(url);
-    const fingerprint = md5Hash(cleanUrl);
-
-    logger.log("🔗 Clean URL for fingerprint:", cleanUrl);
-    logger.log("🔑 Fingerprint:", fingerprint);
-
-    const existingContext = await getExistingContext(fingerprint);
-
     try {
-      // Process text content batches using text-based approach
-      for (let i = 0; i < pageMetadata.pageContentBatches.length; i++) {
-        const batch = pageMetadata.pageContentBatches[i];
-        if (!batch) {
-          logger.warn(`⚠️ Skipping empty batch ${i + 1}`);
-          continue;
-        }
-
-        await processTextBatch({
-          batch: batch as string,
-          batchIndex: i,
-          totalBatches: pageMetadata.pageContentBatches.length,
-          pageMetadata,
-          fingerprint,
-          cleanUrl,
-          tabId,
-          existingContext,
-          fullUrl: url,
-        });
-      }
+      await processPageIndexing({
+        activityId,
+        fingerprint,
+        cleanUrl,
+        url,
+        pageMetadata,
+      });
 
       // Mark activity as completed
       await activityManagerStore.updateActivity(activityId, {
         status: "completed",
         description: `Successfully indexed ${url}`,
       });
+
+      // Update queue item status to completed
+      await pageIndexerQueue.updateStatus(fingerprint, "completed");
+
+      // Log queue state and process next item
+      await logQueueStateAndProcessNext();
     } catch (error) {
       // Mark activity as failed
       await activityManagerStore.updateActivity(activityId, {
@@ -97,6 +84,9 @@ const pageIndexerJob: Task<PageIndexerPayload> = task<PageIndexerPayload>({
           error instanceof Error ? error.message : "Unknown error"
         }`,
       });
+
+      // Update queue item status to failed
+      await pageIndexerQueue.updateStatus(fingerprint, "failed");
       throw error;
     }
   },
@@ -107,136 +97,240 @@ const pageIndexerJob: Task<PageIndexerPayload> = task<PageIndexerPayload>({
 
 export default pageIndexerJob;
 
-async function processTextBatch(props: {
-  batch: string;
-  batchIndex: number;
-  totalBatches: number;
-  pageMetadata: PageMetadata;
+async function processPageIndexing(props: {
+  activityId: string;
   fingerprint: string;
   cleanUrl: string;
-  tabId: number;
-  existingContext?: ExistingContext;
-  fullUrl: string;
+  url: string;
+  pageMetadata: PageMetadata;
 }): Promise<void> {
-  const {
-    batch,
-    batchIndex,
-    totalBatches,
+  const { activityId, fingerprint, cleanUrl, url, pageMetadata } = props;
+
+  if (!urmindDb.contexts) {
+    logger.error("❌ Contexts service not available");
+    throw new Error("Contexts service not available");
+  }
+
+  const existingContext = await urmindDb.contexts.getContextByFingerprint(
+    fingerprint
+  );
+  if (existingContext) {
+    logger.warn("✅ Context already exists for clean url:", cleanUrl);
+    return;
+  }
+
+  const firstContext = pageMetadata?.pageContentBatches?.[0];
+  if (!firstContext) {
+    return;
+  }
+
+  const parentContext = await generateParentContext({
+    batch: firstContext,
     pageMetadata,
     fingerprint,
     cleanUrl,
-    tabId,
-    existingContext,
-    fullUrl,
-  } = props;
-  logger.info(`📄 Processing text batch ${batchIndex + 1}/${totalBatches}`);
+    fullUrl: url,
+    contentFingerprint: md5Hash(firstContext),
+  });
 
-  const contentFingerprint = md5Hash(batch);
-  logger.log("🔍 Content fingerprint:", contentFingerprint);
+  if (parentContext?.continue == false || parentContext?.context?.id == null) {
+    logger.error("Failed to create parent context");
+    // Update queue item status to failed
+    await pageIndexerQueue.updateStatus(fingerprint, "failed");
 
-  if (!urmindDb.contexts || !urmindDb.embeddings) {
-    logger.error("❌ Contexts or embeddings service not available");
+    // add to activity manager
+    await activityManagerStore.updateActivity(activityId, {
+      status: "failed",
+      description: `Failed to create parent context`,
+    });
+
+    // Process next queue item after failure
+    await processNextQueueItem();
     return;
   }
 
-  const contextId = shortId.generate();
+  // Process remaining batches
+  const remainingBatches = pageMetadata?.pageContentBatches?.slice(1);
+  if (remainingBatches.length > 0) {
+    for (const batch of remainingBatches) {
+      const chunkContext = await generateChunkContext({
+        batch,
+        fingerprint,
+        cleanUrl,
+        fullUrl: url,
+        parentContext: parentContext.context,
+      });
+      if (chunkContext == false) {
+        logger.error("Failed to create chunk context");
+        continue;
+      } else {
+        logger.info("✅ Chunk context created successfully");
+      }
+    }
+  }
 
-  const shouldProcess = await semanticCache.shouldProcessContent(
-    batch,
-    tabId,
-    cleanUrl,
-    contextId
-  );
-  if (!shouldProcess) {
-    logger.warn(
-      `⏭️ Skipping text batch ${
-        batchIndex + 1
-      } - content is too similar to existing contexts or already processed`
+  logger.info(`✅ All contexts created successfully: "${cleanUrl}"`);
+}
+
+async function validateIndexingRequirements(): Promise<boolean> {
+  const preferences = await preferencesStore.get();
+  const indexingEnabled = await preferencesStore.getIndexingEnabled();
+  const hasApiKey = preferences?.geminiApiKey?.trim();
+
+  if (!hasApiKey) {
+    logger.warn("🚫 No API key found, skipping page indexing");
+    return false;
+  }
+
+  if (!indexingEnabled) {
+    logger.warn("🚫 Indexing is disabled, skipping tab checks");
+    return false;
+  }
+
+  return true;
+}
+
+async function handleQueueLogic(
+  fingerprint: string,
+  payload: PageIndexerPayload
+): Promise<boolean> {
+  // Skip queue duplicate check for internal triggers
+  if (payload.internalTrigger === true) {
+    logger.log(
+      "🔄 Internal trigger - skipping queue duplicate check:",
+      fingerprint
     );
-    return;
+    return true; // Allow processing immediately
   }
 
+  const existingItem = await pageIndexerQueue.find(fingerprint);
+
+  if (existingItem) {
+    return handleExistingQueueItem(fingerprint, existingItem);
+  } else {
+    return handleNewQueueItem(fingerprint, payload);
+  }
+}
+
+async function handleExistingQueueItem(
+  fingerprint: string,
+  existingItem: { status: string }
+): Promise<boolean> {
+  if (existingItem.status === "failed") {
+    // Retry failed item
+    logger.log("🔄 Retrying failed queue item:", fingerprint);
+    await pageIndexerQueue.updateStatus(fingerprint, "processing");
+    return true;
+  } else {
+    // Item is pending, processing, or completed - skip execution
+    logger.log(
+      "⏭️ Skipping duplicate queue item:",
+      fingerprint,
+      "Status:",
+      existingItem.status
+    );
+    return false;
+  }
+}
+
+async function handleNewQueueItem(
+  fingerprint: string,
+  payload: PageIndexerPayload
+): Promise<boolean> {
+  // Add new item to queue
+  await pageIndexerQueue.add(fingerprint, payload);
+
+  // Check if there are other items currently being processed
+  const allItems = await pageIndexerQueue.findAll();
+  const processingItems = allItems.filter(
+    (item) => item.status === "processing"
+  );
+
+  if (processingItems.length > 0) {
+    // There's already an item being processed, keep this one as "pending"
+    logger.log(
+      "📋 Added to queue (pending):",
+      fingerprint,
+      "- Other items processing"
+    );
+    return false; // Don't process immediately
+  } else {
+    // No items currently processing, start this one immediately
+    await pageIndexerQueue.updateStatus(fingerprint, "processing");
+    logger.log("🚀 Starting processing immediately:", fingerprint);
+    return true; // Process immediately
+  }
+}
+
+async function processNextQueueItem(): Promise<void> {
+  const nextItem = await pageIndexerQueue.getNext();
+  if (nextItem) {
+    logger.log("🔄 Processing next queue item:", nextItem.id);
+    await pageIndexerQueue.updateStatus(nextItem.id, "processing");
+    // Recursively trigger the job with the next item's payload and internalTrigger flag
+    await pageIndexerJob.trigger({
+      ...nextItem.content,
+      internalTrigger: true,
+    });
+  } else {
+    logger.log("📭 No more items in queue");
+  }
+}
+
+async function logQueueStateAndProcessNext(): Promise<void> {
+  const allItems = await pageIndexerQueue.findAll();
+  logger.log(
+    "📊 Queue state after completion:",
+    allItems.map((item) => `${item.id}:${item.status}`)
+  );
+  await processNextQueueItem();
+}
+
+async function generateParentContext(props: {
+  batch: string;
+  pageMetadata: PageMetadata;
+  fingerprint: string;
+  cleanUrl: string;
+  fullUrl: string;
+  contentFingerprint: string;
+}) {
+  logger.log("🔍 Generating parent context");
+
+  const {
+    batch,
+    pageMetadata,
+    fingerprint,
+    cleanUrl,
+    fullUrl,
+    contentFingerprint,
+  } = props;
+
+  let response: {
+    continue: boolean;
+    context: {
+      id: string;
+      categorySlug: string;
+    } | null;
+  } = {
+    continue: true,
+    context: null,
+  };
   const contextResponse = await generateTextContext(
     batch,
     pageMetadata,
-    existingContext
+    undefined
   );
-
-  const searchText = `${contextResponse.context?.title} ${contextResponse.context?.description} ${contextResponse.context?.rawContent}`;
-
-  if (!urmindDb.embeddings) {
-    logger.error("❌ Embeddings service not available");
-    return;
-  }
-
-  const semanticSearchResults = await urmindDb.embeddings.semanticSearch(
-    searchText,
-    { limit: 5 }
-  );
-
-  // Get user preferences for threshold
-  const preferences = await preferencesStore.get();
-  const hasApiKey = preferences?.geminiApiKey?.trim();
-  const threshold = hasApiKey
-    ? PageIndexingSemanticSearchThreshold.online
-    : PageIndexingSemanticSearchThreshold.offline;
-
-  const similarContexts = semanticSearchResults?.filter(
-    (c) => c.score >= threshold
-  );
-
-  logger.info(`🔍 Semantic search results:`, semanticSearchResults);
-  logger.info(`🔍 Closely similar contexts:`, similarContexts);
-
-  // Check for very high similarity (0.9+) - update existing context instead of creating new one
-  const verySimilarContext = semanticSearchResults?.find((c) => c.score >= 0.9);
-  if (verySimilarContext) {
-    logger.warn(
-      `🚨 Very high similarity (${verySimilarContext.score}) - updating existing context instead of creating new one`
-    );
-
-    await updateExistingContext(
-      verySimilarContext.id,
-      {
-        title: contextResponse.context?.title || verySimilarContext.title,
-        description:
-          contextResponse.context?.description ||
-          verySimilarContext.description,
-        summary: contextResponse.context?.summary || verySimilarContext.summary,
-        rawContent: contextResponse.context?.rawContent || batch,
-      },
-      tabId,
-      cleanUrl,
-      verySimilarContext.categorySlug
-    );
-
-    // Cache this content to prevent reprocessing
-    await cacheContent({
-      score: verySimilarContext.score,
-      cleanUrl,
-      content: batch,
-      contextId,
-    });
-
-    return;
-  }
-
-  let matchedCategorySlug: string | null = null;
-  if (similarContexts?.length > 0) {
-    matchedCategorySlug = similarContexts?.[0]?.categorySlug || null;
-    logger.info(
-      `🔍 Matched context: ${similarContexts?.[0]?.categorySlug} with score: ${similarContexts?.[0]?.score}`
-    );
-  }
 
   if (contextResponse.retentionDecision.keep && contextResponse.context) {
-    const categoryLabel = matchedCategorySlug
-      ? await getCategoryLabelBySlug(matchedCategorySlug)
+    const generatedCategorySlug = contextResponse.context.category.slug;
+    const categoryLabel = generatedCategorySlug
+      ? (await getCategoryLabelBySlug(generatedCategorySlug)) ??
+        contextResponse.context.category.label
       : contextResponse.context.category.label;
 
-    const categorySlug =
-      matchedCategorySlug ||
-      contextResponse.context.category.slug.toLowerCase().replace(/\s/g, "-");
+    const categorySlug = generatedCategorySlug
+      .toLowerCase()
+      .replace(/\s/g, "-");
 
     if (!urmindDb.contextCategories) {
       throw new Error("Context categories service not available");
@@ -247,6 +341,7 @@ async function processTextBatch(props: {
       categorySlug
     );
 
+    const contextId = shortId.generate();
     const contextData: Omit<
       UrmindDB["contexts"]["value"],
       "createdAt" | "updatedAt"
@@ -259,7 +354,6 @@ async function processTextBatch(props: {
       title: contextResponse.context.title,
       description: contextResponse.context.description,
       summary: contextResponse.context.summary,
-      rawContent: contextResponse.context.rawContent,
       og: {
         title: pageMetadata.og.title,
         description: pageMetadata.og.description,
@@ -274,24 +368,58 @@ async function processTextBatch(props: {
     };
 
     try {
-      logger.info("💾 Creating new text context:", contextData);
-      await createContextWithEmbedding(contextData, cleanUrl, tabId);
-
-      // Always cache content after processing to prevent reprocessing
-      await cacheContent({
-        score: similarContexts?.[0]?.score ?? 0,
+      const parentContextId = await createParentContextWithEmbedding(
+        contextData,
         cleanUrl,
-        content: batch,
-        contextId,
-      });
-    } catch (error) {
-      logger.error("❌ Failed to create text context:", error);
+        batch,
+        "parent"
+      );
+      response.context = { id: parentContextId, categorySlug: categorySlug };
+      response.continue = true;
+      return response;
+    } catch (err: any) {
+      logger.error("Failed to create parent context:", err);
+      response.continue = false;
+      return response;
     }
   } else {
-    logger.info(
-      "⏭️ Skipping text context creation:",
-      contextResponse.retentionDecision.reason
-    );
+    response.continue = false;
+    return response;
+  }
+}
+
+async function generateChunkContext(props: {
+  batch: string;
+  fingerprint: string;
+  cleanUrl: string;
+  fullUrl: string;
+  parentContext: {
+    id: string;
+    categorySlug: string;
+  };
+}) {
+  logger.log("🔍 Generating chunk context");
+
+  const { batch, cleanUrl, parentContext } = props;
+
+  if (!urmindDb.embeddings) {
+    logger.error("❌ Embeddings service not available");
+    return;
+  }
+
+  try {
+    // generate and store embedding
+    const rawContent = `${batch}`;
+    await urmindDb.embeddings.generateAndStore(rawContent, {
+      contextId: parentContext.id,
+      type: "chunk",
+      category: parentContext.categorySlug,
+      url: cleanUrl,
+    });
+    return true;
+  } catch (err: any) {
+    logger.error("Failed to create chunk context:", err);
+    return false;
   }
 }
 
@@ -300,152 +428,6 @@ type ExistingContext = {
   description: string;
   category: string;
 };
-
-async function getCategoryLabelBySlug(slug: string): Promise<string> {
-  if (!urmindDb.contextCategories) {
-    throw new Error("Context categories service not available");
-  }
-
-  const category = await urmindDb.contextCategories.getCategoryBySlug(slug);
-  return category?.label || slug;
-}
-
-async function cacheContent(props: {
-  content: string;
-  cleanUrl: string;
-  score: number;
-  contextId: string;
-}) {
-  const { content, cleanUrl, score, contextId } = props;
-  const semanticSignature = await semanticCache.generateSemanticSignature(
-    content
-  );
-  const urlFingerprint = md5Hash(cleanUrl);
-  const signatureKey = `${urlFingerprint}:${semanticSignature}`;
-  await semanticCacheStore.addSignature(signatureKey, contextId, score ?? 0);
-}
-
-async function getExistingContext(
-  fingerprint: string
-): Promise<ExistingContext | undefined> {
-  if (!urmindDb.contexts) {
-    logger.error("❌ Contexts service not available");
-    return undefined;
-  }
-  const existingUrlContext = await urmindDb.contexts.getContextByFingerprint(
-    fingerprint
-  );
-  if (existingUrlContext) {
-    return {
-      title: existingUrlContext.title,
-      description: existingUrlContext.description,
-      category: existingUrlContext.categorySlug,
-    };
-  }
-
-  return undefined;
-}
-
-async function createContextWithEmbedding(
-  contextData: Omit<UrmindDB["contexts"]["value"], "createdAt" | "updatedAt">,
-  cleanUrl: string,
-  tabId: number
-): Promise<string> {
-  if (!urmindDb.contexts) {
-    logger.error("❌ Contexts service not available");
-    throw new Error("Contexts service not available");
-  }
-
-  // Create context directly in background script
-  const newContextId = await urmindDb.contexts.createContext(contextData);
-  logger.info("✅ Context created with ID:", newContextId);
-
-  try {
-    // Generate and store embedding using messaging
-    if (!urmindDb.embeddings) {
-      logger.error("❌ Embeddings service not available");
-      return newContextId;
-    }
-
-    const embeddingText = `${contextData.title} ${contextData.description} ${contextData.rawContent}`;
-    await urmindDb.embeddings.generateAndStore(embeddingText, {
-      contextId: newContextId,
-      type: "context",
-      category: contextData.categorySlug,
-      url: cleanUrl,
-    });
-    logger.info("🔮 Embedding created for context:", newContextId);
-  } catch (embeddingError) {
-    logger.error("⚠️ Failed to create embedding:", embeddingError);
-
-    // Check if it's a WASM-related error
-    if (
-      embeddingError instanceof Error &&
-      embeddingError.message.includes("WebAssembly")
-    ) {
-      logger.error(
-        "🚨 WebAssembly error detected. This might be due to CSP restrictions or missing WASM files."
-      );
-      logger.error(
-        "💡 Try rebuilding the extension or check browser console for more details."
-      );
-    }
-  }
-
-  return newContextId;
-}
-
-/**
- * Update existing context with new content
- */
-async function updateExistingContext(
-  contextId: string,
-  updates: {
-    title: string;
-    description: string;
-    summary: string;
-    rawContent: string;
-  },
-  tabId: number,
-  cleanUrl: string,
-  categorySlug: string
-): Promise<void> {
-  if (!urmindDb.contexts) {
-    logger.error("❌ Contexts service not available");
-    return;
-  }
-
-  try {
-    // Update the context
-    await urmindDb.contexts.updateContext(contextId, {
-      title: updates.title,
-      description: updates.description,
-      summary: updates.summary,
-      rawContent: updates.rawContent,
-    });
-    logger.info("✅ Updated existing context:", contextId);
-
-    // Delete old embedding
-    if (urmindDb.embeddings) {
-      await urmindDb.embeddings.deleteEmbeddingsByContextId(contextId);
-      logger.info("🗑️ Deleted old embedding for context:", contextId);
-    }
-
-    // Generate new embedding with updated content
-    if (urmindDb.embeddings) {
-      const embeddingText = `${updates.title} ${updates.description} ${updates.rawContent}`;
-      await urmindDb.embeddings.generateAndStore(embeddingText, {
-        contextId: contextId,
-        type: "context",
-        category: categorySlug,
-        url: cleanUrl,
-      });
-      logger.info("🔮 Generated new embedding for updated context:", contextId);
-    }
-  } catch (error) {
-    logger.error("❌ Failed to update context:", error);
-  }
-}
 
 /**
  * Generate context from text batch using LLM
@@ -564,4 +546,63 @@ async function generateWithLocalModel(
 
   logger.log("✅ Local context generation completed");
   return result;
+}
+
+async function createParentContextWithEmbedding(
+  contextData: Omit<UrmindDB["contexts"]["value"], "createdAt" | "updatedAt">,
+  cleanUrl: string,
+  rawContent: string,
+  type: "parent" | "chunk"
+): Promise<string> {
+  if (!urmindDb.contexts) {
+    logger.error("❌ Contexts service not available");
+    throw new Error("Contexts service not available");
+  }
+
+  // Create context directly in background script
+  const newContextId = await urmindDb.contexts.createContext(contextData);
+  logger.info("✅ Context created with ID:", newContextId);
+
+  try {
+    // Generate and store embedding using messaging
+    if (!urmindDb.embeddings) {
+      logger.error("❌ Embeddings service not available");
+      return newContextId;
+    }
+
+    const embeddingText = `${contextData.title} ${contextData.description} ${rawContent}`;
+    await urmindDb.embeddings.generateAndStore(embeddingText, {
+      contextId: newContextId,
+      type: type,
+      category: contextData.categorySlug,
+      url: cleanUrl,
+    });
+    logger.info("🔮 Embedding created for context:", newContextId);
+  } catch (embeddingError) {
+    logger.error("⚠️ Failed to create embedding:", embeddingError);
+
+    // Check if it's a WASM-related error
+    if (
+      embeddingError instanceof Error &&
+      embeddingError.message.includes("WebAssembly")
+    ) {
+      logger.error(
+        "🚨 WebAssembly error detected. This might be due to CSP restrictions or missing WASM files."
+      );
+      logger.error(
+        "💡 Try rebuilding the extension or check browser console for more details."
+      );
+    }
+  }
+
+  return newContextId;
+}
+
+async function getCategoryLabelBySlug(slug: string): Promise<string | null> {
+  if (!urmindDb.contextCategories) {
+    throw new Error("Context categories service not available");
+  }
+
+  const category = await urmindDb.contextCategories.getCategoryBySlug(slug);
+  return category?.label || null;
 }

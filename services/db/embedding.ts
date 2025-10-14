@@ -65,6 +65,8 @@ export class EmbeddingService {
           id: embedding?.id,
           score: cos_sim(queryEmbedding, embedding.vector),
           metadata: embedding?.metadata,
+          type: embedding?.type,
+          rawContent: embedding?.rawContent,
         };
       })
       .sort((a, b) => b.score - a.score)

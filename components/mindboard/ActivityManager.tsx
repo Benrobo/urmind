@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import ActivitySpinner from "../spinner";
 import { useActivities } from "@/hooks/useActivities";
+import useClickOutside from "@/hooks/useClickOutside";
 
 // This is meant to have similar feature like the windows activity managers which shows lists of processes running in the background.
 // but in this case, it will be for the background activities of the extension.
@@ -12,6 +13,9 @@ import { useActivities } from "@/hooks/useActivities";
 export default function ActivityManager() {
   const [isOpen, setIsOpen] = useState(false);
   const { activities, loading, error } = useActivities();
+  const activityPanelClickOutsideRef = useClickOutside(() => setIsOpen(false), {
+    excludeSelectors: ["#activity-manager-toggle"],
+  });
 
   const pendingActivities = activities.filter(
     (activity) => activity.status === "in-progress"
@@ -29,6 +33,7 @@ export default function ActivityManager() {
         transition={{ duration: 0.2 }}
         onClick={togglePanel}
         className="w-8 h-7 flex flex-center rounded-[3px] bg-white-100/10 hover:bg-white-100/20 transition-colors relative border-none outline-none ring-0"
+        id="activity-manager-toggle"
       >
         <Activity className="w-4 h-4 text-white-100" />
 
@@ -60,6 +65,7 @@ export default function ActivityManager() {
             exit={{ opacity: 0, x: 100 }}
             transition={{ duration: 0.2, ease: "easeInOut" }}
             className="min-w-[250px] max-w-[350px] min-h-[250px] max-h-[600px] bg-gray-100 rounded-[3px] shadow-lg mt-2 border border-white-100/10 fixed top-10 right-2 backdrop-blur-sm"
+            ref={activityPanelClickOutsideRef}
           >
             {/* header */}
             <div className="w-full px-3 py-3 h-auto border-b border-white-100/10 shadow-sm">

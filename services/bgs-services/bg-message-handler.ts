@@ -12,7 +12,6 @@ import { PageMetadata } from "../page-extraction/extraction";
 import saveToUrMindJob, {
   SaveToUrMindPayload,
 } from "@/triggers/save-to-urmind";
-import { semanticCache } from "../semantic-cache.service";
 
 type BgScriptMessageHandlerOperations =
   // page metadata extraction
@@ -38,10 +37,10 @@ type BgScriptMessageHandlerOperations =
   | "deleteMessage"
   | "deleteConversation"
   | "semanticSearch"
+  | "semanticSearchDeepResearch"
   | "clearContexts"
   | "clearEmbeddings"
   | "clearConversations"
-  | "clearSemanticCache"
   | "clearAllData";
 
 export type BgScriptMessageHandlerActions =
@@ -298,6 +297,16 @@ export class BackgroundMessageHandler {
           );
           break;
 
+        case "semanticSearchDeepResearch":
+          if (!urmindDb.embeddings) {
+            throw new Error("Embeddings service not available");
+          }
+          result = await urmindDb.embeddings.semanticSearchDeepResearch(
+            data.query,
+            data.limit
+          );
+          break;
+
         case "createConversation":
           if (!urmindDb.conversations) {
             throw new Error("Conversations service not available");
@@ -317,12 +326,6 @@ export class BackgroundMessageHandler {
           logger.log("🧹 Clearing conversations...");
           result = await urmindDb.clearConversations();
           logger.log("✅ Conversations cleared successfully");
-          break;
-
-        case "clearSemanticCache":
-          logger.log("🧹 Clearing semantic cache...");
-          result = await semanticCache.clearCache();
-          logger.log("✅ Semantic cache cleared successfully");
           break;
 
         case "clearAllData":

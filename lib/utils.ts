@@ -107,3 +107,16 @@ export const constructUrlTextFragment = (
     return url;
   }
 };
+
+/**
+ *
+ * @param text The text to estimate token count for
+ * @returns Estimated token count based on character and word counts
+ */
+export function estimateTokenCount(text: string) {
+  const chars = text.replace(/\s/g, "").length;
+  const words = text.trim().split(/\s+/).length;
+  const charsEstimate = chars / 4;
+  const wordsEstimate = words * 1.4;
+  return Math.round((charsEstimate + wordsEstimate) / 2);
+}

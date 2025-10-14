@@ -9,6 +9,7 @@ import { preferencesStore } from "@/store/preferences.store";
 import dayjs from "dayjs";
 import logger from "@/lib/logger";
 import pageIndexerJob from "@/triggers/page-indexer";
+import { sleep } from "@/lib/utils";
 
 export class TabTimingService {
   private checkInterval: NodeJS.Timeout | null = null;
@@ -115,6 +116,9 @@ export class TabTimingService {
       logger.warn(
         `🚀 Triggering page indexing for tab ${tab.tabId}: ${tab.url}`
       );
+
+      // wait for dom to settle
+      await sleep(1000);
 
       // Use stored page metadata to trigger page indexer directly
       await this.triggerPageIndexerWithMetadata(tab);

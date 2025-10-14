@@ -1,4 +1,4 @@
-import { Context } from "@/types/context";
+import { DeepResearchResult } from "@/types/search";
 import dayjs from "dayjs";
 
 type Props = {
@@ -7,18 +7,7 @@ type Props = {
     user: string;
     assistant: string;
   }>;
-  relatedContexts: Array<
-    Omit<
-      Context,
-      | "id"
-      | "createdAt"
-      | "updatedAt"
-      | "fingerprint"
-      | "contentFingerprint"
-      | "highlightElements"
-      | "favicon"
-    > & { score: number }
-  >;
+  relatedContexts: DeepResearchResult["injectedContexts"];
 };
 
 export const DeepResearchSystemPrompt = ({
@@ -78,15 +67,17 @@ ${
 
 <available_contexts>
 ${
-  (relatedContexts ?? []).length > 0
-    ? (relatedContexts ?? [])
+  relatedContexts.length > 0
+    ? relatedContexts
         .map(
           (context) => `
-**${context.title}** (${context.type})
-${context.summary}
-${context.url ? `Source: [${context.url}](${context.url})` : ""}`
+**${context.title}**
+${context.description}
+
+Content:
+${context.content.join("\n\n")}`
         )
-        .join("\n")
+        .join("\n\n---\n\n")
     : "No specific contexts available."
 }
 </available_contexts>

@@ -8,7 +8,7 @@ import { ContextCategoriesService } from "./context-categories";
 class UrmindDatabase {
   private db: IDBPDatabase<UrmindDB> | null = null;
   private dbName = "urmind-db";
-  private version = 5.0;
+  private version = 6.0;
   private initPromise: Promise<void> | null = null;
 
   // Service instances
@@ -37,7 +37,6 @@ class UrmindDatabase {
       return;
     }
 
-    console.log("Initializing database...");
     this.db = await openDB<UrmindDB>(this.dbName, this.version, {
       upgrade(db, oldVersion) {
         console.log(
@@ -109,8 +108,6 @@ class UrmindDatabase {
         }
       },
     });
-
-    console.log("Database opened successfully");
 
     // Initialize service instances
     this.contexts = new ContextService(this.db);

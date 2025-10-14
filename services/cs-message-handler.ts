@@ -10,6 +10,7 @@ export type ClientScriptOperations = "page-metadata-extraction";
 // Define operations that are meant to be handled by the background script (database operations)
 export type BgScriptOperations =
   | "semanticSearch"
+  | "semanticSearchDeepResearch"
   | "getAllConversations"
   | "getAllContexts"
   | "getAllContextCategories"

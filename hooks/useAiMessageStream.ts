@@ -1,19 +1,17 @@
-import DeepResearchResult from "@/components/spotlight/deep-research";
 import { GeneralSemanticSearchThreshold } from "@/constant/internal";
 import { DeepResearchSystemPrompt } from "@/data/prompt/system/deep-research.system";
-import { chromeAi, geminiAi } from "@/helpers/agent/utils";
 import { sendMessageToBackgroundScriptWithResponse } from "@/helpers/messaging";
 import logger from "@/lib/logger";
 import { md5Hash, sleep } from "@/lib/utils";
 import { Context } from "@/types/context";
 import { preferencesStore } from "@/store/preferences.store";
-import { ai_models } from "@/constant/internal";
 import React, { useEffect, useState } from "react";
 import {
   generateSearchQuery,
   getAllContextCategories,
 } from "@/helpers/search-query-generator";
 import { AIService } from "@/services/ai.service";
+import { DeepResearchResult as DeepResearchResultType } from "@/types/search";
 
 type StreamingState =
   | "pending"
@@ -81,15 +79,15 @@ export default function useAiMessageStream({
             optimizedSearchQuery
           );
 
-          logger.log("Related contexts:", relatedContexts);
+          logger.log("Related contexts:", relatedContexts?.displayContexts);
 
           const prompt = DeepResearchSystemPrompt({
             userQuery,
             conversationHistory,
-            relatedContexts: relatedContexts ?? [],
+            relatedContexts: relatedContexts.injectedContexts,
           });
 
-          // console.log("Prompt:", prompt);
+          console.log("Prompt:", prompt);
 
           setStreamingState("streaming");
 
@@ -121,7 +119,7 @@ export default function useAiMessageStream({
       const contextSearch = await sendMessageToBackgroundScriptWithResponse({
         action: "db-operation",
         payload: {
-          operation: "semanticSearch",
+          operation: "semanticSearchDeepResearch",
           data: {
             query: userQuery,
             limit: 10,
@@ -136,16 +134,28 @@ export default function useAiMessageStream({
         ? GeneralSemanticSearchThreshold.online
         : GeneralSemanticSearchThreshold.offline;
 
-      const matchedContexts = (
-        contextSearch?.result as Array<Context & { score: number }>
-      )?.filter((context) => context.score >= threshold);
+      const deepResearchResult =
+        contextSearch?.result as DeepResearchResultType;
+      const matchedContexts = deepResearchResult?.displayContexts?.filter(
+        (context: any) => context.score >= threshold
+      );
+      const matchedInjectedContexts =
+        deepResearchResult?.injectedContexts?.filter(
+          (context: any) => context.score >= threshold
+        );
 
       setRelatedContexts(matchedContexts);
 
-      return matchedContexts;
+      return {
+        displayContexts: matchedContexts,
+        injectedContexts: matchedInjectedContexts,
+      };
     } catch (err: any) {
       console.error("Error finding related contexts:", err);
-      return [];
+      return {
+        displayContexts: [],
+        injectedContexts: [],
+      } as DeepResearchResultType;
     }
   };
 

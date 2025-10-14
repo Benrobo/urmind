@@ -27,6 +27,11 @@ export const SearchContextDebounceTimeMs = {
 export const GEMINI_NANO_MAX_TOKENS_PER_PROMPT = 1024;
 export const GEMINI_NANO_MAX_CONTEXT_TOKENS = 4096;
 
+export const MAX_CONTEXT_WINDOW_TOKENS = {
+  offline: 4096,
+  online: 8000,
+} as const;
+
 export const INVALID_TAB_URLS = [
   // Chrome internal pages
   "chrome://newtab/",

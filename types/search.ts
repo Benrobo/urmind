@@ -1,3 +1,5 @@
+import { SavedContext } from "./context";
+
 export type SearchResultType =
   | "context"
   | "artifact"
@@ -20,6 +22,20 @@ export interface SearchResult {
     tags?: string[];
   };
   icon?: string; // emoji or custom icon
+}
+
+export interface DeepResearchResult {
+  displayContexts: Array<
+    SavedContext & {
+      score: number;
+    }
+  >;
+  injectedContexts: Array<{
+    title: string;
+    description: string;
+    content: string[];
+    score: number;
+  }>;
 }
 
 export interface SpotlightProps {

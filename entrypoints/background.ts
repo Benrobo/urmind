@@ -49,9 +49,9 @@ export default defineBackground(async () => {
   });
 
   // Start activity cleanup interval (every 30 seconds)
-  setInterval(async () => {
-    await activityManagerStore.cleanupOldActivities();
-  }, 5000);
+  await activityManagerStore.cleanupOldActivities();
+  // setInterval(async () => {
+  // }, 5000);
 
   // Set up context menu click handling
   chrome.contextMenus.onClicked.addListener((info, tab) => {
@@ -59,6 +59,4 @@ export default defineBackground(async () => {
       contextMenuService.handleContextMenuClick(info, tab);
     }
   });
-
-  console.log("✅ Background script initialization complete");
 });

@@ -1,7 +1,6 @@
 import { IDBPDatabase } from "idb";
 import { UrmindDB } from "@/types/database";
 import urmindDb from "@/services/db";
-import { semanticCache } from "@/services/semantic-cache.service";
 
 export class ContextService {
   constructor(private db: IDBPDatabase<UrmindDB>) {}
@@ -106,7 +105,7 @@ export class ContextService {
       await urmindDb.embeddings.deleteEmbeddingsByContextId(id);
     }
 
-    await semanticCache.deleteCacheEntriesByContextId(id);
+    // TODO! Delete the queues as well
   }
 
   async deleteContextsByCategory(categorySlug: string): Promise<void> {

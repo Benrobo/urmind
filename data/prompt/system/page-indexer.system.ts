@@ -43,16 +43,16 @@ ${
     },
     "title": "string",  // VERY SHORT, READABLE TITLE (2-6 words max) DESCRIBING WHAT THIS CONTEXT IS ABOUT
     "description": "string",  // DESCRIPTION OF THE CONTEXT
-    "summary": "string", // DETAILED SUMMARY WITH ALL IMPORTANT INFORMATION.
+    "summary": "string", // concise summary with all important information.
   } | null,
-  "retentionDecision": {"keep": boolean, "reason": "string"}
+  "retentionDecision": {"keep": boolean}
 }
 
 **KEEP IF:** Substantial factual/research value.  
 **REJECT:** Legal disclaimers, ToS, privacy policies, menus, ads, boilerplate.  
 
 **SUMMARY REQUIREMENTS (MANDATORY):**
-- Must be MULTI-PARAGRAPH and DETAILED.  
+- Must be MULTI-PARAGRAPH and concise.  
 - Cover ALL important aspects: overview, eligibility, deadlines, requirements, prizes, judging criteria, sponsors, and extra notes.  
 - Use NEWLINES to separate sections.  
 - Include specific numbers, dates, cash amounts, participant counts, and rules.  
@@ -63,7 +63,7 @@ ${
 - Reuse category only if related.  
 - Title: 2–6 readable words.  
 - Category slug: lowercase hyphenated.  
-- If not worth saving: set context = null and explain in retentionDecision.  
+- If not worth saving: set context = null.
 `;
 
 // Enhanced context creator for DOM elements with existing context comparison
@@ -112,7 +112,7 @@ ${
     "description": "string",
     "summary": "string" // DETAILED summary with all important information - use newlines for sections
   } | null,
-  "retentionDecision": {"keep": boolean, "reason": "string"}
+  "retentionDecision": {"keep": boolean}
 }
 
 **SUMMARY FORMATTING REQUIREMENTS:**
