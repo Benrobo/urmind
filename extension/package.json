@@ -1,13 +1,15 @@
 {
   "name": "urmind",
-  "description": "A browser extension built with WXT and React",
+  "description": "Your AI-powered memory in your browser.",
   "private": true,
   "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "wxt",
     "dev:firefox": "wxt -b firefox",
+    "clean:build": "rm -rf .output/urmind-0.1.0-chrome.zip && rm -rf .output/chrome-mv3 && rm -rf .output/urmind-0.1.0-chrome",
     "build": "wxt build",
+    "build:prod": "bun run clean:build && wxt zip --mode production",
     "build:firefox": "wxt build -b firefox",
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
