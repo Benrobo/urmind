@@ -18,6 +18,7 @@ import {
   ChevronDown,
   CornerDownLeft,
   GripHorizontal,
+  BrainCircuit,
 } from "lucide-react";
 import { SearchResult, SpotlightProps } from "@/types/search";
 import { useHotkeys } from "react-hotkeys-hook";
@@ -310,7 +311,7 @@ export default function SpotlightSearch({
       indicator={
         <div
           ref={dragHandleRef as any}
-          className="absolute bottom-3 right-3 cursor-grab"
+          className="absolute bottom-3 right-0 cursor-grab select-none pointer-events-none"
         >
           <GripHorizontal size={20} className="text-white-300/50 rotate-120" />
         </div>
@@ -318,7 +319,7 @@ export default function SpotlightSearch({
     >
       <div
         className={cn(
-          "w-[700px] max-h-[80vh] rounded-[12px]",
+          "w-[650px] max-h-[80vh] rounded-[12px]",
           "bg-gray-100/80 backdrop-blur-xl",
           "border border-gray-102/30",
           "shadow-2xl shadow-black/20"
@@ -427,22 +428,24 @@ export default function SpotlightSearch({
         </div>
 
         {/* Bottom Navigation */}
-        <div className="border-t border-white-400/60 px-4 py-3 bg-gray-100/50 backdrop-blur-sm rounded-b-[12px]">
+        <div className="border-t border-white-400/60 px-4 py-3 bg-gray-100/50 backdrop-blur-sm rounded-b-[12px] z-[10]">
           <div className="flex items-center justify-between text-xs">
             <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md">
+              {/* <div className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md">
                 <ChevronUp size={12} className="text-white/80" />
                 <ChevronDown size={12} className="text-white/80" />
                 <span className="text-white/80 ml-1">navigate</span>
-              </div>
+              </div> */}
 
               <button
                 onClick={openMindboard}
-                className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md hover:bg-white/20 transition-colors cursor-pointer"
+                className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md hover:bg-white/20 transition-colors cursor-pointer z-[2]"
               >
+                <BrainCircuit size={15} className="text-white/80" />
                 <span className="text-white/80 ml-1">mindboard</span>
               </button>
-
+            </div>
+            <div className="flex items-center space-x-3">
               <div className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md">
                 <CornerDownLeft size={12} className="text-white/80" />
                 <span className="text-white/80 ml-1">open</span>
@@ -455,14 +458,12 @@ export default function SpotlightSearch({
                   {uiState.showDeepResearch ? "saved" : "research"}
                 </span>
               </div>
-              <div className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md">
+              <div className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md mr-10">
                 <span className="text-white/80 bg-white/20 px-1.5 py-0.5 rounded text-xs font-mono">
                   esc
                 </span>
                 <span className="text-white/80 ml-1">close</span>
               </div>
-            </div>
-            <div className="flex items-center space-x-3">
               {/* <button
                 onClick={openMindboard}
                 className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md hover:bg-white/20 transition-colors cursor-pointer"
