@@ -1,7 +1,7 @@
 # UrMind
 
 <div align="center">
-  <img src="/landing/public/og-image.png" alt="UrMind - Your browser's AI-powered memory" width="600" />
+  <img src="/readme-screenshots/2.png" alt="UrMind - Your browser's AI-powered memory" width="600" />
 </div>
 
 **Stop losing brilliant ideas you find online.** UrMind is your browser's AI-powered memory that automatically captures everything you browse using **Gemini Nano** - Google's cutting-edge on-device AI model. Join early adopters who never forget important information again. Press ⌘U anywhere to search through your captured content with **zero internet required**. Your personal second brain, always at your fingertips.
