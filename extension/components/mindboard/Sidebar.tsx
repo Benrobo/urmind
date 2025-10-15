@@ -417,16 +417,11 @@ export default function MindBoardSidebar() {
 
                             {/* Unviewed indicator - similar to ActivityManager */}
                             {(unviewedCounts[category.id] ?? 0) > 0 && (
-                              <motion.div
-                                initial={{ opacity: 0, scale: 0 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0 }}
-                                className="flex-shrink-0 w-4 h-4 bg-red-305 rounded-full absolute top-[-3px] right-[-3px] flex flex-center"
-                              >
+                              <div className="flex-shrink-0 w-4 h-4 bg-red-305 rounded-full absolute top-[-3px] right-[-3px] flex flex-center">
                                 <span className=" text-[9px] text-white font-bold">
                                   {unviewedCounts[category.id]}
                                 </span>
-                              </motion.div>
+                              </div>
                             )}
 
                             <motion.span

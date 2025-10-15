@@ -4,6 +4,7 @@ import { ContextService } from "./context";
 import { ConversationService } from "./conversation";
 import { EmbeddingsStore } from "@/services/embeddings-store";
 import { ContextCategoriesService } from "./context-categories";
+import { saveToUrmindQueue } from "@/triggers/save-to-urmind";
 
 class UrmindDatabase {
   private db: IDBPDatabase<UrmindDB> | null = null;
@@ -132,6 +133,9 @@ class UrmindDatabase {
       tx.objectStore("context_categories").clear(),
       tx.done,
     ]);
+
+    // Clear all queue data as well
+    await this.clearAllQueues();
   }
 
   async clearContexts(): Promise<void> {
@@ -153,6 +157,22 @@ class UrmindDatabase {
     const tx = this.db.transaction("conversations", "readwrite");
     await tx.objectStore("conversations").clear();
     await tx.done;
+  }
+
+  /**
+   * Clear all queue data
+   */
+  async clearAllQueues(): Promise<void> {
+    try {
+      // Get all queue items and delete them
+      const queueItems = await saveToUrmindQueue.findAll();
+      for (const item of queueItems) {
+        await saveToUrmindQueue.delete(item.id);
+      }
+      console.log(`🧹 Cleared ${queueItems.length} queue items`);
+    } catch (error) {
+      console.error("Failed to clear queues:", error);
+    }
   }
 
   async close(): Promise<void> {

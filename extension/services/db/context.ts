@@ -1,6 +1,7 @@
 import { IDBPDatabase } from "idb";
 import { UrmindDB } from "@/types/database";
 import urmindDb from "@/services/db";
+import { saveToUrmindQueue } from "@/triggers/save-to-urmind";
 
 export class ContextService {
   constructor(private db: IDBPDatabase<UrmindDB>) {}
@@ -99,22 +100,45 @@ export class ContextService {
   }
 
   async deleteContext(id: string): Promise<void> {
+    const context = await this.getContext(id);
+
     await this.db.delete("contexts", id);
 
     if (urmindDb.embeddings) {
       await urmindDb.embeddings.deleteEmbeddingsByContextId(id);
     }
 
-    // TODO! Delete the queues as well
+    // Remove from save-to-urmind queue if it exists
+    if (context?.contentFingerprint) {
+      await this.cleanupQueueByFingerprint(context.contentFingerprint);
+    }
   }
 
   async deleteContextsByCategory(categorySlug: string): Promise<void> {
-    // Get all contexts in this category
     const contexts = await this.getContextsByCategory(categorySlug);
-
-    // Delete each context (which will also delete embeddings and cache entries)
     for (const context of contexts) {
       await this.deleteContext(context.id);
+    }
+  }
+
+  /**
+   * Clean up queue items by content fingerprint
+   * This removes items from the save-to-urmind queue when contexts are deleted
+   */
+  private async cleanupQueueByFingerprint(
+    contentFingerprint: string
+  ): Promise<void> {
+    try {
+      // Check if the queue item exists and delete it
+      const queueItem = await saveToUrmindQueue.find(contentFingerprint);
+      if (queueItem) {
+        await saveToUrmindQueue.delete(contentFingerprint);
+        console.log(
+          `🧹 Removed queue item for deleted context: ${contentFingerprint}`
+        );
+      }
+    } catch (error) {
+      console.error("Failed to cleanup queue item:", error);
     }
   }
 }
