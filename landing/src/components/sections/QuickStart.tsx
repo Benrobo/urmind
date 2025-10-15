@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Bookmark, Search, Layers, Sparkles } from "lucide-react";
 import BrowserWindow from "../ui/BrowserWindow";
 import { cn } from "@/lib/utils";
+import { AnimatePresence, motion } from "framer-motion";
 
 const steps = [
   {
@@ -67,28 +68,26 @@ export default function QuickStart() {
                 <div
                   key={step.id}
                   onClick={() => setActiveStep(step.id)}
-                  className={`
-                    relative p-6 rounded-lg cursor-pointer transition-all duration-300
-                    ${
-                      isActive
-                        ? "bg-white-100/8"
-                        : "bg-transparent hover:bg-white-100/5"
-                    }
-                  `}
+                  className={cn(
+                    "relative p-6 rounded-lg cursor-pointer transition-all duration-300 enableBounceEffect min-w-[300px]",
+                    isActive
+                      ? "bg-white-100/8"
+                      : "bg-transparent hover:bg-white-100/5"
+                  )}
                 >
                   <div className="flex items-start gap-4">
                     {/* Step number badge */}
                     <div
-                      className={`
-                      flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center font-semibold text-base font-poppins
-                      ${isActive ? "bg-white-100/15 text-white-100" : "bg-white-100/8 text-white-100/50"}
-                      transition-all duration-300
-                    `}
+                      className={cn(
+                        "flex-shrink-0 w-10 h-10 rounded-md flex items-center justify-center font-semibold text-base font-poppins transition-all duration-300 border border-white-100/10 bg-white-100/8 backdrop-blur-sm"
+                      )}
                     >
-                      {step.id}
+                      <span className="text-white-100 font-geistmono">
+                        {step.id}
+                      </span>
                     </div>
 
-                    <div className="flex-grow">
+                    <div className="flex-grow pl-2">
                       <div className="flex items-center gap-2 mb-2">
                         <IconComponent
                           size={18}
@@ -134,8 +133,13 @@ export default function QuickStart() {
           {/* Right side - Preview/Video area */}
           <div className="lg:sticky lg:top-8 lg:col-span-2">
             <BrowserWindow
+              key={activeStep}
               url="chrome-extension://urmind"
               contentClassName="min-h-[350px] md:h-[650px] relative p-0"
+              initial={{ opacity: 0, x: 100 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 100 }}
+              transition={{ duration: 0.6, ease: "easeInOut" }}
             >
               {/* Image display */}
               {steps.map((step) => {
@@ -153,7 +157,7 @@ export default function QuickStart() {
                     }}
                     aria-label={step.title}
                     role="img"
-                  />
+                  ></div>
                 );
               })}
 
@@ -174,14 +178,13 @@ export default function QuickStart() {
                       key={step.id}
                       onClick={() => setActiveStep(step.id)}
                       className={`
-                          w-2 h-2 rounded-full transition-all duration-300
-                          ${activeStep === step.id ? "bg-purple-100 w-6" : "bg-white-100/40"}
-                        `}
+                      w-2 h-2 rounded-full transition-all duration-300
+                      ${activeStep === step.id ? "bg-purple-100 w-6" : "bg-white-100/40"}
+                      `}
                     />
                   ))}
                 </div>
               </div>
-              {/* </div> */}
             </BrowserWindow>
 
             {/* Caption */}

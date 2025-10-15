@@ -24,20 +24,12 @@ export default function Header() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
           <Link to="/" className="flex items-center space-x-3">
-            {/* <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">Um</span>
-            </div>
-            <span className="text-white-100 font-poppins font-bold text-xl">
-              UrMind
-            </span> */}
-
             <img src="/logo/logo-1.svg" alt="UrMind Logo" className="w-20" />
           </Link>
 
           {/* Navigation - Desktop */}
-          <nav className="hidden md:flex items-center space-x-8">
+          <nav className="hidden md:flex items-center space-x-8 font-geistmono text-sm">
             <a
               href="#features"
               className="text-white-100/80 hover:text-white-100 transition-colors"

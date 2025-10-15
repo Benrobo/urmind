@@ -1,5 +1,4 @@
-import React from "react";
-import { Sparkles, Layout, Clock } from "lucide-react";
+import { Sparkles, Layout, Clock, Ticket } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import BrowserWindow from "../ui/BrowserWindow";
@@ -183,8 +182,13 @@ export default function Features() {
                       isImageLeft ? "-right-4" : "-left-4"
                     )}
                   >
-                    <p className={cn("text-white-100 font-medium text-sm")}>
-                      ✨ Feature {index + 1}
+                    <p
+                      className={cn(
+                        "text-white-100 font-geistmono font-medium text-sm flex flex-center gap-2"
+                      )}
+                    >
+                      <Ticket size={16} className="text-white-100/50" /> Feature{" "}
+                      {index + 1}
                     </p>
                   </motion.div>
                 </div>
