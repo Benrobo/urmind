@@ -8,6 +8,7 @@ import {
   X,
   CheckCheck,
   RefreshCw,
+  Dot,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import useContextCategories from "@/hooks/useContextCategories";
@@ -18,6 +19,8 @@ import useStorageStore from "@/hooks/useStorageStore";
 import { sendMessageToBackgroundScriptWithResponse } from "@/helpers/messaging";
 import useClickOutside from "@/hooks/useClickOutside";
 import DeleteConfirmationModal from "./DeleteConfirmationModal";
+import useUnviewedContextCounts from "@/hooks/useUnviewedContextCounts";
+import useAllContexts from "@/hooks/useAllContexts";
 
 export default function MindBoardSidebar() {
   const { value: mindboardState } = useStorageStore(mindboardStore);
@@ -30,6 +33,13 @@ export default function MindBoardSidebar() {
     query: searchQuery,
   });
   const [selectedCategory, setSelectedCategory] = useState<string | null>();
+
+  // Hooks for unviewed indicators
+  const { contexts: allContexts } = useAllContexts();
+  const unviewedCounts = useUnviewedContextCounts(
+    categories,
+    allContexts || []
+  );
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const [showPopover, setShowPopover] = useState<string | null>(null);
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
@@ -304,141 +314,177 @@ export default function MindBoardSidebar() {
                 transition={{ duration: 0.1 }}
                 className="space-y-2"
               >
-                {categories.map((category: any, index: number) => (
-                  <motion.div
-                    key={category.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    transition={{
-                      duration: 0.2,
-                      delay: index * 0.02,
-                      ease: "easeOut",
-                    }}
-                    className="relative"
-                    onMouseEnter={() => setHoveredCategory(category.id)}
-                    onMouseLeave={() => {
-                      // Only clear hover if popover is not active for this category
-                      if (showPopover !== category.id) {
-                        setHoveredCategory(null);
-                      }
-                    }}
-                  >
-                    {editingCategory === category.id ? (
-                      <div className="flex items-center gap-2 px-3 py-2">
-                        <input
-                          type="text"
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              handleSaveEdit(category.id);
-                            } else if (e.key === "Escape") {
-                              setEditingCategory(null);
-                              setEditName("");
-                            }
-                          }}
-                          className="flex-1 bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
-                          autoFocus
-                        />
-                        <button
-                          onClick={() => handleSaveEdit(category.id)}
-                          className="text-green-400 hover:text-green-300 p-1 rounded transition-colors"
-                          title="Save"
-                        >
-                          <CheckCheck size={14} />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEditingCategory(null);
-                            setEditName("");
-                          }}
-                          className="text-red-305 hover:text-red-400 p-1 rounded transition-colors"
-                          title="Cancel"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ) : (
-                      <motion.button
-                        onClick={() => handleCategorySelect(category.id)}
-                        className={cn(
-                          "w-full flex items-center text-start gap-3 px-3 py-2 rounded-lg transition-all duration-200 enableBounceEffect",
-                          selectedCategory === category.id ||
-                            showPopover === category.id
-                            ? "bg-white/10"
-                            : "hover:bg-white/10"
-                        )}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <motion.div
-                          className="w-4 h-4 rounded flex-shrink-0"
-                          style={{ backgroundColor: category.color }}
-                          whileHover={{ scale: 1.1 }}
-                          transition={{ duration: 0.2 }}
-                        />
-                        <span
-                          className={cn(
-                            "text-white font-medium flex-1",
-                            "text-xs text-nowrap"
-                          )}
-                        >
-                          {shortenText(category.name, 20)}
-                        </span>
+                {(() => {
+                  // Sort categories - unviewed first
+                  const sortedCategories = [...categories].sort((a, b) => {
+                    const aCount = unviewedCounts[a.id] || 0;
+                    const bCount = unviewedCounts[b.id] || 0;
 
-                        <motion.span
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.8 }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowPopover(
-                              showPopover === category.id ? null : category.id
-                            );
-                          }}
-                          className={cn(
-                            "text-white/50 hover:text-white transition-colors p-1",
-                            hoveredCategory === category.id ||
-                              showPopover === category.id
-                              ? "opacity-100"
-                              : "opacity-0"
-                          )}
-                        >
-                          <MoreHorizontal size={14} />
-                        </motion.span>
-                      </motion.button>
-                    )}
+                    // Categories with unviewed contexts come first
+                    if (aCount > 0 && bCount === 0) return -1;
+                    if (aCount === 0 && bCount > 0) return 1;
 
-                    {/* Popover */}
-                    {showPopover === category.id && (
+                    // If both have unviewed, sort by count (higher first)
+                    if (aCount > 0 && bCount > 0) return bCount - aCount;
+
+                    // Keep original order for categories with no unviewed
+                    return 0;
+                  });
+
+                  return sortedCategories.map(
+                    (category: any, index: number) => (
                       <motion.div
-                        ref={popoverClickOutsideRef}
-                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                        className="absolute right-0 top-full mt-1 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg shadow-lg z-50 min-w-[120px]"
+                        key={category.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        transition={{
+                          duration: 0.2,
+                          delay: index * 0.02,
+                          ease: "easeOut",
+                        }}
+                        className="relative"
+                        onMouseEnter={() => setHoveredCategory(category.id)}
+                        onMouseLeave={() => {
+                          // Only clear hover if popover is not active for this category
+                          if (showPopover !== category.id) {
+                            setHoveredCategory(null);
+                          }
+                        }}
                       >
-                        <div className="py-1">
-                          <button
-                            onClick={() => handleEditCategory(category)}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-white hover:bg-white/10 transition-colors"
+                        {editingCategory === category.id ? (
+                          <div className="flex items-center gap-2 px-3 py-2">
+                            <input
+                              type="text"
+                              value={editName}
+                              onChange={(e) => setEditName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  handleSaveEdit(category.id);
+                                } else if (e.key === "Escape") {
+                                  setEditingCategory(null);
+                                  setEditName("");
+                                }
+                              }}
+                              className="flex-1 bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => handleSaveEdit(category.id)}
+                              className="text-green-400 hover:text-green-300 p-1 rounded transition-colors"
+                              title="Save"
+                            >
+                              <CheckCheck size={14} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingCategory(null);
+                                setEditName("");
+                              }}
+                              className="text-red-305 hover:text-red-400 p-1 rounded transition-colors"
+                              title="Cancel"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ) : (
+                          <motion.button
+                            onClick={() => handleCategorySelect(category.id)}
+                            className={cn(
+                              "w-full flex items-center text-start gap-3 px-3 py-2 rounded-lg transition-all duration-200 enableBounceEffect",
+                              selectedCategory === category.id ||
+                                showPopover === category.id
+                                ? "bg-white/10"
+                                : "hover:bg-white/10"
+                            )}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
                           >
-                            <Edit size={14} />
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteCategory(category)}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-white/60 hover:bg-white/10 transition-colors"
+                            <motion.div
+                              className="w-4 h-4 rounded flex-shrink-0"
+                              style={{ backgroundColor: category.color }}
+                              whileHover={{ scale: 1.1 }}
+                              transition={{ duration: 0.2 }}
+                            />
+                            <span
+                              className={cn(
+                                "text-white font-medium flex-1",
+                                "text-xs text-nowrap"
+                              )}
+                            >
+                              {shortenText(category.name, 20)}
+                            </span>
+
+                            {/* Unviewed indicator - similar to ActivityManager */}
+                            {(unviewedCounts[category.id] ?? 0) > 0 && (
+                              <motion.div
+                                initial={{ opacity: 0, scale: 0 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0 }}
+                                className="flex-shrink-0 w-4 h-4 bg-red-305 rounded-full absolute top-[-3px] right-[-3px] flex flex-center"
+                              >
+                                <span className=" text-[9px] text-white font-bold">
+                                  {unviewedCounts[category.id]}
+                                </span>
+                              </motion.div>
+                            )}
+
+                            <motion.span
+                              initial={{ opacity: 0, scale: 0.8 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.8 }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setShowPopover(
+                                  showPopover === category.id
+                                    ? null
+                                    : category.id
+                                );
+                              }}
+                              className={cn(
+                                "text-white/50 hover:text-white transition-colors p-1",
+                                hoveredCategory === category.id ||
+                                  showPopover === category.id
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                              )}
+                            >
+                              <MoreHorizontal size={14} />
+                            </motion.span>
+                          </motion.button>
+                        )}
+
+                        {/* Popover */}
+                        {showPopover === category.id && (
+                          <motion.div
+                            ref={popoverClickOutsideRef}
+                            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                            className="absolute right-0 top-full mt-1 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg shadow-lg z-50 min-w-[120px]"
                           >
-                            <Trash2 size={14} />
-                            Delete
-                          </button>
-                        </div>
+                            <div className="py-1">
+                              <button
+                                onClick={() => handleEditCategory(category)}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-white hover:bg-white/10 transition-colors"
+                              >
+                                <Edit size={14} />
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteCategory(category)}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-white/60 hover:bg-white/10 transition-colors"
+                              >
+                                <Trash2 size={14} />
+                                Delete
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
                       </motion.div>
-                    )}
-                  </motion.div>
-                ))}
+                    )
+                  );
+                })()}
               </motion.div>
             </AnimatePresence>
           )}

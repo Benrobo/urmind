@@ -8,6 +8,7 @@ import useStorageStore from "@/hooks/useStorageStore";
 import { Context, SavedContext } from "@/types/context";
 import useDeleteContext from "@/hooks/useDeleteContext";
 import DeleteConfirmationModal from "@/components/mindboard/DeleteConfirmationModal";
+import { contextViewsStore } from "@/store/context-views.store";
 
 interface BoardContextValuesProps {
   nodes: CombinedNodes[];
@@ -94,7 +95,12 @@ export default function MindboardCtxProvider({
   });
 
   // Right sidebar functions
-  const openRightSidebar = (context: SelectedContext) => {
+  const openRightSidebar = async (context: SelectedContext) => {
+    // Mark context as viewed
+    if (context?.data?.context?.id) {
+      await contextViewsStore.markAsViewed(context.data.context.id);
+    }
+
     // First close if already open to trigger slide-out animation
     if (isRightSidebarOpen) {
       setIsRightSidebarOpen(false);

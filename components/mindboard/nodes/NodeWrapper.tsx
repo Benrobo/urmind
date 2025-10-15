@@ -28,6 +28,7 @@ type NodeWrapperProps = {
     favicon: string | null;
   };
   context?: SavedContext; // The full context object for delete functionality
+  badge?: React.ReactNode; // New prop for unviewed indicator
 };
 
 export default function NodeWrapper({
@@ -35,10 +36,11 @@ export default function NodeWrapper({
   type,
   header,
   context,
+  badge,
 }: NodeWrapperProps) {
   return (
     <motion.div
-      className="w-auto min-w-[250px] max-w-[300px] min-h-4 bg-gray-100 border-1 border-white/20 rounded-md"
+      className="relative w-auto min-w-[250px] max-w-[300px] min-h-4 bg-gray-100 border-1 border-white/20 rounded-md"
       initial={{ opacity: 0, scale: 0.95, y: 20 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
@@ -49,6 +51,7 @@ export default function NodeWrapper({
       }}
       whileTap={{ scale: 0.98 }}
     >
+      {badge && <div className="absolute -top-2 -right-2 z-10">{badge}</div>}
       <div className="w-full px-2 pb-2 py-2">
         <div className="w-full flex items-center justify-between pb-2">
           <div className="flex items-center gap-2">
