@@ -35,11 +35,13 @@ export default function Popup() {
 
   const [localApiKey, setLocalApiKey] = useState(preferences.geminiApiKey);
   const [isSaving, setIsSaving] = useState(false);
-  const [setupAccordionOpen, setSetupAccordionOpen] = useState(true);
-  const [modeAccordionOpen, setModeAccordionOpen] = useState(false);
-  const [timingAccordionOpen, setTimingAccordionOpen] = useState(false);
-  const [manualOverrideAccordionOpen, setManualOverrideAccordionOpen] =
-    useState(false);
+  type AccordionSection =
+    | "setup"
+    | "mode"
+    | "timing"
+    | "manual-override"
+    | null;
+  const [openAccordion, setOpenAccordion] = useState<AccordionSection>("setup");
   const [localTiming, setLocalTiming] = useState<TabTimingPreferences>(
     preferences.tabTiming || {
       duration: 2,
@@ -189,8 +191,10 @@ export default function Popup() {
               <Key size={16} className="text-blue-201" />
             </div>
           }
-          isOpen={setupAccordionOpen}
-          onToggle={() => setSetupAccordionOpen(!setupAccordionOpen)}
+          isOpen={openAccordion === "setup"}
+          onToggle={() =>
+            setOpenAccordion(openAccordion === "setup" ? null : "setup")
+          }
         >
           <div className="p-3 bg-blue-500/10 border border-blue-400/30 rounded-lg mt-3">
             <div className="flex items-start gap-2">
@@ -259,8 +263,10 @@ export default function Popup() {
               <Sparkles size={16} className="text-white-100" />
             </div>
           }
-          isOpen={modeAccordionOpen}
-          onToggle={() => setModeAccordionOpen(!modeAccordionOpen)}
+          isOpen={openAccordion === "mode"}
+          onToggle={() =>
+            setOpenAccordion(openAccordion === "mode" ? null : "mode")
+          }
         >
           {/* Offline Mode */}
           <div className="space-y-3 mt-3">
@@ -355,8 +361,10 @@ export default function Popup() {
               <Clock size={16} className="text-white-100" />
             </div>
           }
-          isOpen={timingAccordionOpen}
-          onToggle={() => setTimingAccordionOpen(!timingAccordionOpen)}
+          isOpen={openAccordion === "timing"}
+          onToggle={() =>
+            setOpenAccordion(openAccordion === "timing" ? null : "timing")
+          }
         >
           <div className="space-y-4 mt-3">
             {/* Duration and Time Unit */}
@@ -439,9 +447,11 @@ export default function Popup() {
             <Warning size={16} className="text-red-305" />
           </div>
         }
-        isOpen={manualOverrideAccordionOpen}
+        isOpen={openAccordion === "manual-override"}
         onToggle={() =>
-          setManualOverrideAccordionOpen(!manualOverrideAccordionOpen)
+          setOpenAccordion(
+            openAccordion === "manual-override" ? null : "manual-override"
+          )
         }
         className="border-t-[1px] border-white-400/60"
       >

@@ -139,6 +139,16 @@ export class ActivityManagerStore extends StorageStore<{
               cleanedCount++;
             }
           }
+
+          // if for some reasons, the activity status fails to update due to race condition, we need to check if it has been on stage since last 5 min
+          const activityDiff = now.diff(activityTime, "minutes");
+          const isOlderThan5min = activityDiff > 5;
+          if (isOlderThan5min) {
+            const success = await this.delete(activity.id);
+            if (success) {
+              cleanedCount++;
+            }
+          }
         }
 
         if (cleanedCount > 0) {

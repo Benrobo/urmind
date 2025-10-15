@@ -67,7 +67,7 @@ ${
 
 <available_contexts>
 ${
-  relatedContexts.length > 0
+  relatedContexts && relatedContexts?.length > 0
     ? relatedContexts
         .map(
           (context) => `

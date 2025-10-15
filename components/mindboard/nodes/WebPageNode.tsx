@@ -30,7 +30,7 @@ export default function WebPageNode(props: WebPageNodeProps) {
       header={{
         title: context?.title,
         subtitle: context?.summary,
-        createdAt: dayjs(context?.createdAt).fromNow(),
+        createdAt: dayjs(context?.createdAt).format("MMMM D, YYYY [at] h:mm A"),
         favicon: context?.og?.favicon ?? null,
       }}
     >

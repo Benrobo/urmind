@@ -75,9 +75,7 @@ export default function NodeWrapper({
           </div>
 
           <div className="min-w-0 flex flex-col items-start justify-start">
-            <p className="text-[10px] text-white/50">
-              {dayjs(header.createdAt).fromNow()}
-            </p>
+            <p className="text-[10px] text-white/50">{header.createdAt}</p>
           </div>
         </div>
       </div>
