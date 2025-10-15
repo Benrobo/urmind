@@ -60,9 +60,15 @@ export default function Header() {
             >
               <Github size={20} />
             </a>
-            <Button variant="primary" size="sm">
-              Install Extension
-            </Button>
+            <a
+              href="https://github.com/Benrobo/urmind/releases/tag/v1.0"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="primary" size="sm">
+                Install Extension
+              </Button>
+            </a>
           </div>
         </div>
       </div>

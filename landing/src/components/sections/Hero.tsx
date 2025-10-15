@@ -50,7 +50,12 @@ export default function Hero() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="w-full mx-auto flex flex-col sm:flex-row md:flex-row gap-4 justify-center items-center mb-6"
           >
-            <div className="w-full md:w-auto">
+            <a
+              href="https://github.com/Benrobo/urmind/releases/tag/v1.0"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full md:w-auto"
+            >
               <Button
                 variant="outline"
                 size="lg"
@@ -60,7 +65,7 @@ export default function Hero() {
                   Install Extension
                 </span>
               </Button>
-            </div>
+            </a>
             <a href="#how-it-works" className="w-full md:w-auto">
               <Button
                 variant="outline"
