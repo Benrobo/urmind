@@ -1,47 +1,58 @@
 # UrMind
 
-## Never forget anything you browse
+## Imagine Never Forgetting Anything You Browse
 
 ![UrMind - Your browser's AI-powered memory](/readme-screenshots/2.png)
 
-UrMind is your browser's AI-powered memory that automatically captures everything you browse using **Gemini Nano** - Google's cutting-edge on-device AI model. Join early adopters who never forget important information again. Press ⌘U anywhere to search through your captured content with **zero internet required**. Your personal second brain, always at your fingertips.
+You stumble across a brilliant idea, an essential resource, or that perfect recipe online — and this time, you _never_ lose it. With UrMind, your browser becomes your own AI-powered second brain, capturing everything you see using **Gemini Nano**, Google's cutting-edge on-device AI. Just hit ⌘U, and instantly search your entire digital memory — absolutely no internet required. It’s your personal knowledge assistant, right at your fingertips.
 
-## ✨ Features
+## 🎯 Why UrMind? Here’s the Problem
 
-- **Automatic Capture**: Seamlessly indexes everything you browse (unless manually paused) - No more 'where did I see that article?'
-- **Instant Search**: Press ⌘U anywhere to search through your captured content - Faster than Chrome history, smarter than bookmarks
-- **AI-Powered**: Built with **Gemini Nano** for on-device AI processing - Your browsing, supercharged with zero-latency, privacy-first AI
-- **Never Lose Context**: Unlike browser history that shows URLs, UrMind remembers the actual content and insights
-- **Visual Organization**: Access your Mindboard to drag, connect, and organize contexts
-- **Deep Research**: Ask questions and receive comprehensive answers with sources cited
-- **Privacy-First**: Your API key is stored locally and never shared
+Let’s be honest, Researching online today is chaos. Planning a vacation? You bounce through blogs, reviews, forums. Learning to cook? You’re waist-deep in recipes, videos, and tips. Next time you want that info? Good luck finding it — Chrome history shows you URLs, but never _content_. Your best web insights… lost forever.
 
-## 🚀 Quick Start
+## ✅ Here’s Our Solution
 
-1. **Setup UrMind**: Click the extension icon to configure your Gemini API key, generation mode, and indexing preferences
-2. **Search Your Mind**: Press ⌘U anywhere to search through your captured content
-3. **Organize Visually**: Access your Mindboard to organize all your saved contexts
-4. **Deep Research**: Ask questions and get comprehensive answers powered by your browsing history
+UrMind transforms your unorganized browsing into a powerful, searchable memory. Every page, highlight, and insight you encounter is automatically indexed — no effort required. Stuck on “where did I see that restaurant?” or “how did I make that?” Just ask UrMind. It’ll surface the answer from your real browsing history, complete with sources, context, and highlights.
 
-**🚀 Built for the Google Chrome Built-in AI Challenge 2025** - [Setup Gemini Nano](./docs/GEMINI_NANO_SETUP.md) to enable on-device AI processing with zero internet required.
+Welcome to memory on autopilot. You do the exploring, UrMind does the remembering.
 
-## 🛠️ Tech Stack
+## ✨ Why You’ll Love It
 
-- [WXT](https://wxt.dev/) - Web extension framework
-- [React](https://react.dev/) - UI library
-- [TypeScript](https://www.typescriptlang.org/) - Type safety
-- [TanStack Query](https://tanstack.com/query) - Data fetching and caching
-- [Google Gemini Nano](https://ai.google.dev/gemini-api/docs) - On-device AI model for privacy-first, offline processing
-- [Tailwind CSS](https://tailwindcss.com/) - Styling
-- [Bun](https://bun.sh/) - Fast package manager and runtime
-- [Chrome Prompt API](https://developer.chrome.com/docs/ai/prompt-api) - Built-in AI APIs for Chrome Extensions
-- [LangChain RecursiveCharacterTextSplitter](https://js.langchain.com/docs/how_to/recursive_text_splitter/) - Intelligent text chunking for context indexing
+- **🚀 Automatic Capture**: Every site, every scroll, every ah-ha moment — UrMind saves it all (unless you pause it). Never wonder “where did I see that?” again.
+- **⚡ Instant Search**: Hit ⌘U. Instantly surface any idea you’ve seen — faster than history, smarter than bookmarks.
+- **🧠 On-Device AI**: Powered by **Gemini Nano** — privacy-first, zero-latency, and no cloud required (except for the initial setup).
+- **📚 True Research Memory**: Reconstruct your research journeys. See pages, highlights, and rich context, not just a link.
+- **🎨 Visually Organize**: Use the Mindboard, drag, organize and make sense of everything you’ve captured.
+- **🔍 Ask Anything**: Pose deep questions and get robust, source-cited answers powered by your own research.
+- **🔒 Privacy Built-In**: Your API keys and memories never leave your machine. 100% local, 100% yours.
 
-## 📦 Installation
+## 🚀 Try UrMind in 30 Seconds
 
-Coming soon to Chrome Web Store...
+1. **Get Started**: Click our extension and connect your Gemini API key. Choose your indexing preferences.
+2. **Browse Naturally**: The extension runs silently in the background, automatically indexing every page you visit.
+3. **Start Remembering**: Press ⌘U to search your digital memory whenever inspiration strikes.
+4. **Visualize**: Pop open your Mindboard to organize and see connections between your ideas.
+5. **Get Answers**: Ask questions and get instant recall, powered by everything you’ve already discovered.
 
-## 🔧 Development
+**Proudly built for the Google Chrome Built-in AI Challenge 2025** — Set up [Gemini Nano](./docs/GEMINI_NANO_SETUP.md) and experience on-device AI at its best.
+
+## 🛠️ What’s Under the Hood?
+
+- [WXT](https://wxt.dev/) – Effortless browser extension framework
+- [React](https://react.dev/) – Leading-edge UI
+- [TypeScript](https://www.typescriptlang.org/) – Maximum reliability
+- [TanStack Query](https://tanstack.com/query) – Optimized data fetching
+- [Google Gemini Nano](https://ai.google.dev/gemini-api/docs) – The future of private, offline AI
+- [Tailwind CSS](https://tailwindcss.com/) – Gorgeous, intuitive design
+- [Bun](https://bun.sh/) – Lightning-fast package management
+- [Chrome Prompt API](https://developer.chrome.com/docs/ai/prompt-api) – Native AI in your browser
+- [LangChain RecursiveCharacterTextSplitter](https://js.langchain.com/docs/how_to/recursive_text_splitter/) – Smart context management
+
+## 📦 Getting UrMind
+
+Launching soon on Chrome Web Store… Stay tuned!
+
+## 🔧 For Builders & Hackers
 
 Install dependencies:
 
@@ -49,40 +60,40 @@ Install dependencies:
 bun install
 ```
 
-Start development server:
+Start the dev server:
 
 ```bash
-# Extension development
+# For the extension
 cd extension
 bun run dev
 
-# Landing page development
+# For the landing page
 cd landing
 bun run dev
 ```
 
-Build for production:
+Build for release:
 
 ```bash
-# Extension build
+# Bundle the extension
 cd extension
 bun run build
 
-# Landing page build
+# Bundle the landing page
 cd landing
 bun run build
 ```
 
-## 🗄️ Database
+## 🗄️ Inspecting Your Data
 
-Managing IndexedDB from devtools within service worker isn't straightforward. To view/manage the database:
+IndexedDB access can be tricky inside the service worker. Here’s how you peek under the hood:
 
-1. Open devtools
-2. Select "Sources" tab
-3. Select one of your application files, right-click and open in new tab
-4. Open devtools within the new tab (chrome-extension://<id>/content-scripts/content.js)
-5. Select "Application" tab
-6. Select "IndexedDB" from the left sidebar
-7. You should see the database name and version
-8. Select the database and click "Open Database" button
-9. You can now view/manage the database
+1. Open DevTools
+2. Go to the "Sources" tab
+3. Pick one of your extension files, right-click, and open in a new tab
+4. Launch DevTools in the new tab (chrome-extension://<id>/content-scripts/content.js)
+5. Switch to the "Application" tab
+6. In the sidebar, choose "IndexedDB"
+7. Find and select the database
+8. Click "Open Database"
+9. Explore your saved memory!
