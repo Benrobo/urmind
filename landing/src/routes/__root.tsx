@@ -9,4 +9,12 @@ export const Route = createRootRoute({
       <Outlet />
     </>
   ),
+  head: () => ({
+    meta: [
+      {
+        title: "UrMind",
+        description: "Your mind in your browser.",
+      },
+    ],
+  }),
 });
