@@ -36,7 +36,7 @@ export default function MindBoardSidebar() {
 
   // Hooks for unviewed indicators
   const { contexts: allContexts } = useAllContexts();
-  const unviewedCounts = useUnviewedContextCounts(
+  const { unviewedCounts } = useUnviewedContextCounts(
     categories,
     allContexts || []
   );
