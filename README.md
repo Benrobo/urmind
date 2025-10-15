@@ -10,7 +10,7 @@ You stumble across a brilliant idea, an essential resource, or that perfect reci
 
 Let’s be honest, Researching online today is chaos. Planning a vacation? You bounce through blogs, reviews, forums. Learning to cook? You’re waist-deep in recipes, videos, and tips. Next time you want that info? Good luck finding it — Chrome history shows you URLs, but never _content_. Your best web insights… lost forever.
 
-## ✅ Here’s Our Solution
+## ✅ Solution
 
 UrMind transforms your unorganized browsing into a powerful, searchable memory. Every page, highlight, and insight you encounter is automatically indexed — no effort required. Stuck on “where did I see that restaurant?” or “how did I make that?” Just ask UrMind. It’ll surface the answer from your real browsing history, complete with sources, context, and highlights.
 
