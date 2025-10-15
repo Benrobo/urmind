@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { sendMessageToBackgroundScriptWithResponse } from "@/helpers/messaging";
-import { SavedContext } from "@/types/context";
 
 export default function useAllContexts() {
   const { data: contexts = [], isLoading: loading } = useQuery({

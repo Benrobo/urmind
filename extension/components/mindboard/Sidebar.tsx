@@ -38,7 +38,7 @@ export default function MindBoardSidebar() {
   const { contexts: allContexts } = useAllContexts();
   const { unviewedCounts } = useUnviewedContextCounts(
     categories,
-    allContexts || []
+    allContexts || ([] as unknown as any)
   );
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const [showPopover, setShowPopover] = useState<string | null>(null);

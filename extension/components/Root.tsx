@@ -12,7 +12,7 @@ export default function Root() {
     <QueryClientProvider client={queryClient}>
       <HotkeysProvider initiallyActiveScopes={["settings"]}>
         <App />
-        <DevTool />
+        {/* <DevTool /> */}
       </HotkeysProvider>
     </QueryClientProvider>
   );

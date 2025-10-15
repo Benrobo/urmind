@@ -14,7 +14,7 @@ export default function Options() {
           <MindBoardPage />
         </MindboardCtxProvider>
         <Spotlight />
-        <DevTool />
+        {/* <DevTool /> */}
       </HotkeysProvider>
     </QueryClientProvider>
   );
