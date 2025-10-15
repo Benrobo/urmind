@@ -40,8 +40,6 @@ export default function useUnviewedContextCounts(
     enabled: categories.length > 0 && allContexts.length > 0,
   });
 
-  console.log("unviewedCounts", unviewedCounts);
-
   useEffect(() => {
     queryClient.invalidateQueries({ queryKey: ["unviewedContextCounts"] });
   }, [viewState, queryClient]);
