@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import useSavedContext from "@/hooks/useContext";
 import { FileText, Globe, LucideIcon, Image, File } from "lucide-react";
-import { constructUrlTextFragment, debounce } from "@/lib/utils";
+import { cn, constructUrlTextFragment, debounce } from "@/lib/utils";
 import { Context } from "@/types/context";
 import logger from "@/lib/logger";
 import { contextSpotlightVisibilityStore } from "@/store/context.store";
@@ -23,9 +23,14 @@ type SavedContextProps = {
     showDeepResearch: boolean;
     showSavedContext: boolean;
   };
+  openMindboard: () => void;
 };
 
-export default function SavedContext({ query, uiState }: SavedContextProps) {
+export default function SavedContext({
+  query,
+  uiState,
+  openMindboard,
+}: SavedContextProps) {
   const [debouncedQuery, setDebouncedQuery] = useState(query);
   const { value: preferences } = useStorageStore(preferencesStore);
 
@@ -78,12 +83,20 @@ export default function SavedContext({ query, uiState }: SavedContextProps) {
     contextNavigationService.navigateToContext(item);
   };
 
+  const isMindboardOpened = window.location.pathname.includes("/options.html");
+
   return (
     <div className="w-full relative">
       <div className="px-4 py-3">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-medium text-white">Your saved context</h3>
-          <button className="text-xs text-white/60 hover:text-white underline">
+          <button
+            onClick={openMindboard}
+            className={cn(
+              "text-xs text-white/60 hover:text-white underline",
+              isMindboardOpened && "invisible"
+            )}
+          >
             View all
           </button>
         </div>

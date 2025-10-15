@@ -407,7 +407,11 @@ export default function SpotlightSearch({
                 uiState.showDeepResearch ? "-translate-x-full" : "translate-x-0"
               )}
             >
-              <SavedContext query={searchQuery} uiState={uiState} />
+              <SavedContext
+                query={searchQuery}
+                uiState={uiState}
+                openMindboard={openMindboard}
+              />
             </div>
 
             <div
