@@ -34,7 +34,7 @@ Welcome to memory on autopilot. You do the exploring, UrMind does the rememberin
 4. **Visualize**: Pop open your Mindboard to organize and see connections between your ideas.
 5. **Get Answers**: Ask questions and get instant recall, powered by everything you’ve already discovered.
 
-**Proudly built for the Google Chrome Built-in AI Challenge 2025** — Set up [Gemini Nano](./docs/GEMINI_NANO_SETUP.md) and experience on-device AI at its best.
+**Proudly built for the Google Chrome Built-in AI Challenge 2025** — Set up [Gemini Nano](./GEMINI_NANO_SETUP.md) and experience on-device AI at its best.
 
 ## 🛠️ What’s Under the Hood?
 
