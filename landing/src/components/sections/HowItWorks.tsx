@@ -1,4 +1,3 @@
-import React from "react";
 import { Globe, Search, Brain } from "lucide-react";
 
 const steps = [

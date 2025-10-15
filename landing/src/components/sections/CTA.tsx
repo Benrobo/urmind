@@ -1,6 +1,4 @@
-import React from "react";
 import { CheckCircle, Shield, Zap } from "lucide-react";
-import Button from "../ui/Button";
 
 const trustIndicators = [
   {
