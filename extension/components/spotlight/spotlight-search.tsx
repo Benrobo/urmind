@@ -311,7 +311,7 @@ export default function SpotlightSearch({
       indicator={
         <div
           ref={dragHandleRef as any}
-          className="absolute bottom-3 right-0 cursor-grab select-none pointer-events-none"
+          className="absolute bottom-3 right-0 cursor-grab select-none"
         >
           <GripHorizontal size={20} className="text-white-300/50 rotate-120" />
         </div>
