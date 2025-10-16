@@ -169,6 +169,21 @@ export class AIService {
           }
         } catch (error) {
           logger.error(`Streaming failed with ${effectiveMode} mode:`, error);
+
+          // Handle specific error cases
+          const errorMessage = (error as Error).message.toLowerCase();
+
+          if (
+            errorMessage.includes("input is too large") ||
+            errorMessage.includes("quotaexceedederror")
+          ) {
+            logger.warn(
+              "⚠️ Input too large for local model - context filtering should prevent this"
+            );
+            throw error;
+          }
+
+          // Standard fallback logic for other errors
           if (effectiveMode === "online" && options.mode !== "online") {
             logger.log("🔄 Falling back to local model for streaming");
             await this.streamWithLocalModel(options.prompt, options);

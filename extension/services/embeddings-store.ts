@@ -216,7 +216,6 @@ export class EmbeddingsStore {
 
     const result: DeepResearchResult = { displayContexts, injectedContexts };
 
-    console.log("Deep research result:", result);
     return result;
   }
 

@@ -1,8 +1,11 @@
-import { GeneralSemanticSearchThreshold } from "@/constant/internal";
+import {
+  GeneralSemanticSearchThreshold,
+  GEMINI_NANO_MAX_TOKENS_PER_PROMPT,
+} from "@/constant/internal";
 import { DeepResearchSystemPrompt } from "@/data/prompt/system/deep-research.system";
 import { sendMessageToBackgroundScriptWithResponse } from "@/helpers/messaging";
 import logger from "@/lib/logger";
-import { md5Hash, sleep } from "@/lib/utils";
+import { md5Hash, sleep, estimateTokenCount } from "@/lib/utils";
 import { Context } from "@/types/context";
 import { preferencesStore } from "@/store/preferences.store";
 import React, { useEffect, useState } from "react";
@@ -87,12 +90,19 @@ export default function useAiMessageStream({
             relatedContexts: relatedContexts.injectedContexts,
           });
 
-          console.log("Prompt:", prompt);
+          // console.log("Prompt:", prompt);
 
           setStreamingState("streaming");
 
           // Use the centralized AI service for streaming
           const msgHash = md5Hash(userQuery);
+
+          // Clear any existing message for this query to ensure fresh start
+          setMessageStream((prev) => ({
+            ...prev,
+            [msgHash]: "",
+          }));
+
           await AIService.streamText({
             prompt,
             onChunk: (chunk: string) => {
@@ -108,7 +118,19 @@ export default function useAiMessageStream({
           onComplete();
         } catch (err: any) {
           setStreamingState("error");
-          onError(err);
+
+          // Provide more specific error messages for common issues
+          if (
+            err.message?.toLowerCase().includes("input is too large") ||
+            err.message?.toLowerCase().includes("quotaexceedederror")
+          ) {
+            const enhancedError = new Error(
+              "The context is too large for processing. Try asking a more specific question or check your internet connection for online processing."
+            );
+            onError(enhancedError);
+          } else {
+            onError(err);
+          }
         }
       })();
     }
@@ -116,35 +138,86 @@ export default function useAiMessageStream({
 
   const findRelatedContexts = async (userQuery: string) => {
     try {
+      const preferences = await preferencesStore.get();
+      const mode =
+        preferences?.generationStyle === "online" ? "online" : "local";
+
       const contextSearch = await sendMessageToBackgroundScriptWithResponse({
         action: "db-operation",
         payload: {
           operation: "semanticSearchDeepResearch",
           data: {
             query: userQuery,
-            limit: 10,
+            limit: mode === "online" ? 10 : 3, // Much fewer contexts for local processing
           },
         },
       });
 
-      // Get user preferences for threshold
-      const preferences = await preferencesStore.get();
-      const hasApiKey = preferences?.geminiApiKey?.trim();
-      const threshold = hasApiKey
-        ? GeneralSemanticSearchThreshold.online
-        : GeneralSemanticSearchThreshold.offline;
+      // Use more aggressive filtering for local processing to avoid "input too large" errors
+      const threshold =
+        mode === "online"
+          ? GeneralSemanticSearchThreshold.online
+          : GeneralSemanticSearchThreshold.offline; // Higher threshold for local processing
 
       const deepResearchResult =
         contextSearch?.result as DeepResearchResultType;
-      const matchedContexts = deepResearchResult?.displayContexts?.filter(
+
+      let matchedContexts = deepResearchResult?.displayContexts?.filter(
         (context: any) => context.score >= threshold
       );
-      const matchedInjectedContexts =
+      let matchedInjectedContexts =
         deepResearchResult?.injectedContexts?.filter(
           (context: any) => context.score >= threshold
         );
 
+      if (mode === "local") {
+        const sortedInjectedContexts = [
+          ...(matchedInjectedContexts || []),
+        ].sort((a, b) => b.score - a.score);
+        const sortedDisplayContexts = [...(matchedContexts || [])].sort(
+          (a, b) => b.score - a.score
+        );
+
+        let totalTokens = 0;
+        const filteredInjectedContexts: typeof matchedInjectedContexts = [];
+        const filteredDisplayContexts: typeof matchedContexts = [];
+
+        for (let i = 0; i < sortedInjectedContexts.length; i++) {
+          const injectedContext = sortedInjectedContexts[i];
+          const displayContext = sortedDisplayContexts[i];
+
+          if (!injectedContext || !displayContext) continue;
+
+          const contextText = `**${injectedContext.title}**\n${
+            injectedContext.description
+          }\n\nContent:\n${injectedContext.content.join("\n\n")}`;
+          const contextTokens = estimateTokenCount(contextText);
+
+          if (
+            totalTokens + contextTokens <=
+            GEMINI_NANO_MAX_TOKENS_PER_PROMPT
+          ) {
+            filteredInjectedContexts.push(injectedContext);
+            filteredDisplayContexts.push(displayContext);
+            totalTokens += contextTokens;
+          } else {
+            break;
+          }
+        }
+
+        matchedInjectedContexts = filteredInjectedContexts;
+        matchedContexts = filteredDisplayContexts;
+      }
+
       setRelatedContexts(matchedContexts);
+
+      if (mode === "local") {
+        logger.log(
+          `Local mode: ${deepResearchResult?.injectedContexts?.length || 0} → ${
+            matchedInjectedContexts?.length || 0
+          } contexts (${GEMINI_NANO_MAX_TOKENS_PER_PROMPT} token limit)`
+        );
+      }
 
       return {
         displayContexts: matchedContexts,

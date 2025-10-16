@@ -3,6 +3,11 @@ export const GeneralSemanticSearchThreshold = {
   online: 0.6,
 };
 
+export const DeepResearchSemanticSearchThreshold = {
+  offline: 0.7,
+  online: 0.6,
+};
+
 export const PageIndexingSemanticSearchThreshold = {
   offline: 0.5,
   online: 0.9,
@@ -24,7 +29,7 @@ export const SearchContextDebounceTimeMs = {
 };
 
 // Gemini Nano token limits
-export const GEMINI_NANO_MAX_TOKENS_PER_PROMPT = 1024;
+export const GEMINI_NANO_MAX_TOKENS_PER_PROMPT = 3150;
 export const GEMINI_NANO_MAX_CONTEXT_TOKENS = 4096;
 
 export const MAX_CONTEXT_WINDOW_TOKENS = {

@@ -26,7 +26,7 @@ export default function useSavedContext({
           action: "db-operation",
           payload: {
             operation: "semanticSearch",
-            data: { query, limit: limit ?? 5 },
+            data: { query, limit: 10 },
           },
           responseRequired: true,
         });
@@ -36,7 +36,7 @@ export default function useSavedContext({
           action: "db-operation",
           payload: {
             operation: "getAllContexts",
-            data: { limit: limit ?? 5 },
+            data: { limit: limit ?? 10 },
           },
         });
         return (response?.result as SavedContext[]) || [];

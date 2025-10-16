@@ -108,18 +108,18 @@ export default function MessageTabs({
                 <IconComponent size={14} />
               ) : (
                 <div className="flex max-w-5 -space-x-2 rtl:space-x-reverse mr-3">
-                  {matchedSources
-                    ?.slice(0, 3)
-                    ?.map((ctx, idx) =>
-                      ctx?.og?.favicon ? (
+                  {matchedSources?.slice(0, 3)?.map((ctx, idx) => (
+                    <div key={ctx.id || idx}>
+                      {ctx?.og?.favicon ? (
                         <ImageWithFallback
                           src={ctx.og.favicon!}
                           className="object-contain max-w-5 min-w-5 min-h-5 rounded-full border-3 border-[#5b5b5b] backdrop-blur-sm"
                         />
                       ) : (
                         <Globe size={14} />
-                      )
-                    )}
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
               <span className="group-hover:text-white-100">{t.title}</span>
