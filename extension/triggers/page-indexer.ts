@@ -119,9 +119,34 @@ async function processPageIndexing(props: {
     return;
   }
 
-  const firstContext = pageMetadata?.pageContentBatches?.[0];
+  // NEW VALIDATION: Check if pageContentBatches has content
+  if (
+    !pageMetadata?.pageContentBatches ||
+    pageMetadata.pageContentBatches.length === 0
+  ) {
+    logger.error("❌ Page content batches is empty - cannot create context");
+
+    // Update activity status to failed
+    await activityManagerStore.updateActivity(activityId, {
+      status: "failed",
+      description: `Failed to index ${url}: No page content extracted`,
+    });
+
+    // Update queue status to failed
+    await pageIndexerQueue.updateStatus(fingerprint, "failed");
+
+    throw new Error("Page content batches is empty");
+  }
+
+  const firstContext = pageMetadata.pageContentBatches[0];
   if (!firstContext) {
-    return;
+    logger.error("❌ First context batch is undefined");
+    await activityManagerStore.updateActivity(activityId, {
+      status: "failed",
+      description: `Failed to index ${url}: First context batch is undefined`,
+    });
+    await pageIndexerQueue.updateStatus(fingerprint, "failed");
+    throw new Error("First context batch is undefined");
   }
 
   const parentContext = await generateParentContext({

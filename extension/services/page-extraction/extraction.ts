@@ -13,6 +13,7 @@ import { ContextualTextElement } from "@/types/page-extraction";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import getXPath from "get-xpath";
 import shortUUID from "short-uuid";
+import retry from "async-retry";
 
 export type PageMetadata = {
   title: string;
@@ -33,8 +34,74 @@ class PageExtractionService {
   private readonly MAX_DUPLICATE_ELEMENTS = 1; // Maximum number of elements with same value to keep
 
   async extractPageMetadata(): Promise<PageMetadata> {
-    if (!document || !document.head || !document.body) {
-      console.log("No document or head or body");
+    return await retry(
+      async () => {
+        if (!document || !document.head || !document.body) {
+          throw new Error("No document or head or body");
+        }
+
+        const _title = document.title;
+        const _description = document.querySelector("meta[name='description']");
+        const _metaTags = document?.head?.querySelectorAll("meta");
+        const ogdetails = this.extractOgDetails(Array.from(_metaTags));
+        const pageContent = document?.body?.innerText;
+        const pageUrl = window.location.href;
+        const favicon = this.extractFavicon(pageUrl);
+
+        if (!pageContent || pageContent.trim().length === 0) {
+          throw new Error("Page content is empty - DOM may not be ready");
+        }
+
+        // Split content into batches for LLM processing
+        const textSplitter = new RecursiveCharacterTextSplitter({
+          chunkSize: 15000,
+          chunkOverlap: 600,
+        });
+        const pageContentBatches = await textSplitter.splitText(pageContent);
+
+        const pageContextualTextElementBatches =
+          await batchContextualTextElementsByCount(
+            this.extractContextualPageTextElements(),
+            5, // maxElementsPerBatch - reduced for Gemini Nano
+            GEMINI_NANO_MAX_TOKENS_PER_PROMPT * 4 // ~4096 bytes for 1024 tokens
+          );
+
+        const result = {
+          title: _title,
+          description: _description?.getAttribute("content") ?? null,
+          og: {
+            image: ogdetails.ogImage ?? null,
+            title: ogdetails.ogTitle ?? null,
+            description: ogdetails.ogDescription ?? null,
+            favicon: favicon ?? null,
+          },
+          pageContent: pageContent,
+          pageUrl: pageUrl,
+          pageContentBatches,
+          pageContextualTextElementBatches,
+        };
+
+        console.log("📄 Page metadata:", result);
+
+        return result;
+      },
+      {
+        retries: 3,
+        factor: 2,
+        minTimeout: 500,
+        maxTimeout: 2000,
+        onRetry: (error, attempt) => {
+          console.log(
+            `🔄 Retry attempt ${attempt}/3 for page extraction:`,
+            error instanceof Error ? error.message : String(error)
+          );
+        },
+      }
+    ).catch((error) => {
+      console.log(
+        "❌ Failed to extract page metadata after 3 retries:",
+        error instanceof Error ? error.message : String(error)
+      );
       return {
         title: "",
         description: null,
@@ -49,48 +116,7 @@ class PageExtractionService {
         pageContentBatches: [],
         pageContextualTextElementBatches: [],
       };
-    }
-
-    const _title = document.title;
-    const _description = document.querySelector("meta[name='description']");
-    const _metaTags = document?.head?.querySelectorAll("meta");
-    const ogdetails = this.extractOgDetails(Array.from(_metaTags));
-    const pageContent = document?.body?.innerText;
-    const pageUrl = window.location.href;
-    const favicon = this.extractFavicon(pageUrl);
-
-    // Split content into batches for LLM processing
-    const textSplitter = new RecursiveCharacterTextSplitter({
-      chunkSize: 15000,
-      chunkOverlap: 600,
     });
-    const pageContentBatches = await textSplitter.splitText(pageContent ?? "");
-
-    const pageContextualTextElementBatches =
-      await batchContextualTextElementsByCount(
-        this.extractContextualPageTextElements(),
-        5, // maxElementsPerBatch - reduced for Gemini Nano
-        GEMINI_NANO_MAX_TOKENS_PER_PROMPT * 4 // ~4096 bytes for 1024 tokens
-      );
-
-    const result = {
-      title: _title,
-      description: _description?.getAttribute("content") ?? null,
-      og: {
-        image: ogdetails.ogImage ?? null,
-        title: ogdetails.ogTitle ?? null,
-        description: ogdetails.ogDescription ?? null,
-        favicon: favicon ?? null,
-      },
-      pageContent: pageContent ?? "",
-      pageUrl: pageUrl,
-      pageContentBatches,
-      pageContextualTextElementBatches,
-    };
-
-    console.log("📄 Page metadata:", result);
-
-    return result;
   }
 
   private cleanUrl(url: string) {
