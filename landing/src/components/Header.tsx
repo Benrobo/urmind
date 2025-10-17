@@ -53,7 +53,7 @@ export default function Header() {
           {/* CTA Buttons */}
           <div className="flex items-center space-x-4">
             <a
-              href="https://github.com/urmind"
+              href="https://github.com/benrobo/urmind"
               target="_blank"
               rel="noopener noreferrer"
               className="text-white-100/80 hover:text-white-100 transition-colors"
