@@ -23,7 +23,7 @@ export class ContextMenuService {
     // Create simple "Save to UrMind" menu item
     chrome.contextMenus.create({
       id: "save-to-urmind",
-      title: "Add me to your mind daddy 😉",
+      title: "Add to your mind.",
       contexts: ["selection", "image", "link"],
       documentUrlPatterns: ["<all_urls>"],
     });
