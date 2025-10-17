@@ -102,12 +102,19 @@ export default function Hero() {
             className="relative max-w-6xl mx-auto"
           >
             <div className="relative rounded-xl overflow-hidden shadow-premium-lg border border-gray-102/20 hover:scale-[1.01] transition-transform duration-500">
-              <BrowserWindow url="shopify.com">
-                <img
-                  src="/thumbnails/thumb-1.png"
-                  alt="UrMind Spotlight Search Interface"
-                  className="w-full h-auto"
-                />
+              <BrowserWindow url="youtube.com/urmind">
+                <div
+                  className="relative w-full"
+                  style={{ paddingBottom: "56.25%" }}
+                >
+                  <iframe
+                    className="absolute top-0 left-0 w-full h-full"
+                    src="https://www.youtube.com/embed/_DQC8l2Q9bI"
+                    title="UrMind Demo"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
               </BrowserWindow>
               {/* Overlay gradient for depth */}
               <div className="absolute inset-0 bg-gradient-to-t from-dark-100.1/40 via-transparent to-transparent pointer-events-none"></div>
