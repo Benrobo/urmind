@@ -24,8 +24,6 @@ export default defineConfig({
       permissions: [
         "storage",
         "activeTab",
-        "cookies",
-        "alarms",
         "scripting",
         "omnibox",
         "tabs",
