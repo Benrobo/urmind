@@ -93,11 +93,26 @@ export default function SpotlightSearch({
     return (response?.result as SpotlightConversations[]).length;
   }, []);
 
-  const [centerPosition, setCenterPosition] = useState({
-    x: 497,
-    y: 284,
-  });
+  const calculateCenterPosition = useCallback(() => {
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // Actual spotlight dimensions from the component: w-[650px] max-h-[80vh]
+    const spotlightWidth = 650;
+    const spotlightHeight = Math.min(600, viewportHeight * 0.8); // 80vh max
+
+    const centerX = Math.max(0, (viewportWidth - spotlightWidth) / 2);
+    const centerY = Math.max(0, (viewportHeight - spotlightHeight) / 2);
+
+    return {
+      x: centerX,
+      y: centerY,
+    };
+  }, []);
+
+  const [centerPosition, setCenterPosition] = useState(calculateCenterPosition);
   const dragHandleRef = useRef<HTMLDivElement>(null);
+  const positionStorageKey = "urmind-draggable-spotlight-search";
 
   const hotKeysConfigOptions = {
     enableOnFormTags: true,
@@ -118,8 +133,11 @@ export default function SpotlightSearch({
     "ctrl+u, meta+u",
     () => {
       if (isVisible) {
+        console.log("🔒 Hiding spotlight");
         hide();
       } else {
+        const newPosition = calculateCenterPosition();
+        setCenterPosition(newPosition);
         show();
       }
     },
@@ -149,6 +167,19 @@ export default function SpotlightSearch({
     },
     hotKeysConfigOptions
   );
+
+  useEffect(() => {
+    if (!isVisible) return;
+
+    const handleResize = () => {
+      setCenterPosition(calculateCenterPosition());
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [isVisible, calculateCenterPosition]);
 
   useHotkeys(
     "ctrl+k, meta+k",
@@ -303,9 +334,9 @@ export default function SpotlightSearch({
 
   return (
     <UrmindDraggable
-      storageKey={"urmind-draggable-spotlight-search"}
+      storageKey={positionStorageKey}
       initialPosition={centerPosition}
-      shouldPersistInChromeStorage={true}
+      shouldPersistInChromeStorage={false}
       handleRef={dragHandleRef}
       scale={1.1}
       indicator={

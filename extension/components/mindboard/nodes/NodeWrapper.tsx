@@ -5,6 +5,7 @@ import {
   Copy,
   ExternalLink,
   Brain,
+  FolderInput,
 } from "lucide-react";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
@@ -89,7 +90,7 @@ export default function NodeWrapper({
 
 function MoreMenu({ context }: { context?: SavedContext }) {
   const [isOpen, setIsOpen] = useState(false);
-  const { openDeleteModal } = useMindboardContext();
+  const { openDeleteModal, openMoveModal } = useMindboardContext();
 
   const handleClose = useCallback(() => {
     setIsOpen(false);
@@ -106,9 +107,21 @@ function MoreMenu({ context }: { context?: SavedContext }) {
     }
   };
 
+  const handleMove = () => {
+    if (context?.id) {
+      openMoveModal(context);
+      setIsOpen(false);
+    }
+  };
+
   const menuItems = [
     // { icon: Edit, label: "Edit", onClick: () => console.log("Edit clicked") },
     { icon: Copy, label: "Copy", onClick: () => console.log("Copy clicked") },
+    {
+      icon: FolderInput,
+      label: "Move",
+      onClick: handleMove,
+    },
     {
       icon: ExternalLink,
       label: "Open",

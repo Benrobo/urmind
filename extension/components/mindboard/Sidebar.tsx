@@ -169,17 +169,31 @@ export default function MindBoardSidebar() {
 
   const handleSaveEdit = async (categorySlug: string) => {
     try {
-      // Always generate new slug from the edited label
+      // Generate slug from the edited name
       const newSlug = editName
         .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, "") // Remove special characters first
+        .trim() // Remove leading/trailing whitespace
+        .replace(/[^a-z0-9\s-]/g, "") // Remove special characters except spaces and hyphens
         .replace(/\s+/g, "-") // Replace spaces with hyphens
-        .replace(/-+/g, "-") // Replace multiple hyphens with single
+        .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
         .replace(/^-+|-+$/g, ""); // Remove leading/trailing hyphens
 
+      // Ensure we have a valid slug
+      const finalSlug = newSlug || "untitled";
+
+      console.log(
+        `🔄 Updating category: "${categorySlug}" -> "${finalSlug}" (label: "${editName.trim()}")`
+      );
+      console.log(`📝 Slug generation steps:`, {
+        original: editName,
+        trimmed: editName.trim(),
+        lowercased: editName.trim().toLowerCase(),
+        finalSlug: finalSlug,
+      });
+
       const updates = {
-        label: editName,
-        slug: newSlug,
+        label: editName.trim(),
+        slug: finalSlug,
       };
 
       await sendMessageToBackgroundScriptWithResponse({
@@ -196,9 +210,9 @@ export default function MindBoardSidebar() {
       await refetch();
 
       // If the edited category was selected and the slug changed, update the selection
-      if (selectedCategory === categorySlug && newSlug !== categorySlug) {
-        setSelectedCategory(newSlug);
-        await mindboardStore.setSelectedCategory(newSlug);
+      if (selectedCategory === categorySlug && finalSlug !== categorySlug) {
+        setSelectedCategory(finalSlug);
+        await mindboardStore.setSelectedCategory(finalSlug);
       }
 
       setEditingCategory(null);
@@ -263,8 +277,8 @@ export default function MindBoardSidebar() {
       </motion.div>
 
       {/* Categories */}
-      <div className="flex-1 p-4">
-        <div className="flex items-center justify-between mb-4">
+      <div className="flex-1">
+        <div className="flex items-center justify-between mb-4 px-3 py-4">
           <h2 className="text-white/50 text-sm font-medium uppercase tracking-wide">
             Categories
           </h2>
@@ -294,7 +308,7 @@ export default function MindBoardSidebar() {
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="w-full h-full max-h-[80vh] px-3 pb-[15em] space-y-2 overflow-y-auto overflow-x-hidden hideScrollBar2">
           {loadingCategories ? (
             <motion.div
               initial={{ opacity: 0 }}
@@ -391,7 +405,7 @@ export default function MindBoardSidebar() {
                           <motion.button
                             onClick={() => handleCategorySelect(category.id)}
                             className={cn(
-                              "w-full flex items-center text-start gap-3 px-3 py-2 rounded-lg transition-all duration-200 enableBounceEffect",
+                              "w-full flex items-center text-start gap-3 px-2 py-2 rounded-lg transition-all duration-200 enableBounceEffect",
                               selectedCategory === category.id ||
                                 showPopover === category.id
                                 ? "bg-white/10"
@@ -417,7 +431,7 @@ export default function MindBoardSidebar() {
 
                             {/* Unviewed indicator - similar to ActivityManager */}
                             {(unviewedCounts[category.id] ?? 0) > 0 && (
-                              <div className="flex-shrink-0 w-4 h-4 bg-red-305 rounded-full absolute top-[-3px] right-[-3px] flex flex-center">
+                              <div className="flex-shrink-0 w-4 h-4 bg-red-305 rounded-full absolute top-[-2px] right-[2px] flex flex-center scale-[.90]">
                                 <span className=" text-[9px] text-white font-bold">
                                   {unviewedCounts[category.id]}
                                 </span>
@@ -487,29 +501,17 @@ export default function MindBoardSidebar() {
       </div>
 
       {/* Bottom Actions */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.2 }}
-        className="p-4 border-t border-white/20"
-      >
-        <motion.div
-          className="flex items-center gap-3 px-3 py-2"
-          whileHover={{ scale: 1.02 }}
-          transition={{ duration: 0.2 }}
-        >
-          <motion.div
-            whileHover={{ scale: 1.2, rotate: 10 }}
-            transition={{ duration: 0.2 }}
-          >
+      <div className="w-full bg-dark-100.3 p-4 border-t border-white/20 fixed bottom-0">
+        <div className="flex items-center gap-3 px-3 py-2">
+          <div>
             <ImageWithFallback
               src={chrome.runtime.getURL("icons/icon32.png")}
               className="object-contain w-4 h-4 grayscale opacity-50"
             />
-          </motion.div>
+          </div>
           <span className="text-xs text-white/40">UrMind v1.0.0</span>
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
 
       {/* Delete Confirmation Modal */}
       <DeleteConfirmationModal

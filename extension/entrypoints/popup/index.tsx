@@ -22,6 +22,7 @@ import {
   Pause,
   Play,
   AlertTriangle as Warning,
+  BrainCircuit,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { geminiAi } from "@/helpers/agent/utils";
@@ -530,9 +531,23 @@ export default function Popup() {
       {/* Footer */}
       <div className="border-t border-white-400/60 px-4 py-3 bg-gray-100/50 backdrop-blur-sm">
         <div className="flex items-center justify-between text-xs">
-          <div className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md">
-            <Sparkles size={12} className="text-white/80" />
-            <span className="text-white/80 ml-1">UrMind</span>
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md">
+              <Sparkles size={12} className="text-white/80" />
+              <span className="text-white/80 ml-1">UrMind</span>
+            </div>
+            <button
+              onClick={() => {
+                // Open mindboard/options page
+                chrome.tabs.create({
+                  url: chrome.runtime.getURL("options.html"),
+                });
+              }}
+              className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md hover:bg-white/20 transition-colors cursor-pointer"
+            >
+              <BrainCircuit size={12} className="text-white/80" />
+              <span className="text-white/80 ml-1">mindboard</span>
+            </button>
           </div>
           <div className="text-white/60">
             {preferences.generationStyle === "offline"

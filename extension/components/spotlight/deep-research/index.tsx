@@ -128,7 +128,7 @@ const DeepResearchResult = memo(
 
     // handle semantic matched contexts
     useEffect(() => {
-      if (relatedContexts && relatedContexts.length > 0 && activeMessageId) {
+      if (relatedContexts && activeMessageId) {
         const matchedContexts = relatedContexts.map((ctx) => ({
           id: ctx.id,
           fingerprint: ctx.fingerprint,
@@ -181,10 +181,6 @@ const DeepResearchResult = memo(
         payload: { operation: "getAllConversations" },
       });
       return (response?.result as SpotlightConversations[]) || [];
-    }, []);
-
-    useEffect(() => {
-      onScrollToBottom?.(150);
     }, []);
 
     useEffect(() => {
@@ -337,6 +333,11 @@ const DeepResearchResult = memo(
       }
 
       try {
+        // Check if there are existing assistant messages before adding new ones
+        const hasExistingAssistantMessages = activeConversation?.messages.some(
+          (msg) => msg.role === "assistant" && msg.content.trim().length > 0
+        );
+
         const userMessage = {
           id: shortUUID.generate(),
           role: "user" as "user" | "assistant",
@@ -383,7 +384,11 @@ const DeepResearchResult = memo(
         setIsStreaming(true);
         setUserQuery(query!);
         resetState();
-        onScrollToBottom?.(350);
+
+        // Only scroll to bottom if there are existing assistant messages
+        if (hasExistingAssistantMessages) {
+          onScrollToBottom?.(350);
+        }
       } catch (err: any) {
         console.error("Failed to append message:", err);
       }

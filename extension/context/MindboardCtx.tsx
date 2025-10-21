@@ -8,7 +8,10 @@ import useStorageStore from "@/hooks/useStorageStore";
 import { Context, SavedContext } from "@/types/context";
 import useDeleteContext from "@/hooks/useDeleteContext";
 import DeleteConfirmationModal from "@/components/mindboard/DeleteConfirmationModal";
+import MoveToCategoryModal from "@/components/mindboard/MoveToCategoryModal";
 import { contextViewsStore } from "@/store/context-views.store";
+import { sendMessageToBackgroundScriptWithResponse } from "@/helpers/messaging";
+import useContextCategories from "@/hooks/useContextCategories";
 
 interface BoardContextValuesProps {
   nodes: CombinedNodes[];
@@ -34,6 +37,12 @@ interface BoardContextValuesProps {
   contextToDelete: SavedContext | null;
   openDeleteModal: (context: SavedContext) => void;
   closeDeleteModal: () => void;
+  isMoveModalOpen: boolean;
+  contextToMove: SavedContext | null;
+  openMoveModal: (context: SavedContext) => void;
+  closeMoveModal: () => void;
+  isMoving: boolean;
+  handleConfirmMove: (targetCategorySlug: string) => Promise<void>;
   refetchContexts: () => void;
 }
 
@@ -64,6 +73,11 @@ export default function MindboardCtxProvider({
     null
   );
 
+  // Move context state
+  const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+  const [contextToMove, setContextToMove] = useState<SavedContext | null>(null);
+  const [isMoving, setIsMoving] = useState(false);
+
   const { value: mindboardState } = useStorageStore(mindboardStore);
   const selectedCategory = mindboardState?.selectedCategory || null;
   const contextPositions = mindboardState?.contextPositions || {};
@@ -77,6 +91,9 @@ export default function MindboardCtxProvider({
     categorySlug: selectedCategory,
     mounted: true,
   });
+
+  // Get all categories for move modal
+  const { categories } = useContextCategories({});
 
   // Delete context functionality
   const { deleteContext, isDeleting } = useDeleteContext({
@@ -139,6 +156,47 @@ export default function MindboardCtxProvider({
     }
   };
 
+  // Move context functions
+  const openMoveModal = (context: SavedContext) => {
+    setContextToMove(context);
+    setIsMoveModalOpen(true);
+  };
+
+  const closeMoveModal = () => {
+    setIsMoveModalOpen(false);
+    setContextToMove(null);
+  };
+
+  const handleConfirmMove = async (targetCategorySlug: string) => {
+    if (!contextToMove) return;
+
+    setIsMoving(true);
+    try {
+      // Update context category
+      await sendMessageToBackgroundScriptWithResponse({
+        action: "db-operation",
+        payload: {
+          operation: "updateContextCategory",
+          data: {
+            contextId: contextToMove.id,
+            newCategorySlug: targetCategorySlug,
+          },
+        },
+      });
+
+      // Set the target category as active
+      await mindboardStore.setSelectedCategory(targetCategorySlug);
+
+      // Close modal and reset state
+      setIsMoveModalOpen(false);
+      setContextToMove(null);
+    } catch (error) {
+      console.error("Failed to move context:", error);
+    } finally {
+      setIsMoving(false);
+    }
+  };
+
   const providerValues: BoardContextValuesProps = {
     nodes,
     setNodes,
@@ -159,6 +217,12 @@ export default function MindboardCtxProvider({
     contextToDelete,
     openDeleteModal,
     closeDeleteModal,
+    isMoveModalOpen,
+    contextToMove,
+    openMoveModal,
+    closeMoveModal,
+    isMoving,
+    handleConfirmMove,
     refetchContexts,
   };
 
@@ -173,6 +237,17 @@ export default function MindboardCtxProvider({
         onConfirm={handleConfirmDelete}
         contextTitle={contextToDelete?.title}
         isDeleting={isDeleting}
+      />
+
+      {/* Global Move to Category Modal */}
+      <MoveToCategoryModal
+        isOpen={isMoveModalOpen}
+        onClose={closeMoveModal}
+        onConfirm={handleConfirmMove}
+        contextTitle={contextToMove?.title || "this context"}
+        currentCategorySlug={contextToMove?.categorySlug || ""}
+        categories={categories}
+        isMoving={isMoving}
       />
     </MindboardCtx.Provider>
   );

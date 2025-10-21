@@ -99,6 +99,30 @@ export class ContextService {
     await this.db.put("contexts", updated);
   }
 
+  async updateContextCategory(
+    contextId: string,
+    newCategorySlug: string
+  ): Promise<void> {
+    const context = await this.getContext(contextId);
+    if (!context) {
+      throw new Error(`Context with id "${contextId}" not found`);
+    }
+
+    const updatedContext = {
+      ...context,
+      categorySlug: newCategorySlug,
+      updatedAt: Date.now(),
+    };
+
+    const transaction = this.db.transaction(["contexts"], "readwrite");
+    const store = transaction.objectStore("contexts");
+
+    await store.put(updatedContext);
+    await transaction.done;
+
+    console.log(`✅ Context moved to category: ${newCategorySlug}`);
+  }
+
   async deleteContext(id: string): Promise<void> {
     const context = await this.getContext(id);
 

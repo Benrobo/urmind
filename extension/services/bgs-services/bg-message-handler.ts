@@ -27,6 +27,7 @@ type BgScriptMessageHandlerOperations =
   | "deleteContextsByCategory"
   | "deleteCategory"
   | "updateCategory"
+  | "updateContextCategory"
   | "createCategory"
   | "createConversation"
   | "updateMessageContent"
@@ -271,6 +272,19 @@ export class BackgroundMessageHandler {
           result = await urmindDb.contextCategories.updateCategory(
             data.categorySlug,
             data.updates
+          );
+          break;
+
+        case "updateContextCategory":
+          if (!urmindDb.contexts) {
+            throw new Error("Contexts service not available");
+          }
+          if (!data?.contextId || !data?.newCategorySlug) {
+            throw new Error("Context ID and new category slug are required");
+          }
+          result = await urmindDb.contexts.updateContextCategory(
+            data.contextId,
+            data.newCategorySlug
           );
           break;
 

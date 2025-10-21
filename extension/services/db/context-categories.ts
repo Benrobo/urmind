@@ -56,6 +56,8 @@ export class ContextCategoriesService {
     slug: string,
     updates: Partial<Omit<ContextCategory, "createdAt">>
   ): Promise<void> {
+    console.log(`🔄 Database updateCategory called:`, { slug, updates });
+
     const existing = await this.getCategoryBySlug(slug);
     if (!existing) {
       throw new Error(`Category with slug "${slug}" not found`);
@@ -67,20 +69,22 @@ export class ContextCategoriesService {
       updatedAt: Date.now(),
     };
 
-    const transaction = this.db.transaction(
-      ["context_categories", "contexts"],
-      "readwrite"
-    );
-    const categoryStore = transaction.objectStore("context_categories");
-    const contextStore = transaction.objectStore("contexts");
-
     // If slug is being changed, update all related contexts and delete the old one
     if (updates.slug && updates.slug !== slug) {
-      // Get all contexts with the old category slug
+      console.log(`🔄 Slug change detected: "${slug}" -> "${updates.slug}"`);
+      // Get all contexts with the old category slug first
       const contexts = await this.db.getAll("contexts");
       const relatedContexts = contexts.filter(
         (context) => context.categorySlug === slug
       );
+
+      // Create a new transaction for the update operations
+      const transaction = this.db.transaction(
+        ["context_categories", "contexts"],
+        "readwrite"
+      );
+      const categoryStore = transaction.objectStore("context_categories");
+      const contextStore = transaction.objectStore("contexts");
 
       // Update all related contexts with the new category slug
       for (const context of relatedContexts) {
@@ -92,15 +96,34 @@ export class ContextCategoriesService {
         await contextStore.put(updatedContext);
       }
 
+      // Create the category with the new slug
+      const categoryWithNewSlug: ContextCategory = {
+        ...existing,
+        ...updates,
+        slug: updates.slug!, // Explicitly set the new slug
+        updatedAt: Date.now(),
+      };
+
       // Delete the old category and add the new one
       await categoryStore.delete(slug);
-      await categoryStore.add(updatedCategory);
+      await categoryStore.add(categoryWithNewSlug);
+
+      // Wait for transaction to complete
+      await transaction.done;
 
       logger.info(
         `✅ Category updated with new slug: ${updates.slug}, updated ${relatedContexts.length} contexts`
       );
     } else {
+      const transaction = this.db.transaction(
+        ["context_categories"],
+        "readwrite"
+      );
+      const categoryStore = transaction.objectStore("context_categories");
+
       await categoryStore.put(updatedCategory);
+      await transaction.done;
+
       logger.info("✅ Category updated:", slug);
     }
   }
