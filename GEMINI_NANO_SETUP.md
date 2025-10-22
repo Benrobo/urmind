@@ -28,7 +28,7 @@ UrMind supports **offline mode** using Google's Gemini Nano model that runs dire
 
 1. Open DevTools (F12)
 2. Go to Console
-3. Run: `await ai.languageModel.capabilities()`
+3. Run: `await LanguageModel.availability();`
 4. If successful, you should see model availability status
 
 ## Configure UrMind for Offline Mode

@@ -37,8 +37,8 @@ const pageIndexerJob: Task<PageIndexerPayload> = task<PageIndexerPayload>({
       return;
     }
 
-    logger.log("🔍 Indexing page:", url);
-    logger.log("📄 Page metadata:", pageMetadata);
+    logger.log.setConfig({ global: true })("🔍 Indexing page:", url);
+    logger.log.setConfig({ global: true })("📄 Page metadata:", pageMetadata);
 
     const cleanUrl = cleanUrlForFingerprint(url);
     const fingerprint = md5Hash(cleanUrl);
@@ -91,7 +91,7 @@ const pageIndexerJob: Task<PageIndexerPayload> = task<PageIndexerPayload>({
     }
   },
   onFailure: (error: Error) => {
-    logger.error("Page indexing failed:", error);
+    logger.error.setConfig({ global: true })("Page indexing failed:", error);
   },
 });
 
@@ -107,7 +107,9 @@ async function processPageIndexing(props: {
   const { activityId, fingerprint, cleanUrl, url, pageMetadata } = props;
 
   if (!urmindDb.contexts) {
-    logger.error("❌ Contexts service not available");
+    logger.error.setConfig({ global: true })(
+      "❌ Contexts service not available"
+    );
     throw new Error("Contexts service not available");
   }
 
@@ -115,7 +117,10 @@ async function processPageIndexing(props: {
     fingerprint
   );
   if (existingContext) {
-    logger.warn("✅ Context already exists for clean url:", cleanUrl);
+    logger.warn.setConfig({ global: true })(
+      "✅ Context already exists for clean url:",
+      cleanUrl
+    );
     return;
   }
 
@@ -124,7 +129,9 @@ async function processPageIndexing(props: {
     !pageMetadata?.pageContentBatches ||
     pageMetadata.pageContentBatches.length === 0
   ) {
-    logger.error("❌ Page content batches is empty - cannot create context");
+    logger.error.setConfig({ global: true })(
+      "❌ Page content batches is empty - cannot create context"
+    );
 
     // Update activity status to failed
     await activityManagerStore.updateActivity(activityId, {
@@ -140,7 +147,9 @@ async function processPageIndexing(props: {
 
   const firstContext = pageMetadata.pageContentBatches[0];
   if (!firstContext) {
-    logger.error("❌ First context batch is undefined");
+    logger.error.setConfig({ global: true })(
+      "❌ First context batch is undefined"
+    );
     await activityManagerStore.updateActivity(activityId, {
       status: "failed",
       description: `Failed to index ${url}: First context batch is undefined`,
@@ -159,7 +168,7 @@ async function processPageIndexing(props: {
   });
 
   if (parentContext?.continue == false || parentContext?.context?.id == null) {
-    logger.error("Failed to create parent context");
+    logger.error.setConfig({ global: true })("Failed to create parent context");
     // Update queue item status to failed
     await pageIndexerQueue.updateStatus(fingerprint, "failed");
 
@@ -186,15 +195,21 @@ async function processPageIndexing(props: {
         parentContext: parentContext.context,
       });
       if (chunkContext == false) {
-        logger.error("Failed to create chunk context");
+        logger.error.setConfig({ global: true })(
+          "Failed to create chunk context"
+        );
         continue;
       } else {
-        logger.info("✅ Chunk context created successfully");
+        logger.info.setConfig({ global: true })(
+          "✅ Chunk context created successfully"
+        );
       }
     }
   }
 
-  logger.info(`✅ All contexts created successfully: "${cleanUrl}"`);
+  logger.info.setConfig({ global: true })(
+    `✅ All contexts created successfully: "${cleanUrl}"`
+  );
 }
 
 async function validateIndexingRequirements(): Promise<boolean> {
@@ -203,7 +218,9 @@ async function validateIndexingRequirements(): Promise<boolean> {
   const hasApiKey = preferences?.geminiApiKey?.trim();
 
   if (!hasApiKey) {
-    logger.warn("🚫 No API key found, skipping page indexing");
+    logger.warn.setConfig({ global: true })(
+      "🚫 No API key found, skipping page indexing"
+    );
     return false;
   }
 
@@ -221,7 +238,7 @@ async function handleQueueLogic(
 ): Promise<boolean> {
   // Skip queue duplicate check for internal triggers
   if (payload.internalTrigger === true) {
-    logger.log(
+    logger.log.setConfig({ global: true })(
       "🔄 Internal trigger - skipping queue duplicate check:",
       fingerprint
     );
@@ -243,12 +260,15 @@ async function handleExistingQueueItem(
 ): Promise<boolean> {
   if (existingItem.status === "failed") {
     // Retry failed item
-    logger.log("🔄 Retrying failed queue item:", fingerprint);
+    logger.log.setConfig({ global: true })(
+      "🔄 Retrying failed queue item:",
+      fingerprint
+    );
     await pageIndexerQueue.updateStatus(fingerprint, "processing");
     return true;
   } else {
     // Item is pending, processing, or completed - skip execution
-    logger.log(
+    logger.log.setConfig({ global: true })(
       "⏭️ Skipping duplicate queue item:",
       fingerprint,
       "Status:",
@@ -273,7 +293,7 @@ async function handleNewQueueItem(
 
   if (processingItems.length > 0) {
     // There's already an item being processed, keep this one as "pending"
-    logger.log(
+    logger.log.setConfig({ global: true })(
       "📋 Added to queue (pending):",
       fingerprint,
       "- Other items processing"
@@ -282,7 +302,10 @@ async function handleNewQueueItem(
   } else {
     // No items currently processing, start this one immediately
     await pageIndexerQueue.updateStatus(fingerprint, "processing");
-    logger.log("🚀 Starting processing immediately:", fingerprint);
+    logger.log.setConfig({ global: true })(
+      "🚀 Starting processing immediately:",
+      fingerprint
+    );
     return true; // Process immediately
   }
 }
@@ -290,7 +313,10 @@ async function handleNewQueueItem(
 async function processNextQueueItem(): Promise<void> {
   const nextItem = await pageIndexerQueue.getNext();
   if (nextItem) {
-    logger.log("🔄 Processing next queue item:", nextItem.id);
+    logger.log.setConfig({ global: true })(
+      "🔄 Processing next queue item:",
+      nextItem.id
+    );
     await pageIndexerQueue.updateStatus(nextItem.id, "processing");
     // Recursively trigger the job with the next item's payload and internalTrigger flag
     await pageIndexerJob.trigger({
@@ -298,13 +324,13 @@ async function processNextQueueItem(): Promise<void> {
       internalTrigger: true,
     });
   } else {
-    logger.log("📭 No more items in queue");
+    logger.log.setConfig({ global: true })("📭 No more items in queue");
   }
 }
 
 async function logQueueStateAndProcessNext(): Promise<void> {
   const allItems = await pageIndexerQueue.findAll();
-  logger.log(
+  logger.log.setConfig({ global: true })(
     "📊 Queue state after completion:",
     allItems.map((item) => `${item.id}:${item.status}`)
   );
@@ -319,7 +345,7 @@ async function generateParentContext(props: {
   fullUrl: string;
   contentFingerprint: string;
 }) {
-  logger.log("🔍 Generating parent context");
+  logger.log.setConfig({ global: true })("🔍 Generating parent context");
 
   const {
     batch,
@@ -353,7 +379,7 @@ async function generateParentContext(props: {
       .replace(/-+/g, "-")
       .replace(/^-+|-+$/g, "");
 
-    logger.info(
+    logger.info.setConfig({ global: true })(
       `Category generation - Label: "${categoryLabel}", LLM Slug: "${llmGeneratedSlug}", Auto Slug: "${categorySlug}"`
     );
 
@@ -365,7 +391,7 @@ async function generateParentContext(props: {
       categorySlug
     );
     if (existingCategory) {
-      logger.info(
+      logger.info.setConfig({ global: true })(
         `Category already exists with slug "${categorySlug}": "${existingCategory.label}"`
       );
     } else {
@@ -373,7 +399,7 @@ async function generateParentContext(props: {
         categoryLabel,
         categorySlug
       );
-      logger.info(
+      logger.info.setConfig({ global: true })(
         `Created new category: "${categoryLabel}" with slug "${categorySlug}"`
       );
     }
@@ -415,7 +441,10 @@ async function generateParentContext(props: {
       response.continue = true;
       return response;
     } catch (err: any) {
-      logger.error("Failed to create parent context:", err);
+      logger.error.setConfig({ global: true })(
+        "Failed to create parent context:",
+        err
+      );
       response.continue = false;
       return response;
     }
@@ -435,12 +464,14 @@ async function generateChunkContext(props: {
     categorySlug: string;
   };
 }) {
-  logger.log("🔍 Generating chunk context");
+  logger.log.setConfig({ global: true })("🔍 Generating chunk context");
 
   const { batch, cleanUrl, parentContext } = props;
 
   if (!urmindDb.embeddings) {
-    logger.error("❌ Embeddings service not available");
+    logger.error.setConfig({ global: true })(
+      "❌ Embeddings service not available"
+    );
     return;
   }
 
@@ -455,7 +486,10 @@ async function generateChunkContext(props: {
     });
     return true;
   } catch (err: any) {
-    logger.error("Failed to create chunk context:", err);
+    logger.error.setConfig({ global: true })(
+      "Failed to create chunk context:",
+      err
+    );
     return false;
   }
 }
@@ -515,7 +549,10 @@ async function generateTextContext(
         preserveFormatting: false,
       }) as unknown as PageIndexerResponse;
 
-      logger.info("Text context creator response:", sanitizedResponse);
+      logger.info.setConfig({ global: true })(
+        "Text context creator response:",
+        sanitizedResponse
+      );
       return sanitizedResponse;
     },
     {
@@ -524,8 +561,11 @@ async function generateTextContext(
       minTimeout: 1000,
       maxTimeout: 10000,
       onRetry: (e, attempt) => {
-        logger.error("Text context creator failed:", e);
-        logger.log("Attempt:", attempt);
+        logger.error.setConfig({ global: true })(
+          "Text context creator failed:",
+          e
+        );
+        logger.log.setConfig({ global: true })("Attempt:", attempt);
       },
     }
   );
@@ -540,7 +580,9 @@ async function generateWithOnlineModel(
   const genAI = geminiAi(preferences.geminiApiKey);
   const modelName = ai_models.generation.gemini_flash; // Always use Flash for online generation
 
-  logger.log(`🤖 Using online model for context generation: ${modelName}`);
+  logger.log.setConfig({ global: true })(
+    `🤖 Using online model for context generation: ${modelName}`
+  );
 
   const result = await generateText({
     model: genAI(modelName),
@@ -551,7 +593,9 @@ async function generateWithOnlineModel(
     }),
   });
 
-  logger.log("✅ Online context generation completed");
+  logger.log.setConfig({ global: true })(
+    "✅ Online context generation completed"
+  );
   return result.text;
 }
 
@@ -560,7 +604,9 @@ async function generateWithLocalModel(
   pageMetadata: PageMetadata,
   existingCategories: Array<{ label: string; slug: string }>
 ): Promise<string> {
-  logger.log("🏠 Using local ChromeAI for context generation");
+  logger.log.setConfig({ global: true })(
+    "🏠 Using local ChromeAI for context generation"
+  );
 
   const result = await chromeAi.invoke(
     InitialContextCreatorPrompt({
@@ -605,17 +651,20 @@ async function createParentContextWithEmbedding(
     });
     logger.info("🔮 Embedding created for context:", newContextId);
   } catch (embeddingError) {
-    logger.error("⚠️ Failed to create embedding:", embeddingError);
+    logger.error.setConfig({ global: true })(
+      "⚠️ Failed to create embedding:",
+      embeddingError
+    );
 
     // Check if it's a WASM-related error
     if (
       embeddingError instanceof Error &&
       embeddingError.message.includes("WebAssembly")
     ) {
-      logger.error(
+      logger.error.setConfig({ global: true })(
         "🚨 WebAssembly error detected. This might be due to CSP restrictions or missing WASM files."
       );
-      logger.error(
+      logger.error.setConfig({ global: true })(
         "💡 Try rebuilding the extension or check browser console for more details."
       );
     }

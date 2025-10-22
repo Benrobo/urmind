@@ -49,15 +49,24 @@ const saveToUrMindJob: Task<SaveToUrMindPayload> = task<SaveToUrMindPayload>({
       const existingItem = await saveToUrmindQueue.find(contentFingerprint);
       if (existingItem) {
         if (existingItem.status === "completed") {
-          logger.log("Already saved:", contentFingerprint);
+          logger.log.setConfig({ global: true })(
+            "Already saved:",
+            contentFingerprint
+          );
           return;
         }
         if (existingItem.status === "processing") {
-          logger.log("Already processing:", contentFingerprint);
+          logger.log.setConfig({ global: true })(
+            "Already processing:",
+            contentFingerprint
+          );
           return;
         }
         if (existingItem.status === "failed") {
-          logger.log("Retrying failed save:", contentFingerprint);
+          logger.log.setConfig({ global: true })(
+            "Retrying failed save:",
+            contentFingerprint
+          );
         }
       }
 
@@ -106,7 +115,9 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
     const contentFingerprint = md5Hash(selectedText);
 
     if (!urmindDb.contexts || !urmindDb.embeddings) {
-      logger.error("❌ Contexts or embeddings service not available");
+      logger.error.setConfig({ global: true })(
+        "❌ Contexts or embeddings service not available"
+      );
       return;
     }
 
@@ -115,7 +126,9 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
     const searchText = `${selectedText}`;
 
     if (!urmindDb.embeddings) {
-      logger.error("❌ Embeddings service not available");
+      logger.error.setConfig({ global: true })(
+        "❌ Embeddings service not available"
+      );
       return;
     }
 
@@ -162,7 +175,10 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
         url: cleanUrl,
       });
 
-      logger.info("✅ Context created with ID:", contextId);
+      logger.info.setConfig({ global: true })(
+        "✅ Context created with ID:",
+        contextId
+      );
     } else {
       const semanticSearchResults = await urmindDb.embeddings.semanticSearch(
         searchText,
@@ -179,24 +195,24 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
         (c) => c.score >= threshold
       );
 
-      logger.info(
+      logger.info.setConfig({ global: true })(
         `🔍 Semantic search results [save-to-urmind]:`,
         semanticSearchResults
       );
-      logger.info(
+      logger.info.setConfig({ global: true })(
         `🔍 Closely similar contexts [save-to-urmind]:`,
         similarContexts
       );
 
       if (similarContexts?.length > 0) {
         matchedCategorySlug = similarContexts?.[0]?.categorySlug || null;
-        logger.info(
+        logger.info.setConfig({ global: true })(
           `🔍 Matched context [save-to-urmind]: ${similarContexts?.[0]?.categorySlug} with score: ${similarContexts?.[0]?.score}`
         );
       }
 
       if (matchedCategorySlug) {
-        logger.info(
+        logger.info.setConfig({ global: true })(
           `🔍 Matched category [save-to-urmind]: ${matchedCategorySlug}`
         );
 
@@ -217,12 +233,17 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
           url: cleanUrl,
         });
 
-        logger.info("✅ Context created with ID:", contextId);
+        logger.info.setConfig({ global: true })(
+          "✅ Context created with ID:",
+          contextId
+        );
       } else {
         const { category } = await generateCategory(selectedText);
 
         if (!urmindDb.contextCategories) {
-          logger.error("❌ Context categories service not available");
+          logger.error.setConfig({ global: true })(
+            "❌ Context categories service not available"
+          );
           return;
         }
 
@@ -233,14 +254,14 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
           .replace(/-+/g, "-")
           .replace(/^-+|-+$/g, "");
 
-        logger.info(
+        logger.info.setConfig({ global: true })(
           `Category generation - Label: "${category.label}", LLM Slug: "${category.slug}", Auto Slug: "${categorySlug}"`
         );
 
         const existingCategory =
           await urmindDb.contextCategories?.getCategoryBySlug(categorySlug);
         if (existingCategory) {
-          logger.info(
+          logger.info.setConfig({ global: true })(
             `Category already exists with slug "${categorySlug}": "${existingCategory.label}"`
           );
         } else {
@@ -248,7 +269,7 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
             category.label,
             categorySlug
           );
-          logger.info(
+          logger.info.setConfig({ global: true })(
             `Created new category: "${category.label}" with slug "${categorySlug}"`
           );
         }
@@ -270,7 +291,10 @@ async function processSaveToUrMind(payload: SaveToUrMindPayload) {
           url: cleanUrl,
         });
 
-        logger.info("✅ Context created with ID:", contextId);
+        logger.info.setConfig({ global: true })(
+          "✅ Context created with ID:",
+          contextId
+        );
       }
     }
   }
@@ -314,7 +338,10 @@ async function generateCategory(text: string) {
         preserveFormatting: false,
       }) as unknown as { category: { label: string; slug: string } };
 
-      logger.info("Category generation response:", sanitizedResponse);
+      logger.info.setConfig({ global: true })(
+        "Category generation response:",
+        sanitizedResponse
+      );
       return sanitizedResponse;
     },
     {
@@ -337,14 +364,18 @@ async function generateWithOnlineModel(
   const genAI = geminiAi(preferences.geminiApiKey);
   const modelName = ai_models.generation.gemini_flash; // Always use Flash for online generation
 
-  logger.log(`🤖 Using online model for category generation: ${modelName}`);
+  logger.log.setConfig({ global: true })(
+    `🤖 Using online model for category generation: ${modelName}`
+  );
 
   const result = await generateText({
     model: genAI(modelName),
     prompt: GenerateCategoryPrompt(text, existingCategories),
   });
 
-  logger.log("✅ Online category generation completed");
+  logger.log.setConfig({ global: true })(
+    "✅ Online category generation completed"
+  );
   return result.text;
 }
 
@@ -352,13 +383,17 @@ async function generateWithLocalModel(
   text: string,
   existingCategories: Array<{ label: string; slug: string }>
 ): Promise<string> {
-  logger.log("🏠 Using local ChromeAI for category generation");
+  logger.log.setConfig({ global: true })(
+    "🏠 Using local ChromeAI for category generation"
+  );
 
   const result = await chromeAi.invoke(
     GenerateCategoryPrompt(text, existingCategories)
   );
 
-  logger.log("✅ Local category generation completed");
+  logger.log.setConfig({ global: true })(
+    "✅ Local category generation completed"
+  );
   return result;
 }
 
@@ -394,7 +429,10 @@ async function generateTextContext(text: string) {
         context: { title: string; description: string; summary: string };
       };
 
-      logger.info("Text context generation response:", sanitizedResponse);
+      logger.info.setConfig({ global: true })(
+        "Text context generation response:",
+        sanitizedResponse
+      );
       return sanitizedResponse;
     },
     {
@@ -403,7 +441,10 @@ async function generateTextContext(text: string) {
       minTimeout: 1000,
       maxTimeout: 5000,
       onRetry: (error, attempt) => {
-        logger.error(`🔄 Text context generation retry ${attempt}:`, error);
+        logger.error.setConfig({ global: true })(
+          `🔄 Text context generation retry ${attempt}:`,
+          error
+        );
       },
     }
   );
@@ -416,24 +457,32 @@ async function generateTextContextWithOnlineModel(
   const genAI = geminiAi(preferences.geminiApiKey);
   const modelName = ai_models.generation.gemini_flash; // Always use Flash for online generation
 
-  logger.log(`🤖 Using online model for text context generation: ${modelName}`);
+  logger.log.setConfig({ global: true })(
+    `🤖 Using online model for text context generation: ${modelName}`
+  );
 
   const result = await generateText({
     model: genAI(modelName),
     prompt: TextContextCreatorPrompt(text),
   });
 
-  logger.log("✅ Online text context generation completed");
+  logger.log.setConfig({ global: true })(
+    "✅ Online text context generation completed"
+  );
   return result.text;
 }
 
 async function generateTextContextWithLocalModel(
   text: string
 ): Promise<string> {
-  logger.log("🏠 Using local ChromeAI for text context generation");
+  logger.log.setConfig({ global: true })(
+    "🏠 Using local ChromeAI for text context generation"
+  );
 
   const result = await chromeAi.invoke(TextContextCreatorPrompt(text));
 
-  logger.log("✅ Local text context generation completed");
+  logger.log.setConfig({ global: true })(
+    "✅ Local text context generation completed"
+  );
   return result;
 }
