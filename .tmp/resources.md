@@ -20,3 +20,5 @@ chrome://flags/#prompt-api-for-gemini-nano-multimodal-input
 https://github.com/webmachinelearning/prompt-api
 
 https://dribbble.com/shots/17554787-Clew-Fullscreen-canvas
+
+https://developer.chrome.com/docs/ai/prompt-api
