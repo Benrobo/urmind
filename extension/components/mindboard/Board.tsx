@@ -209,13 +209,13 @@ export default function MindboardCanvas() {
   }
 
   // Show empty state when no contexts found
-  if (selectedCategory && contexts && contexts.length === 0) {
-    return (
-      <div className="w-[calc(100%-250px)] h-screen flex items-center justify-center">
-        <div className="text-white/50">No contexts found for this category</div>
-      </div>
-    );
-  }
+  // if (selectedCategory && contexts && contexts.length === 0) {
+  //   return (
+  //     <div className="w-[calc(100%-250px)] h-screen flex items-center justify-center">
+  //       <div className="text-white/50">No contexts found for this category</div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <>
