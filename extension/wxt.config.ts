@@ -21,14 +21,7 @@ export default defineConfig({
       name: "Urmind",
       description: "Your mind in your browser.",
       version: "0.1.0",
-      permissions: [
-        "storage",
-        "activeTab",
-        "scripting",
-        "omnibox",
-        "tabs",
-        "contextMenus",
-      ],
+      permissions: ["storage", "activeTab", "omnibox", "tabs", "contextMenus"],
       host_permissions: [
         "https://generativelanguage.googleapis.com/*",
         "https://cdnjs.cloudflare.com/*",
