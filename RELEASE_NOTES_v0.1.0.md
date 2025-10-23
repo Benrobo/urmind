@@ -4,6 +4,8 @@
 
 ### 🆕 What's New in v1.1
 
+![UrMind - Your AI Memory](/readme-screenshots/3.png)
+
 **🖼️ Universal Image Sync**
 
 - **Drag & Drop**: Drag images directly onto your mindboard canvas for instant AI analysis
@@ -51,5 +53,5 @@ Requires Chrome Dev/Canary with Gemini Nano enabled. See [setup guide](./docs/GE
 
 ---
 
-**Demo Video:** [YouTube Link]
-**Feedback:** [Issues](https://github.com/YOUR_USERNAME/urmind/issues) • [Discussions](https://github.com/YOUR_USERNAME/urmind/discussions)
+**Demo Video:** [Youtube Video](https://www.youtube.com/watch?v=_DQC8l2Q9bI&feature=youtu.be)
+**Feedback:** [Issues](https://github.com/Benrobo/urmind/issues) • [Discussions](https://github.com/Benrobo/urmind/discussions)
