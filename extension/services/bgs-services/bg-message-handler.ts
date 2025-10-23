@@ -13,7 +13,7 @@ import saveToUrMindJob, {
   SaveToUrMindPayload,
 } from "@/triggers/save-to-urmind";
 
-type BgScriptMessageHandlerOperations =
+export type BgScriptMessageHandlerOperations =
   // page metadata extraction
   | "page-metadata-extraction"
   | "save-to-urmind"
@@ -42,7 +42,8 @@ type BgScriptMessageHandlerOperations =
   | "clearContexts"
   | "clearEmbeddings"
   | "clearConversations"
-  | "clearAllData";
+  | "clearAllData"
+  | "get-asset-by-id";
 
 export type BgScriptMessageHandlerActions =
   | "content-script-ready"
@@ -344,6 +345,16 @@ export class BackgroundMessageHandler {
 
         case "clearAllData":
           result = await urmindDb.clearAllData();
+          break;
+
+        case "get-asset-by-id":
+          if (!urmindDb.assets) {
+            throw new Error("Assets service not available");
+          }
+          if (!data?.assetId) {
+            throw new Error("assetId is required for get-asset-by-id");
+          }
+          result = await urmindDb.assets.getAssetById(data.assetId);
           break;
 
         case "updateMessageContent":

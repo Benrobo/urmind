@@ -3,7 +3,7 @@ import { ai_models } from "@/constant/internal";
 import logger from "@/lib/logger";
 import { embed, generateText, streamText } from "ai";
 import { geminiAi } from "@/helpers/agent/utils";
-import { chromeAi } from "@/helpers/agent/utils";
+import { chromeAI } from "@/helpers/agent/utils";
 import retry from "async-retry";
 
 type AIMode = "online" | "local" | "auto";
@@ -71,10 +71,12 @@ export class AIService {
     prompt: string,
     options: AIServiceOptions
   ): Promise<string> {
-    logger.log("🤖 Generating with local model: ChromeAI");
+    logger.log("🤖 Generating with local model: ChromeAI v2");
 
-    const result = await chromeAi.invoke(prompt);
-    return result;
+    const result = await chromeAI.generateText([
+      { role: "user", content: prompt },
+    ]);
+    return result.text;
   }
 
   private static async streamWithOnlineModel(
@@ -106,9 +108,11 @@ export class AIService {
     prompt: string,
     options: StreamTextOptions
   ): Promise<void> {
-    logger.log("🤖 Streaming with local model: ChromeAI");
+    logger.log("🤖 Streaming with local model: ChromeAI v2");
 
-    for await (const chunk of await chromeAi.stream(prompt)) {
+    const stream = chromeAI.streamText([{ role: "user", content: prompt }]);
+
+    for await (const chunk of stream) {
       options.onChunk(chunk);
     }
   }

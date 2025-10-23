@@ -46,6 +46,7 @@ export interface UrmindDB extends DBSchema {
       url: string | null; // clean url
       fullUrl: string | null; // full raw url
       image: string | null;
+      assetId?: string; // reference to assets table
       // favicon: string | null;
       createdAt: number;
       updatedAt: number;
@@ -101,6 +102,33 @@ export interface UrmindDB extends DBSchema {
     };
     indexes: {
       "by-id": string;
+      "by-created": number;
+    };
+  };
+  assets: {
+    key: string;
+    value: {
+      id: string;
+      type: "image" | "video" | "audio" | "document";
+      source: "local-upload" | "web-page";
+      filename: string;
+      mimeType: string;
+      size: number;
+      dataUrl: string; // base64 data URL (e.g., "data:image/png;base64,...")
+      url?: string; // external URL for web-sourced assets
+      metadata: {
+        width?: number;
+        height?: number;
+        duration?: number; // for video/audio
+        [key: string]: any;
+      };
+      createdAt: number;
+      updatedAt: number;
+    };
+    indexes: {
+      "by-id": string;
+      "by-type": string;
+      "by-source": string;
       "by-created": number;
     };
   };

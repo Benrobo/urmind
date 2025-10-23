@@ -43,7 +43,7 @@ export default defineConfig({
       omnibox: { keyword: "urmind" },
       content_security_policy: {
         extension_pages:
-          "default-src 'self'; img-src 'self' data: blob: https:; script-src 'self' 'wasm-unsafe-eval'; style-src-elem 'self' 'unsafe-inline' ws://localhost:5174/ https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; connect-src 'self' ws://localhost:5174/ http://localhost:5174/ https://generativelanguage.googleapis.com",
+          "default-src 'self'; img-src 'self' data: blob: https: http:; script-src 'self' 'wasm-unsafe-eval'; style-src-elem 'self' 'unsafe-inline' ws://localhost:5174/ https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; connect-src 'self' ws://localhost:5174/ http://localhost:5174/ https://generativelanguage.googleapis.com https: http:",
       },
       web_accessible_resources: [
         {

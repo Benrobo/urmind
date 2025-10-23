@@ -1,6 +1,6 @@
 import { PageMetadata } from "@/services/page-extraction/extraction";
 import { Task, task } from "./task";
-import { chromeAi, geminiAi } from "@/helpers/agent/utils";
+import { chromeAI, geminiAi } from "@/helpers/agent/utils";
 import { preferencesStore } from "@/store/preferences.store";
 import { generateText, streamText } from "ai";
 import { ai_models } from "@/constant/internal";
@@ -608,16 +608,19 @@ async function generateWithLocalModel(
     "🏠 Using local ChromeAI for context generation"
   );
 
-  const result = await chromeAi.invoke(
-    InitialContextCreatorPrompt({
-      pageContent: batch,
-      metadata: pageMetadata,
-      existingCategories: existingCategories,
-    })
-  );
+  const result = await chromeAI.generateText([
+    {
+      role: "user",
+      content: InitialContextCreatorPrompt({
+        pageContent: batch,
+        metadata: pageMetadata,
+        existingCategories: existingCategories,
+      }),
+    },
+  ]);
 
   logger.log("✅ Local context generation completed");
-  return result;
+  return result.text;
 }
 
 async function createParentContextWithEmbedding(

@@ -35,24 +35,25 @@ export class ContextMenuService {
   ): Promise<void> {
     switch (info.menuItemId) {
       case "save-to-urmind":
-        console.log("handleContextMenuClick", info, tab);
-        if (info.selectionText) {
+        if (info.selectionText && !info.srcUrl) {
           await this.handleSaveToUrMind({
             selectedText: info.selectionText,
             tab,
+            type: "text",
           });
         } else if (info.mediaType === "image") {
           await this.handleSaveToUrMind({
             srcUrl: info.srcUrl,
             tab,
+            type: "image",
+          });
+        } else if (info.linkUrl) {
+          await this.handleSaveToUrMind({
+            linkUrl: info.linkUrl,
+            tab,
+            type: "link",
           });
         }
-        // else if(info.linkUrl){
-        //   await this.handleSaveToUrMind({
-        //     linkUrl: info.linkUrl,
-        //     tab,
-        //   });
-        // }
         break;
       default:
         break;
@@ -64,15 +65,17 @@ export class ContextMenuService {
     srcUrl?: string;
     linkUrl?: string;
     tab: chrome.tabs.Tab;
+    type?: "image" | "text" | "link";
   }): Promise<void> {
     try {
       await saveToUrMindJob.trigger({
-        type: "text",
+        type: props.type || "text",
         url: props.tab.url!,
         selectedText: props.selectedText,
         tabId: props.tab.id || 0,
         srcUrl: props.srcUrl,
         linkUrl: props.linkUrl,
+        source: "web-page", // Images from context menu are web-sourced
       });
 
       // Show success notification

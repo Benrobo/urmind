@@ -1,17 +1,15 @@
 import React, { useCallback, useEffect, useState } from "react";
 import DraggableElement from "./DraggableElement";
-import {
-  ReactFlow,
-  applyNodeChanges,
-  applyEdgeChanges,
-  addEdge,
-  Background,
-  Controls,
-  NodeTypes,
-} from "@xyflow/react";
+import { ReactFlow, applyNodeChanges } from "@xyflow/react";
+// @ts-expect-error
+import { Background } from "@xyflow/react";
+// @ts-expect-error
+import { Controls } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import WebPageNode from "./nodes/WebPageNode";
+import ImageNode from "./nodes/ImageNode";
 import ContextInfoSidebar from "./ContextInfoSidebar";
+import DropMediaModal from "./DropMediaModal";
 import { ContextType } from "@/types/context";
 import { CombinedNodes, NodeProps } from "@/types/mindboard";
 import { useMindboardContext } from "@/context/MindboardCtx";
@@ -19,9 +17,11 @@ import TextNode from "./nodes/TextNode";
 import usePaste from "@/hooks/usePaste";
 import saveToUrMindJob from "@/triggers/save-to-urmind";
 import { sendMessageToBackgroundScript } from "@/helpers/messaging";
+import { motion } from "motion/react";
 
 const nodeTypes = {
   "artifact:web-page": WebPageNode,
+  "artifact:image": ImageNode,
   text: TextNode,
   // todos: TodoNode,
   // brainstorm: BrainstormNode,
@@ -46,6 +46,10 @@ export default function MindboardCanvas() {
   } = useMindboardContext();
 
   const { pastedText, clearPastedText } = usePaste();
+
+  // Drag and drop state
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [showDropModal, setShowDropModal] = useState(false);
 
   useEffect(() => {
     if (pastedText && pastedText.trim() !== "" && selectedCategory) {
@@ -109,6 +113,74 @@ export default function MindboardCanvas() {
     [setContextPosition]
   );
 
+  // Drag and drop handlers
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Check if dragging files
+    if (e.dataTransfer.types.includes("Files")) {
+      setIsDraggingOver(true);
+      setShowDropModal(true);
+    }
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Only hide if leaving the main container
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDraggingOver(false);
+      setShowDropModal(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      setIsDraggingOver(false);
+      setShowDropModal(false);
+
+      const files = Array.from(e.dataTransfer.files);
+      const imageFiles = files.filter((f) => f.type.startsWith("image/"));
+
+      if (imageFiles.length > 0 && selectedCategory) {
+        for (const file of imageFiles) {
+          // Convert file to base64 data URL before sending
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = (error) => reject(error);
+            reader.readAsDataURL(file);
+          });
+
+          await sendMessageToBackgroundScript({
+            action: "save-to-urmind",
+            payload: {
+              type: "image",
+              dataUrl,
+              filename: file.name,
+              mimeType: file.type,
+              size: file.size,
+              categorySlug: selectedCategory,
+              source: "local-upload",
+              url: location.href,
+              tabId: 0,
+            },
+            responseRequired: false,
+          });
+        }
+
+        // Refetch contexts to show new images
+        refetchContexts();
+      }
+    },
+    [selectedCategory, refetchContexts]
+  );
+
   // Show loading state
   if (contextsLoading) {
     return (
@@ -147,7 +219,12 @@ export default function MindboardCanvas() {
 
   return (
     <>
-      <div className="w-[calc(100%-250px)] h-screen">
+      <motion.div
+        className="w-[calc(100%-250px)] h-screen"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         <ReactFlow
           nodes={nodes}
           // edges={edges}
@@ -173,7 +250,9 @@ export default function MindboardCanvas() {
           />
           <Controls />
         </ReactFlow>
-      </div>
+
+        {showDropModal && <DropMediaModal isDraggingOver={isDraggingOver} />}
+      </motion.div>
 
       <ContextInfoSidebar
         isOpen={isRightSidebarOpen}

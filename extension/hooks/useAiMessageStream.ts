@@ -95,8 +95,6 @@ export default function useAiMessageStream({
 
           // console.log("Prompt:", prompt);
 
-          setStreamingState("streaming");
-
           // Use the centralized AI service for streaming
           const msgHash = md5Hash(userQuery);
 
@@ -106,10 +104,23 @@ export default function useAiMessageStream({
             [msgHash]: "",
           }));
 
+          let hasReceivedFirstChunk = false;
+          let totalCharactersReceived = 0;
+
           await AIService.streamText({
             prompt,
             onChunk: (chunk: string) => {
               // console.log("message stream >>>", chunk);
+
+              if (!hasReceivedFirstChunk && chunk.trim().length > 0) {
+                totalCharactersReceived += chunk.length;
+
+                if (totalCharactersReceived >= 2) {
+                  setStreamingState("streaming");
+                  hasReceivedFirstChunk = true;
+                }
+              }
+
               setMessageStream((prev) => ({
                 ...prev,
                 [msgHash]: (prev[msgHash] || "") + chunk,

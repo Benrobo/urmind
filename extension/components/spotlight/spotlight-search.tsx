@@ -350,7 +350,7 @@ export default function SpotlightSearch({
     >
       <div
         className={cn(
-          "w-[650px] max-h-[80vh] rounded-[12px]",
+          "w-[650px] max-h-[90vh] rounded-[12px]",
           "bg-gray-100/80 backdrop-blur-xl",
           "border border-gray-102/30",
           "shadow-2xl shadow-black/20"
@@ -431,7 +431,7 @@ export default function SpotlightSearch({
           )}
 
           {/* Show Chat Messages or Saved Context */}
-          <section className="w-full min-h-[400px] relative overflow-hidden">
+          <section className="w-full min-h-[450px] relative overflow-hidden">
             <div
               className={cn(
                 "absolute inset-0 transition-transform duration-300 ease-in-out overflow-y-auto customScrollbar",

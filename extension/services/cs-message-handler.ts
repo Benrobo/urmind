@@ -27,7 +27,8 @@ export type BgScriptOperations =
   | "appendMessagesToConversation"
   | "updateMessageContextIds"
   | "deleteMessage"
-  | "deleteConversation";
+  | "deleteConversation"
+  | "get-asset-by-id";
 
 // Union of all operations
 export type BgScriptMessageHandlerOperations =

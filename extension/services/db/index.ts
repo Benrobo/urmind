@@ -4,12 +4,13 @@ import { ContextService } from "./context";
 import { ConversationService } from "./conversation";
 import { EmbeddingsStore } from "@/services/embeddings-store";
 import { ContextCategoriesService } from "./context-categories";
+import { AssetsService } from "./assets.service";
 import { saveToUrmindQueue } from "@/triggers/save-to-urmind";
 
 class UrmindDatabase {
   private db: IDBPDatabase<UrmindDB> | null = null;
   private dbName = "urmind-db";
-  private version = 6.0;
+  private version = 7.0;
   private initPromise: Promise<void> | null = null;
 
   // Service instances
@@ -17,6 +18,7 @@ class UrmindDatabase {
   public conversations: ConversationService | null = null;
   public embeddings: EmbeddingsStore | null = null;
   public contextCategories: ContextCategoriesService | null = null;
+  public assets: AssetsService | null = null;
 
   getDb(): IDBPDatabase<UrmindDB> {
     if (!this.db) throw new Error("Database not initialized");
@@ -107,6 +109,21 @@ class UrmindDatabase {
           conversationStore.createIndex("by-id", "id");
           conversationStore.createIndex("by-created", "createdAt");
         }
+
+        // Create assets store
+        if (!db.objectStoreNames.contains("assets")) {
+          console.log("Creating assets store");
+          const assetStore = db.createObjectStore("assets", {
+            keyPath: "id",
+          });
+          assetStore.createIndex("by-id", "id");
+          assetStore.createIndex("by-type", "type");
+          assetStore.createIndex("by-source", "source");
+          assetStore.createIndex("by-created", "createdAt");
+        } else if (oldVersion < 7.0) {
+          // Ensure assets store exists for existing databases
+          console.log("Ensuring assets store exists for version upgrade");
+        }
       },
     });
 
@@ -115,6 +132,7 @@ class UrmindDatabase {
     this.conversations = new ConversationService(this.db);
     this.embeddings = new EmbeddingsStore(this.db);
     this.contextCategories = new ContextCategoriesService(this.db);
+    this.assets = new AssetsService(this.db);
 
     console.log("Database services initialized");
   }
@@ -123,7 +141,13 @@ class UrmindDatabase {
     if (!this.db) throw new Error("Database not initialized");
 
     const tx = this.db.transaction(
-      ["contexts", "embeddings", "conversations", "context_categories"],
+      [
+        "contexts",
+        "embeddings",
+        "conversations",
+        "context_categories",
+        "assets",
+      ],
       "readwrite"
     );
     await Promise.all([
@@ -131,6 +155,7 @@ class UrmindDatabase {
       tx.objectStore("embeddings").clear(),
       tx.objectStore("conversations").clear(),
       tx.objectStore("context_categories").clear(),
+      tx.objectStore("assets").clear(),
       tx.done,
     ]);
 
