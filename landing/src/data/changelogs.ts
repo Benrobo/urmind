@@ -1,13 +1,13 @@
-export interface ChangelogEntry {
+export type ChangelogEntryData = {
   version: string;
   date: string;
   title: string;
   description: string;
   image: string;
   features: string[];
-}
+};
 
-export const changelogEntries: ChangelogEntry[] = [
+export const changelogEntries: ChangelogEntryData[] = [
   {
     version: "v1.1",
     date: "January 15, 2025",

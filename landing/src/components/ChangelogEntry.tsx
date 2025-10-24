@@ -1,8 +1,9 @@
-import React from "react";
-import { ChangelogEntry as ChangelogEntryType } from "../data/changelogs";
+import { changelogEntries } from "../data/changelogs";
+
+type ChangelogEntryData = (typeof changelogEntries)[0];
 
 interface ChangelogEntryProps {
-  entry: ChangelogEntryType;
+  entry: ChangelogEntryData;
   isLast?: boolean;
 }
 
