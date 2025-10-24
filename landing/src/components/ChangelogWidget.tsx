@@ -3,11 +3,15 @@ import { Bell, X } from "lucide-react";
 import { changelogEntries } from "../data/changelogs";
 import ChangelogEntry from "./ChangelogEntry";
 import { motion, AnimatePresence } from "framer-motion";
+import { useScrollLock } from "../hooks/useScrollLock";
 
 export default function ChangelogWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const widgetRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+
+  // Disable scrolling when widget is open
+  useScrollLock(isOpen);
 
   // Close panel when clicking outside
   useEffect(() => {

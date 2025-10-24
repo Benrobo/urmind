@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import { changelogEntries } from "../data/changelogs";
 
 type ChangelogEntryData = (typeof changelogEntries)[0];
@@ -12,7 +13,7 @@ export default function ChangelogEntry({
   isLast = false,
 }: ChangelogEntryProps) {
   return (
-    <div className="relative font-geistmono">
+    <div className={cn("relative font-geistmono", isLast && "pb-8")}>
       {/* Timeline line */}
       {!isLast && (
         <div className="absolute left-[1px] top-4 w-[1px] mt-3 h-[calc(100%-2rem)] bg-white-100/10"></div>
