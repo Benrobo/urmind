@@ -61,7 +61,7 @@ export default function Header() {
               <Github size={20} />
             </a>
             <a
-              href="https://github.com/Benrobo/urmind/releases/tag/v1.0"
+              href="https://github.com/Benrobo/urmind/releases/tag/v1.1"
               target="_blank"
               rel="noopener noreferrer"
             >

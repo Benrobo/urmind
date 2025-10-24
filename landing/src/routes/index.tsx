@@ -6,6 +6,7 @@ import Features from "../components/sections/Features";
 import HowItWorks from "../components/sections/HowItWorks";
 import Demo from "../components/sections/Demo";
 import CTA from "../components/sections/CTA";
+import ChangelogWidget from "../components/ChangelogWidget";
 
 export const Route = createFileRoute("/")({
   component: App,
@@ -68,6 +69,7 @@ function App() {
       <HowItWorks />
       <Demo />
       <CTA />
+      <ChangelogWidget />
     </div>
   );
 }
