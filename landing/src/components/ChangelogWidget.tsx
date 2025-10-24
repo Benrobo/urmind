@@ -4,6 +4,7 @@ import { changelogEntries } from "../data/changelogs";
 import ChangelogEntry from "./ChangelogEntry";
 import { motion, AnimatePresence } from "framer-motion";
 import { useScrollLock } from "../hooks/useScrollLock";
+import { cn } from "@/lib/utils";
 
 export default function ChangelogWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -53,7 +54,10 @@ export default function ChangelogWidget() {
   return (
     <div
       ref={widgetRef}
-      className="w-full md:w-auto  h-full fixed bottom-0 right-0 md:bottom-4 md:right-4 z-50"
+      className={cn(
+        "w-full md:w-auto  h-full fixed bottom-0 right-0 md:bottom-4 md:right-4",
+        isOpen && "z-50"
+      )}
     >
       {/* Panel */}
       <AnimatePresence>
