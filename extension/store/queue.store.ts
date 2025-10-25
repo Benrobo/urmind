@@ -105,11 +105,11 @@ export class QueueStore<T = any> extends StorageStore<QueueItem<T>[]> {
       (async () => {
         logger.log("cleaning up");
         const currentItems = await this.get();
-        const twoMinutesAgo = dayjs().subtract(2, "minutes").valueOf();
+        const tenSecondsAgo = dayjs().subtract(10, "seconds").valueOf();
 
         const filteredItems = currentItems.filter((item) => {
           if (item.status === "pending") return true;
-          return item.createdAt > twoMinutesAgo;
+          return item.createdAt > tenSecondsAgo;
         });
 
         await this.set(filteredItems);
@@ -119,6 +119,6 @@ export class QueueStore<T = any> extends StorageStore<QueueItem<T>[]> {
           logger.log(`🧹 Cleaned up ${removedCount} old queue items`);
         }
       })();
-    }, 10000);
+    }, 5000);
   }
 }

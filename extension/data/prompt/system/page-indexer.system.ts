@@ -21,39 +21,35 @@ This is your final opportunity to comply. Produce the required JSON now, exactly
 ${
   input.existingCategories && input.existingCategories.length > 0
     ? `<existing_categories>
-You MUST check if any of these existing categories fit the content before creating a new one.
-If a category fits, use its EXACT label and slug:
+Available categories:
 ${input.existingCategories
   .map((cat) => `- "${cat.label}" (slug: "${cat.slug}")`)
   .join("\n")}
+
+ONLY reuse if the category DIRECTLY matches the content's main topic. When in doubt, create a NEW specific category.
+Examples: "React Tutorial" → "Web Development" ✓ | "Weaponry Fiction" → "Software" ✗
 </existing_categories>`
     : ""
 }
 
-**CRITICAL CATEGORY RULES - FAILURE TO FOLLOW WILL RESULT IN REJECTION:**
-1. ALWAYS check existing categories FIRST - reuse if any category fits
-2. If creating NEW category: Generate slug FROM the label using this EXACT formula:
-   - Take the category label
-   - Convert to lowercase
-   - Replace spaces with hyphens
-   - Remove special characters
-   - Example: "Machine Learning" → slug: "machine-learning"
-   - Example: "Software" → slug: "software" (NOT "software-applications")
-   - Example: "AI & Robotics" → slug: "ai-robotics"
-3. NEVER create arbitrary slugs that don't match the label
-4. Label and slug MUST be semantically identical (just different formatting)
-5. If label is "Software", slug MUST be "software" (not "software-applications" or any other variation)
+**CATEGORY RULES:**
+1. Reuse existing category ONLY if it directly describes the content's primary subject
+2. Prefer SPECIFIC over GENERIC (e.g., "Web Development" not "Programming")
+3. When uncertain, CREATE new category rather than force a mismatch
+4. Generate slug from label: lowercase, hyphens, no special chars
+   - "Machine Learning" → "machine-learning"
+   - "Science Fiction" → "science-fiction"
 
 **Output JSON:**
 {
   "context": {
-    "category": {
-      "label": "string",  // MUST be meaningful category name
-      "slug": "string"    // MUST be generated from label OR from existing category
-    },
     "title": "string",  // VERY SHORT, READABLE TITLE (2-6 words max) DESCRIBING WHAT THIS CONTEXT IS ABOUT
     "description": "string",  // brief description of the context
-    "summary": "string" // concise summary with all important information.
+    "summary": "string", // concise summary with all important information.
+    "category": {
+      "label": "string",  // Specific category matching PRIMARY subject (not generic)
+      "slug": "string"    // Generated from label OR exact existing match
+    }
   } | null, // null if the content is not worth saving or doesn't provide substantial value to the user
   "retentionDecision": {"keep": boolean}
 }
@@ -69,11 +65,11 @@ ${input.existingCategories
 - If summary is shorter than 3 paragraphs or missing key details, it fails.  
 
 **CONTEXT RULES:**  
-- Always generate new context (never copy existing).  
-- Reuse category only if related.  
-- Title: 2–6 readable words.  
-- Category slug: lowercase hyphenated.  
-- If not worth saving: set context = null.
+- Generate new context (never copy existing)
+- Category must strictly match content - be specific, not generic
+- Reuse existing category only if direct semantic match
+- Title: 2–6 readable words
+- If not worth saving: set context = null
 `;
 
 // Enhanced context creator for DOM elements with existing context comparison
@@ -115,7 +111,7 @@ ${
 {
   "context": {
     "category": {
-      "label": "string", // Category label (e.g., "Technology", "Science", "Business")
+      "label": "string", // Specific category matching main topic (not generic)
       "slug": "string"   // URL-friendly slug with hyphens for multi-word categories (e.g., "technology", "machine-learning", "artificial-intelligence")
     },
     "title": "string", // Very short, readable title (2-6 words max) describing what this context is about
@@ -124,6 +120,8 @@ ${
   } | null,
   "retentionDecision": {"keep": boolean}
 }
+
+**CATEGORY:** Choose specific category matching main topic. Prefer "Web Development" over "Programming", "Italian Cuisine" over "Food".
 
 **SUMMARY FORMATTING REQUIREMENTS:**
 - Write the summary in minimal, accessible markdown

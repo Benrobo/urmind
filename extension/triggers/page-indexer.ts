@@ -232,7 +232,7 @@ async function processPageIndexing(props: {
   );
 }
 
-async function validateIndexingRequirements(
+export async function validateIndexingRequirements(
   manualTrigger?: boolean
 ): Promise<boolean> {
   const preferences = await preferencesStore.get();

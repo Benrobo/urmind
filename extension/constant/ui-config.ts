@@ -7,6 +7,9 @@ export const needsUIAdjustments = [
       },
       manualIndexButton: {
         zoomIn: true,
+        tooltip: {
+          fontSize: true,
+        },
       },
       spotlightSearch: {
         fontSize: true,

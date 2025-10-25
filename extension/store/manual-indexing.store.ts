@@ -47,7 +47,7 @@ export class ManualIndexingStore extends StorageStore<ManualIndexingState> {
   }
 
   async cleanupOldEntries(
-    maxAge: number = 7 * 24 * 60 * 60 * 1000
+    maxAge: number = 60 * 60 * 1000 // 1 hour
   ): Promise<void> {
     const currentState = await this.get();
     const now = Date.now();

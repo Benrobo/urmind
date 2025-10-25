@@ -49,7 +49,7 @@ export default function ManualIndexButton({
         },
       });
 
-      if (existingContext?.result) {
+      if (existingContext?.result !== null) {
         setButtonState("indexed");
         setTooltip("Page already being watched");
         return;
@@ -241,7 +241,7 @@ export default function ManualIndexButton({
             : "cursor-pointer",
           buttonState === "indexed" && "opacity-50 grayscale",
           manualIndexButtonAdjustments?.manualIndexButton?.zoomIn &&
-            "scale-[1.2]"
+            "scale-[1.3]"
         )}
       >
         <button
@@ -266,7 +266,14 @@ export default function ManualIndexButton({
       </div>
 
       {/* Tooltip */}
-      <div className="absolute bottom-full right-0 mb-2 px-3 py-2 shadow-2xl shadow-black/20 bg-gray-100/80 backdrop-blur-xl border border-gray-102/30 text-white-100 text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
+      <div
+        className={cn(
+          "absolute bottom-full right-0 mb-2 px-3 py-2 shadow-2xl shadow-black/20 bg-gray-100/80 backdrop-blur-xl border border-gray-102/30 text-white-100 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap",
+          manualIndexButtonAdjustments?.manualIndexButton?.tooltip?.fontSize
+            ? "text-[12px]"
+            : "text-sm"
+        )}
+      >
         {tooltip}
         <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-100/80"></div>
       </div>

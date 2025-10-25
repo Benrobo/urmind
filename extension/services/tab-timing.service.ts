@@ -8,7 +8,9 @@ import { PageMetadata } from "@/services/page-extraction/extraction";
 import { preferencesStore } from "@/store/preferences.store";
 import dayjs from "dayjs";
 import logger from "@/lib/logger";
-import pageIndexerJob from "@/triggers/page-indexer";
+import pageIndexerJob, {
+  validateIndexingRequirements,
+} from "@/triggers/page-indexer";
 import { sleep } from "@/lib/utils";
 
 export class TabTimingService {
@@ -71,6 +73,9 @@ export class TabTimingService {
   }
 
   private async checkTabsForIndexing(): Promise<void> {
+    if (!(await validateIndexingRequirements(false))) {
+      return;
+    }
     try {
       const readyTabs = await tabTimingStore.getTabsReadyForIndexing();
 
