@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "wxt",
     "dev:firefox": "wxt -b firefox",
-    "clean:build": "rm -rf .output/urmind-0.1.0-chrome.zip && rm -rf .output/chrome-mv3 && rm -rf .output/urmind-0.1.0-chrome",
+    "clean:build": "rm -rf .output/urmind-chrome.zip && rm -rf .output/chrome-mv3 && rm -rf .output/urmind-chrome",
     "build": "wxt build",
     "build:prod": "bun run clean:build && wxt zip --mode production",
     "build:firefox": "wxt build -b firefox",
