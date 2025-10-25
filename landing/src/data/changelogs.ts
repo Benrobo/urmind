@@ -12,7 +12,7 @@ export const changelogEntries: ChangelogEntryData[] = [
   {
     version: "v1.2",
     tags: ["latest"],
-    date: "October 25, 2025",
+    date: "October 26, 2025",
     title: "Manual Page Indexing & Smart Control",
     description:
       "Take full control of your memory with manual page indexing and flexible indexing modes. Choose between automatic, manual, or disabled indexing to match your workflow. The new floating index button lets you manually save any page with a single click, while smart category selection ensures your content is properly organized.",
