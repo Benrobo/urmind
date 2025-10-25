@@ -52,65 +52,66 @@ export default function ChangelogWidget() {
   }, [isOpen]);
 
   return (
-    <div
-      ref={widgetRef}
-      className={cn(
-        "w-full md:w-auto  h-full fixed bottom-0 right-0 md:bottom-4 md:right-4",
-        isOpen && "z-50"
-      )}
-    >
-      {/* Panel */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            ref={panelRef}
-            initial={{ opacity: 0, scale: 0.8, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: 20 }}
-            transition={{
-              duration: 0.2,
-              ease: "easeOut",
-              type: "spring",
-              stiffness: 300,
-              damping: 30,
-            }}
-            className="absolute bottom-0 left-0 right-0 md:bottom-1 md:left-auto md:right-0 w-full md:w-[480px] h-full md:max-h-[70vh] bg-gray-100/90 backdrop-blur-xl border border-gray-102/50 rounded-none md:rounded-xl shadow-premium-lg overflow-hidden"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-gray-102/40 bg-gray-100/50">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-full bg-purple-100/20 flex items-center justify-center">
-                  <Bell size={16} className="text-purple-100" />
-                </div>
-                <h2 className="text-white-100 font-semibold text-base md:text-lg">
-                  What's New
-                </h2>
-              </div>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="p-2 hover:bg-white-100/10 rounded-lg transition-colors"
-              >
-                <X size={18} className="text-white-100/70" />
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="overflow-y-auto hideScrollBar2 max-h-[calc(100vh)] md:max-h-[calc(70vh-80px)]">
-              <div className="px-4 md:px-6 py-4">
-                {changelogEntries.map((entry, index) => (
-                  <ChangelogEntry
-                    key={entry.version}
-                    entry={entry}
-                    isLast={index === changelogEntries.length - 1}
-                  />
-                ))}
-              </div>
-            </div>
-          </motion.div>
+    <div>
+      <div
+        ref={widgetRef}
+        className={cn(
+          "w-full md:w-auto  h-full fixed bottom-0 right-0 md:bottom-4 md:right-4",
+          isOpen ? "z-50" : "-z-10"
         )}
-      </AnimatePresence>
+      >
+        {/* Panel */}
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              ref={panelRef}
+              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 20 }}
+              transition={{
+                duration: 0.2,
+                ease: "easeOut",
+                type: "spring",
+                stiffness: 300,
+                damping: 30,
+              }}
+              className="absolute bottom-0 left-0 right-0 md:bottom-1 md:left-auto md:right-0 w-full md:w-[480px] h-full md:max-h-[70vh] bg-gray-100/90 backdrop-blur-xl border border-gray-102/50 rounded-none md:rounded-xl shadow-premium-lg overflow-hidden"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-gray-102/40 bg-gray-100/50">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 rounded-full bg-purple-100/20 flex items-center justify-center">
+                    <Bell size={16} className="text-purple-100" />
+                  </div>
+                  <h2 className="text-white-100 font-semibold text-base md:text-lg">
+                    What's New
+                  </h2>
+                </div>
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="p-2 hover:bg-white-100/10 rounded-lg transition-colors"
+                >
+                  <X size={18} className="text-white-100/70" />
+                </button>
+              </div>
 
-      {/* Toggle Button */}
+              {/* Content */}
+              <div className="overflow-y-auto hideScrollBar2 max-h-[calc(100vh)] md:max-h-[calc(70vh-80px)]">
+                <div className="px-4 md:px-6 py-4">
+                  {changelogEntries.map((entry, index) => (
+                    <ChangelogEntry
+                      key={entry.version}
+                      entry={entry}
+                      isLast={index === changelogEntries.length - 1}
+                    />
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
       {!isOpen && (
         <motion.button
           onClick={() => setIsOpen(!isOpen)}
