@@ -2,6 +2,7 @@ import { StorageStore } from "@/helpers/storage-store";
 
 export type GenerationStyle = "online" | "offline";
 export type TimeUnit = "seconds" | "minutes" | "hours";
+export type IndexingMode = "automatic" | "manual" | "disabled";
 
 export interface TabTimingPreferences {
   duration: number;
@@ -13,7 +14,8 @@ export interface PreferencesState {
   geminiApiKey: string;
   showPreferences: boolean;
   tabTiming: TabTimingPreferences;
-  indexingEnabled: boolean;
+  indexingMode: IndexingMode;
+  indexingEnabled: boolean; // Keep for backward compatibility
 }
 
 export class PreferencesStore extends StorageStore<PreferencesState> {
@@ -26,7 +28,8 @@ export class PreferencesStore extends StorageStore<PreferencesState> {
         duration: 2,
         timeUnit: "minutes",
       },
-      indexingEnabled: true,
+      indexingMode: "automatic",
+      indexingEnabled: true, // Keep for backward compatibility
     });
   }
 
@@ -98,9 +101,28 @@ export class PreferencesStore extends StorageStore<PreferencesState> {
     }
   }
 
+  async setIndexingMode(mode: IndexingMode): Promise<void> {
+    const currentState = await this.get();
+    await this.set({
+      ...currentState,
+      indexingMode: mode,
+      indexingEnabled: mode !== "disabled", // Update backward compatibility field
+    });
+  }
+
+  async getIndexingMode(): Promise<IndexingMode> {
+    const state = await this.get();
+    return state.indexingMode;
+  }
+
   async setIndexingEnabled(enabled: boolean): Promise<void> {
     const currentState = await this.get();
-    await this.set({ ...currentState, indexingEnabled: enabled });
+    const newMode = enabled ? "automatic" : "disabled";
+    await this.set({
+      ...currentState,
+      indexingEnabled: enabled,
+      indexingMode: newMode,
+    });
   }
 
   async getIndexingEnabled(): Promise<boolean> {

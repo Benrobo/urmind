@@ -6,6 +6,7 @@ import type {
   NavigationDetectedPayload,
   MessageResponse,
   PendingPageIndexingJob,
+  ManualIndexPagePayload,
 } from "@/types/background-messages";
 import { UrmindDB } from "@/types/database";
 import { PageMetadata } from "../page-extraction/extraction";
@@ -43,6 +44,8 @@ export type BgScriptMessageHandlerOperations =
   | "clearEmbeddings"
   | "clearConversations"
   | "clearAllData"
+  | "getContextByFingerprint"
+  | "getContextByContentFingerprint"
   | "get-asset-by-id";
 
 export type BgScriptMessageHandlerActions =
@@ -50,6 +53,7 @@ export type BgScriptMessageHandlerActions =
   | "page-metadata-extraction"
   | "save-to-urmind"
   | "navigation-detected"
+  | "manual-index-page"
   | "openOptionsPage"
   | "openPopup"
   | "db-operation"
@@ -145,6 +149,35 @@ export class BackgroundMessageHandler {
     }
 
     return { success: true };
+  }
+
+  /**
+   * Handle manual page indexing
+   */
+  async handleManualIndexPage(
+    payload: ManualIndexPagePayload,
+    sender: chrome.runtime.MessageSender
+  ): Promise<MessageResponse> {
+    try {
+      logger.log("🔍 Manual indexing triggered for tab:", sender.tab?.id);
+
+      // Trigger page indexer with manual trigger flag
+      await pageIndexerJob.trigger({
+        url: payload.pageMetadata.pageUrl,
+        pageMetadata: payload.pageMetadata,
+        tabId: sender.tab?.id!,
+        manualTrigger: true,
+      });
+
+      logger.log("✅ Manual indexing job triggered successfully");
+      return { success: true };
+    } catch (error) {
+      logger.error("Failed to trigger manual indexing:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
   }
 
   /**
@@ -456,6 +489,23 @@ export class BackgroundMessageHandler {
             deleteConversationPayload.conversationId
           );
           break;
+        case "getContextByFingerprint":
+          if (!urmindDb.contexts) {
+            throw new Error("Contexts service not initialized");
+          }
+          result =
+            (await urmindDb.contexts.getContextByFingerprint(
+              data.fingerprint
+            )) ?? null;
+          break;
+        case "getContextByContentFingerprint":
+          if (!urmindDb.contexts) {
+            throw new Error("Contexts service not initialized");
+          }
+          result = await urmindDb.contexts.getContextByContentFingerprint(
+            data.contentFingerprint
+          );
+          break;
 
         default:
           throw new Error(`Unknown database operation: ${operation}`);
@@ -530,6 +580,13 @@ export class BackgroundMessageHandler {
 
             case "navigation-detected":
               result = await this.handleNavigationDetected(
+                request.payload,
+                sender
+              );
+              break;
+
+            case "manual-index-page":
+              result = await this.handleManualIndexPage(
                 request.payload,
                 sender
               );

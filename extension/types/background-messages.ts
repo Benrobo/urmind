@@ -23,3 +23,7 @@ export interface PendingPageIndexingJob {
   url: string;
   pageMetadata: any;
 }
+
+export interface ManualIndexPagePayload {
+  pageMetadata: PageMetadata;
+}

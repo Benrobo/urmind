@@ -1,3 +1,4 @@
+import { needsUIAdjustments } from "@/constant/ui-config";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -18,12 +19,21 @@ export default function ConversationNavigation({
 }: ConversationNavigationProps) {
   if (!hasMoreConversations) return null;
 
+  const _needsUIAdjustments = needsUIAdjustments.find((adjustment) =>
+    new URL(window.location.href).hostname.includes(adjustment.domain)
+  );
+
+  const deepResearchAdjustments = _needsUIAdjustments?.adjustments;
+
   return (
     <div className="flex items-center gap-2">
       <button
         className={cn(
-          "w-6 h-6 border border-white/10 rounded-full bg-white/20 text-white-100 flex items-center justify-center",
-          activeConversationIndex === 0 && "opacity-50 cursor-not-allowed"
+          "border border-white/10 rounded-full bg-white/20 text-white-100 flex items-center justify-center",
+          activeConversationIndex === 0 && "opacity-50 cursor-not-allowed",
+          deepResearchAdjustments?.deepResearch?.iconSize
+            ? "w-8 h-8"
+            : "w-6 h-6"
         )}
         onClick={onPrevious}
         disabled={activeConversationIndex === 0}
@@ -33,9 +43,12 @@ export default function ConversationNavigation({
 
       <button
         className={cn(
-          "w-6 h-6 border border-white/10 rounded-full bg-white/20 text-white-100 flex items-center justify-center",
+          "border border-white/10 rounded-full bg-white/20 text-white-100 flex items-center justify-center",
           activeConversationIndex === totalConversations - 1 &&
-            "opacity-50 cursor-not-allowed"
+            "opacity-50 cursor-not-allowed",
+          deepResearchAdjustments?.deepResearch?.iconSize
+            ? "w-8 h-8"
+            : "w-6 h-6"
         )}
         onClick={onNext}
         disabled={activeConversationIndex === totalConversations - 1}

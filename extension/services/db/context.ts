@@ -2,6 +2,8 @@ import { IDBPDatabase } from "idb";
 import { UrmindDB } from "@/types/database";
 import urmindDb from "@/services/db";
 import { saveToUrmindQueue } from "@/triggers/save-to-urmind";
+import { manualIndexingStore } from "@/store/manual-indexing.store";
+import { cleanUrlForFingerprint } from "@/lib/utils";
 
 export class ContextService {
   constructor(private db: IDBPDatabase<UrmindDB>) {}
@@ -131,6 +133,10 @@ export class ContextService {
     if (urmindDb.embeddings) {
       await urmindDb.embeddings.deleteEmbeddingsByContextId(id);
     }
+
+    await manualIndexingStore.removeUrl(
+      cleanUrlForFingerprint(context?.fullUrl ?? "")
+    );
 
     // Remove from save-to-urmind queue if it exists
     if (context?.contentFingerprint) {

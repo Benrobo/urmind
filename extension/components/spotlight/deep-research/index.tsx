@@ -21,6 +21,7 @@ import SourcesDisplay from "./SourcesDisplay";
 import { Loader, MessageSquare, Trash2, Copy, CheckCheck } from "lucide-react";
 import Sources from "./Sources";
 import { AnimatePresence, motion } from "framer-motion";
+import { needsUIAdjustments } from "@/constant/ui-config";
 
 export type DeepResearchResultProps = {
   deepResearchState: "new" | "follow-up" | null;
@@ -76,6 +77,12 @@ const DeepResearchResult = memo(
     const [copiedMessageIds, setCopiedMessageIds] = useState<Set<string>>(
       new Set()
     );
+
+    const _needsUIAdjustments = needsUIAdjustments.find((adjustment) =>
+      new URL(window.location.href).hostname.includes(adjustment.domain)
+    );
+
+    const deepResearchAdjustments = _needsUIAdjustments?.adjustments;
 
     const conversationHistory = useMemo(() => {
       if (!activeConversation) return [];
@@ -565,11 +572,25 @@ const DeepResearchResult = memo(
     // Memoize font size calculation
     const getQueryFontSize = useCallback((text: string) => {
       const length = text.length;
-      if (length <= 20) return "text-xl";
-      if (length <= 40) return "text-lg";
-      if (length <= 60) return "text-base";
-      if (length <= 80) return "text-sm";
-      return "text-xs";
+      if (length <= 20)
+        return deepResearchAdjustments?.deepResearch?.fontSize
+          ? "text-[18px]"
+          : "text-xl";
+      if (length <= 40)
+        return deepResearchAdjustments?.deepResearch?.fontSize
+          ? "text-[16px]"
+          : "text-lg";
+      if (length <= 60)
+        return deepResearchAdjustments?.deepResearch?.fontSize
+          ? "text-[14px]"
+          : "text-base";
+      if (length <= 80)
+        return deepResearchAdjustments?.deepResearch?.fontSize
+          ? "text-[12px]"
+          : "text-sm";
+      return deepResearchAdjustments?.deepResearch?.fontSize
+        ? "text-[11px]"
+        : "text-xs";
     }, []);
 
     if (conversations.length === 0 || !activeConversation) {
@@ -700,11 +721,22 @@ const DeepResearchResult = memo(
                       idx === activeConversation?.messages.length - 1 &&
                       isStreaming
                     }
+                    className={
+                      deepResearchAdjustments?.deepResearch?.iconSize
+                        ? "w-8 h-8"
+                        : "w-4 h-4"
+                    }
+                    textClassName={
+                      deepResearchAdjustments?.deepResearch?.fontSize
+                        ? "text-[12px]"
+                        : "text-xs"
+                    }
                   />
 
                   {/* sources */}
                   {msg.role === "assistant" &&
-                    activeTab[msg.id] === "answer" && (
+                    activeTab[msg.id] === "answer" &&
+                    !isStreaming && (
                       <SourcesDisplay
                         message={{
                           content: msg.content,
@@ -723,7 +755,12 @@ const DeepResearchResult = memo(
                       <section className="w-full overflow-y-auto px-4">
                         <MarkdownRenderer
                           markdownString={msg?.content ?? ""}
-                          className="text-white"
+                          className={cn(
+                            "text-white",
+                            deepResearchAdjustments?.deepResearch?.fontSize
+                              ? "text-[12px]"
+                              : "text-sm"
+                          )}
                         />
                       </section>
                     )}
@@ -754,15 +791,23 @@ export default DeepResearchResult;
 
 interface ThinkingIndicatorProps {
   isVisible: boolean;
+  className?: string;
+  textClassName?: string;
 }
 
-function ThinkingIndicator({ isVisible }: ThinkingIndicatorProps) {
+function ThinkingIndicator({
+  isVisible,
+  textClassName,
+  className,
+}: ThinkingIndicatorProps) {
   if (!isVisible) return null;
 
   return (
     <div className="w-auto flex items-center justify-start ml-3 gap-2">
-      <Loader className="w-4 h-4 text-white animate-spin" />
-      <span className="text-white text-xs">Researching...</span>
+      <Loader className={cn("w-4 h-4 text-white animate-spin", className)} />
+      <span className={cn("text-white text-xs", textClassName)}>
+        Researching...
+      </span>
     </div>
   );
 }

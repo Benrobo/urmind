@@ -58,6 +58,13 @@ interface SaveToUrMindMessage extends BaseProps {
   payload: SaveToUrMindPayload;
 }
 
+interface ManualIndexPageMessage extends BaseProps {
+  action: "manual-index-page";
+  payload: {
+    pageMetadata: PageMetadata;
+  };
+}
+
 interface ClientScriptMessageOperation extends BaseProps {
   action: "client-operation";
   payload: {
@@ -74,6 +81,7 @@ export function sendMessageToBackgroundScript(
     | DBOperationMessage
     | ContentScriptReadyMessage
     | SaveToUrMindMessage
+    | ManualIndexPageMessage
 ) {
   chrome.runtime.sendMessage({
     action: message.action,

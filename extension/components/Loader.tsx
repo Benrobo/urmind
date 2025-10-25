@@ -9,6 +9,7 @@ type LoaderSize = "sm" | "md" | "lg" | "xl";
 interface LoaderProps {
   size?: LoaderSize;
   className?: string;
+  textClassName?: string;
   text?: string;
   colorClass?: string;
 }
@@ -24,6 +25,7 @@ export default function CustomLoader({
   size = "md",
   className,
   text,
+  textClassName,
   colorClass,
 }: LoaderProps) {
   return (
@@ -34,7 +36,16 @@ export default function CustomLoader({
           className={cn("text-white-100", sizeMap[size])}
           color={colorClass as string}
         />
-        {text && <p className="text-xs text-white-100 animate-pulse">{text}</p>}
+        {text && (
+          <p
+            className={cn(
+              "text-xs text-white-100 animate-pulse",
+              textClassName
+            )}
+          >
+            {text}
+          </p>
+        )}
       </div>
     </div>
   );

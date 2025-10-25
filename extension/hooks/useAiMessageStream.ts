@@ -110,8 +110,6 @@ export default function useAiMessageStream({
           await AIService.streamText({
             prompt,
             onChunk: (chunk: string) => {
-              // console.log("message stream >>>", chunk);
-
               if (!hasReceivedFirstChunk && chunk.trim().length > 0) {
                 totalCharactersReceived += chunk.length;
 
@@ -125,6 +123,9 @@ export default function useAiMessageStream({
                 ...prev,
                 [msgHash]: (prev[msgHash] || "") + chunk,
               }));
+            },
+            localOptions: {
+              language: "en",
             },
           });
 

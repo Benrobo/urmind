@@ -10,8 +10,27 @@ export type ChangelogEntryData = {
 
 export const changelogEntries: ChangelogEntryData[] = [
   {
-    version: "v1.1",
+    version: "v1.2",
     tags: ["latest"],
+    date: "October 26, 2025",
+    title: "Manual Page Indexing & Smart Control",
+    description:
+      "Take full control of your memory with manual page indexing and flexible indexing modes. Choose between automatic, manual, or disabled indexing to match your workflow. The new floating index button lets you manually save any page with a single click, while smart category selection ensures your content is properly organized.",
+    image: "/changelogs/2.png",
+    features: [
+      "Manual page indexing with floating button",
+      "Three indexing modes: Automatic, Manual, Disabled",
+      "Draggable index button with position memory",
+      "Smart category selection for better organization",
+      "Enhanced Chrome LanguageModel integration",
+      "Improved AI prompt logic for accurate categorization",
+      "Visual feedback for indexing states (pending, processing, completed, failed)",
+      "Persistent button positioning across sessions",
+    ],
+  },
+  {
+    version: "v1.1",
+    tags: [],
     date: "October 24, 2025",
     title: "Universal Image Sync",
     description:

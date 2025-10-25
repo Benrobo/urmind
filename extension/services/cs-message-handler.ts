@@ -28,7 +28,9 @@ export type BgScriptOperations =
   | "updateMessageContextIds"
   | "deleteMessage"
   | "deleteConversation"
-  | "get-asset-by-id";
+  | "get-asset-by-id"
+  | "getContextByFingerprint"
+  | "getContextByContentFingerprint";
 
 // Union of all operations
 export type BgScriptMessageHandlerOperations =

@@ -24,7 +24,10 @@ export interface ChromeAIAssistantFactory {
 }
 
 export interface ChromeLanguageModel {
-  availability: () => Promise<boolean>;
+  availability: () => Promise<"available" | "unavailable" | "downloading">;
+  params: () => Promise<any>;
+  create: (options: any) => Promise<any>;
+  destroy: () => Promise<void>;
 }
 
 export interface ChromePromptAPI extends Record<string, any> {
