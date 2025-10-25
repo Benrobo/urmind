@@ -5,12 +5,14 @@ import { embed, generateText, streamText } from "ai";
 import { geminiAi } from "@/helpers/agent/utils";
 import { chromeAI } from "@/helpers/agent/utils";
 import retry from "async-retry";
+import { GenerateOptions } from "@/helpers/agent/chrome-prompt-adapter";
 
 type AIMode = "online" | "local" | "auto";
 
 interface AIServiceOptions {
   mode?: AIMode;
   maxRetries?: number;
+  localOptions?: GenerateOptions;
 }
 
 interface GenerateTextOptions extends AIServiceOptions {
@@ -110,7 +112,9 @@ export class AIService {
   ): Promise<void> {
     logger.log("🤖 Streaming with local model: ChromeAI v2");
 
-    const stream = chromeAI.streamText([{ role: "user", content: prompt }]);
+    const stream = chromeAI.streamText([{ role: "user", content: prompt }], {
+      ...options.localOptions,
+    });
 
     for await (const chunk of stream) {
       options.onChunk(chunk);

@@ -1,5 +1,3 @@
-// Chrome Prompt API Adapter
-
 export type MessageContent =
   | {
       type: "text";
@@ -15,19 +13,98 @@ export interface Message {
   content: string | MessageContent[];
 }
 
+export type SupportedLanguage =
+  | "en"
+  | "es"
+  | "fr"
+  | "de"
+  | "it"
+  | "pt"
+  | "ru"
+  | "ja"
+  | "ko"
+  | "zh"
+  | "ar"
+  | "hi"
+  | "th"
+  | "vi"
+  | "tr"
+  | "pl"
+  | "nl"
+  | "sv"
+  | "da"
+  | "no"
+  | "fi"
+  | "cs"
+  | "hu"
+  | "ro"
+  | "bg"
+  | "hr"
+  | "sk"
+  | "sl"
+  | "et"
+  | "lv"
+  | "lt"
+  | "el"
+  | "he"
+  | "uk"
+  | "be"
+  | "ka"
+  | "hy"
+  | "az"
+  | "kk"
+  | "ky"
+  | "uz"
+  | "tg"
+  | "mn"
+  | "ne"
+  | "si"
+  | "ta"
+  | "te"
+  | "ml"
+  | "kn"
+  | "gu"
+  | "pa"
+  | "bn"
+  | "or"
+  | "as"
+  | "mr"
+  | "sa"
+  | "sd"
+  | "ur"
+  | "fa"
+  | "ps"
+  | "sw"
+  | "am"
+  | "ti"
+  | "om"
+  | "so"
+  | "ha"
+  | "yo"
+  | "ig"
+  | "zu"
+  | "xh"
+  | "af"
+  | "sq"
+  | "eu"
+  | "ca"
+  | "cy"
+  | "ga"
+  | "is"
+  | "mt"
+  | "mk"
+  | "sr"
+  | "bs"
+  | "me"
+  | "sq"
+  | "sq";
+
 export interface GenerateOptions {
   temperature?: number;
   topK?: number;
   signal?: AbortSignal;
   responseSchema?: any;
-  expectedInputs?: Array<{
-    type: "text" | "image" | "audio";
-    languages: string[];
-  }>;
-  expectedOutputs?: Array<{
-    type: "text";
-    languages: string[];
-  }>;
+  language?: SupportedLanguage;
 }
 
 export interface GenerateResult {
@@ -49,8 +126,10 @@ export class ChromePromptAdapter {
 
   constructor() {}
 
-  private isLanguageModelAvailable(): boolean {
-    return typeof window !== "undefined" && "LanguageModel" in window;
+  async isLanguageModelAvailable(): Promise<boolean> {
+    const availability =
+      (await LanguageModel.availability()) as unknown as string;
+    return availability === "available";
   }
 
   private async getOrCreateSession(options?: GenerateOptions): Promise<any> {
@@ -60,23 +139,21 @@ export class ChromePromptAdapter {
       );
     }
 
-    const { LanguageModel } = window as any;
-
-    const availability = await LanguageModel.availability();
+    const availability =
+      (await LanguageModel.availability()) as unknown as string;
     if (availability === "unavailable") {
       throw new Error(
         "LanguageModel is unavailable. Check hardware requirements and ensure the model is downloaded."
       );
     }
 
-    // If downloading, wait for it to complete
     if (availability === "downloading") {
       throw new Error(
         "LanguageModel is still downloading. Please wait for the download to complete."
       );
     }
 
-    // Check if we need to create a new session or if options changed
+    // Only create a new session if not created or if options changed
     const needsNewSession =
       !this.session ||
       (options?.temperature !== undefined &&
@@ -85,36 +162,50 @@ export class ChromePromptAdapter {
         options.topK !== this.sessionOptions.topK);
 
     if (needsNewSession) {
-      // Destroy existing session if it exists
       if (this.session) {
         try {
           this.session.destroy();
-        } catch (e) {
-          // Session might already be destroyed
-        }
+        } catch (e) {}
       }
 
-      // Get model parameters
       const params = await LanguageModel.params();
       const temperature = options?.temperature ?? params.defaultTemperature;
       const topK = options?.topK ?? params.defaultTopK;
 
-      // Prepare session creation options
       const sessionOptions: any = {
         temperature,
         topK,
         signal: options?.signal,
       };
 
-      // Add language options if provided
-      if (options?.expectedInputs) {
-        sessionOptions.expectedInputs = options.expectedInputs;
-      }
-      if (options?.expectedOutputs) {
-        sessionOptions.expectedOutputs = options.expectedOutputs;
+      if (options?.language) {
+        sessionOptions.expectedInputs = [
+          {
+            type: "text",
+            languages: [options.language],
+          },
+        ];
+        sessionOptions.expectedOutputs = [
+          {
+            type: "text",
+            languages: [options.language],
+          },
+        ];
+      } else {
+        sessionOptions.expectedInputs = [
+          {
+            type: "text",
+            languages: ["en"],
+          },
+        ];
+        sessionOptions.expectedOutputs = [
+          {
+            type: "text",
+            languages: ["en"],
+          },
+        ];
       }
 
-      // Create new session
       this.session = await LanguageModel.create(sessionOptions);
 
       this.sessionOptions = {
@@ -126,7 +217,7 @@ export class ChromePromptAdapter {
     return this.session;
   }
 
-  // Transform AI SDK messages to Chrome API format
+  // Converts AI SDK messages into the Chrome Prompt API message format
   private transformMessages(messages: Message[]): any[] {
     return messages.map((msg) => {
       if (typeof msg.content === "string") {
@@ -136,7 +227,7 @@ export class ChromePromptAdapter {
         };
       }
 
-      // Handle multimodal content
+      // For multimodal, ensure content is an array and convert each item
       const content = Array.isArray(msg.content) ? msg.content : [msg.content];
       return {
         role: msg.role,
@@ -158,7 +249,6 @@ export class ChromePromptAdapter {
     });
   }
 
-  // Generate text using Chrome Prompt API
   async generateText(
     messages: Message[],
     options?: GenerateOptions
@@ -169,19 +259,16 @@ export class ChromePromptAdapter {
       throw new Error("At least one message is required");
     }
 
-    // Transform messages to Chrome API format
     const transformedMessages = this.transformMessages(messages);
 
-    // Separate initial prompts from the last message
+    // Take all but the last as conversation history
     const initialPrompts = transformedMessages.slice(0, -1);
     const lastMessage = transformedMessages[transformedMessages.length - 1];
 
-    // If we have initial prompts, append them to the session
     if (initialPrompts.length > 0) {
       await session.append(initialPrompts);
     }
 
-    // Generate response
     const promptOptions: any = {};
     if (options?.responseSchema) {
       promptOptions.responseConstraint = options.responseSchema;
@@ -201,7 +288,6 @@ export class ChromePromptAdapter {
     };
   }
 
-  // Stream text using Chrome Prompt API
   async *streamText(
     messages: Message[],
     options?: GenerateOptions
@@ -212,19 +298,14 @@ export class ChromePromptAdapter {
       throw new Error("At least one message is required");
     }
 
-    // Transform messages to Chrome API format
     const transformedMessages = this.transformMessages(messages);
-
-    // Separate initial prompts from the last message
     const initialPrompts = transformedMessages.slice(0, -1);
     const lastMessage = transformedMessages[transformedMessages.length - 1];
 
-    // If we have initial prompts, append them to the session
     if (initialPrompts.length > 0) {
       await session.append(initialPrompts);
     }
 
-    // Stream response
     const promptOptions: any = {};
     if (options?.responseSchema) {
       promptOptions.responseConstraint = options.responseSchema;
@@ -240,20 +321,18 @@ export class ChromePromptAdapter {
     }
   }
 
-  // Destroy the session
   destroy(): void {
     if (this.session) {
       try {
         this.session.destroy();
       } catch (e) {
-        // Session might already be destroyed
+        // Session might already be destroyed, ignore
       }
       this.session = null;
       this.sessionOptions = {};
     }
   }
 
-  // Get current session info
   getSessionInfo(): {
     hasSession: boolean;
     options: {
@@ -268,5 +347,4 @@ export class ChromePromptAdapter {
   }
 }
 
-// Create and export a default instance
 export const chromeAI = new ChromePromptAdapter();

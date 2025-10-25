@@ -5,6 +5,7 @@ import {
   GenerationStyle,
   TimeUnit,
   TabTimingPreferences,
+  IndexingMode,
 } from "@/store/preferences.store";
 import useStorageStore from "@/hooks/useStorageStore";
 import {
@@ -23,6 +24,9 @@ import {
   Play,
   AlertTriangle as Warning,
   BrainCircuit,
+  Eye,
+  Zap,
+  X,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { geminiAi } from "@/helpers/agent/utils";
@@ -144,9 +148,8 @@ export default function Popup() {
     return localTiming.duration > 0;
   };
 
-  const handleToggleIndexing = async () => {
-    const newState = !preferences.indexingEnabled;
-    await preferencesStore.setIndexingEnabled(newState);
+  const handleIndexingModeChange = async (mode: IndexingMode) => {
+    await preferencesStore.setIndexingMode(mode);
   };
 
   return (
@@ -469,61 +472,115 @@ export default function Popup() {
             </div>
           </div>
 
-          {/* Indexing Status */}
+          {/* Indexing Mode */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-white">
-                  Current Status
+                  Indexing Mode
                 </div>
                 <div className="text-xs text-white/70">
-                  {preferences.indexingEnabled
-                    ? "UrMind is actively monitoring and indexing pages"
-                    : "UrMind is paused and not indexing any pages"}
+                  Choose how UrMind indexes pages
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <div
                   className={cn(
-                    "w-3 h-3 rounded-full animate-pulse",
-                    preferences.indexingEnabled ? "bg-green-100" : "bg-red-305"
+                    "w-3 h-3 rounded-full",
+                    preferences.indexingMode === "disabled"
+                      ? "bg-red-305"
+                      : preferences.indexingMode === "manual"
+                      ? "bg-orange-100"
+                      : "bg-green-100 animate-pulse"
                   )}
                 />
                 <span
                   className={cn(
                     "text-sm font-medium",
-                    preferences.indexingEnabled
-                      ? "text-green-100"
-                      : "text-red-301"
+                    preferences.indexingMode === "disabled"
+                      ? "text-red-301"
+                      : preferences.indexingMode === "manual"
+                      ? "text-orange-100"
+                      : "text-green-100"
                   )}
                 >
-                  {preferences.indexingEnabled ? "ACTIVE" : "PAUSED"}
+                  {preferences.indexingMode === "automatic"
+                    ? "AUTOMATIC"
+                    : preferences.indexingMode === "manual"
+                    ? "MANUAL"
+                    : "DISABLED"}
                 </span>
               </div>
             </div>
 
-            {/* Toggle Button */}
-            <button
-              onClick={handleToggleIndexing}
-              className={cn(
-                "w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
-                preferences.indexingEnabled
-                  ? "border border-red-305/30 text-white-100 bg-red-305 hover:bg-red-305/90"
-                  : "bg-purple-100 border border-purple-100/30 text-white-100 hover:bg-purple-100/90"
-              )}
-            >
-              {preferences.indexingEnabled ? (
-                <>
-                  <Pause size={16} />
-                  Stop Indexing
-                </>
-              ) : (
-                <>
-                  <Play size={16} />
-                  Start Indexing
-                </>
-              )}
-            </button>
+            {/* Mode Selector */}
+            <div className="space-y-2">
+              {/* Automatic Mode */}
+              <button
+                onClick={() => handleIndexingModeChange("automatic")}
+                className={cn(
+                  "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
+                  preferences.indexingMode === "automatic"
+                    ? "bg-purple-100 border border-purple-100/30 text-white-100"
+                    : "bg-gray-102/50 border border-gray-102/30 text-white/70 hover:bg-gray-102/70"
+                )}
+              >
+                <Zap size={16} />
+                <div className="flex-1 text-left">
+                  <div className="font-medium">Automatic</div>
+                  <div className="text-xs opacity-80">
+                    Pages are indexed automatically after visiting them
+                  </div>
+                </div>
+                {preferences.indexingMode === "automatic" && (
+                  <CheckCircle size={16} />
+                )}
+              </button>
+
+              {/* Manual Mode */}
+              <button
+                onClick={() => handleIndexingModeChange("manual")}
+                className={cn(
+                  "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
+                  preferences.indexingMode === "manual"
+                    ? "bg-purple-100 border border-purple-100/30 text-white-100"
+                    : "bg-gray-102/50 border border-gray-102/30 text-white/70 hover:bg-gray-102/70"
+                )}
+              >
+                <Eye size={16} />
+                <div className="flex-1 text-left">
+                  <div className="font-medium">Manual</div>
+                  <div className="text-xs opacity-80">
+                    You choose which pages to index with a button
+                  </div>
+                </div>
+                {preferences.indexingMode === "manual" && (
+                  <CheckCircle size={16} />
+                )}
+              </button>
+
+              {/* Disabled Mode */}
+              <button
+                onClick={() => handleIndexingModeChange("disabled")}
+                className={cn(
+                  "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
+                  preferences.indexingMode === "disabled"
+                    ? "bg-red-305 border border-red-305/30 text-white-100"
+                    : "bg-gray-102/50 border border-gray-102/30 text-white/70 hover:bg-gray-102/70"
+                )}
+              >
+                <X size={16} />
+                <div className="flex-1 text-left">
+                  <div className="font-medium">Disabled</div>
+                  <div className="text-xs opacity-80">
+                    No pages will be indexed
+                  </div>
+                </div>
+                {preferences.indexingMode === "disabled" && (
+                  <CheckCircle size={16} />
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </Accordion>

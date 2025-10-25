@@ -9,7 +9,7 @@ import {
   useInputFocusManagement,
   useContainerFocusManagement,
 } from "@/hooks/useFocusManagement";
-import { cn } from "@/lib/utils";
+import { cn, shortenText } from "@/lib/utils";
 import {
   Sparkles,
   Search,
@@ -37,6 +37,7 @@ import {
 import { SpotlightConversations } from "@/types/spotlight";
 import useClickOutside from "@/hooks/useClickOutside";
 import UrmindDraggable from "../Draggable";
+import { needsUIAdjustments } from "@/constant/ui-config";
 
 dayjs.extend(relativeTime);
 
@@ -119,6 +120,12 @@ export default function SpotlightSearch({
     enableOnContentEditable: true,
   };
 
+  const _needsUIAdjustments = needsUIAdjustments.find((adjustment) =>
+    new URL(window.location.href).hostname.includes(adjustment.domain)
+  );
+
+  const spotlightSearchAdjustments = _needsUIAdjustments?.adjustments;
+
   const toggleDeepResearch = async () => {
     await uiStore.setShowDeepResearch(true);
     await uiStore.setShowSavedContext(false);
@@ -158,7 +165,6 @@ export default function SpotlightSearch({
     "meta+enter, ctrl+enter",
     async (e) => {
       e.preventDefault();
-      console.log("🔍 UI State:", uiState);
       if (!uiState.showDeepResearch) {
         await toggleDeepResearch();
       } else {
@@ -382,23 +388,36 @@ export default function SpotlightSearch({
               onChange={(e) => setSearchQuery(e.target.value)}
               {...inputEventHandlers}
               onKeyDown={(e) => {
-                // Call the hook's event handler first
                 inputEventHandlers.onKeyDown?.(e);
-                // Handle escape key
                 if (e.key === "Escape") {
                   e.preventDefault();
-                  // Handle escape key if needed
                 }
               }}
               className={cn(
                 "flex-1 bg-transparent text-white placeholder-white/60 text-sm outline-none",
-                disableInput && "opacity-50 cursor-not-allowed grayscale"
+                disableInput && "opacity-50 cursor-not-allowed grayscale",
+                spotlightSearchAdjustments?.spotlightSearch?.fontSize &&
+                  "text-lg"
               )}
               autoFocus={true}
               disabled={disableInput}
             />
-            <div className="flex items-center space-x-1 text-white/60 text-xs">
-              <span className="bg-white/10 px-2 py-1 rounded text-xs">⌘</span>
+            <div
+              className={cn(
+                "flex items-center space-x-1 text-white/60 text-xs",
+                spotlightSearchAdjustments?.spotlightSearch?.fontSize &&
+                  "text-md"
+              )}
+            >
+              <span
+                className={cn(
+                  "bg-white/10 px-2 py-1 rounded text-xs",
+                  spotlightSearchAdjustments?.spotlightSearch?.fontSize &&
+                    "text-sm"
+                )}
+              >
+                ⌘
+              </span>
               <span>U</span>
             </div>
           </div>
@@ -412,18 +431,48 @@ export default function SpotlightSearch({
                 className="flex items-center space-x-3 p-3 rounded-lg bg-white/15 hover:bg-white/20 cursor-pointer group border border-white/20"
                 onClick={handleAskUrMind}
               >
-                <div className="w-8 h-8 rounded bg-white/20 flex items-center justify-center">
+                <div
+                  className={cn(
+                    "rounded bg-white/20 flex items-center justify-center",
+                    spotlightSearchAdjustments?.spotlightSearch?.sparkles
+                      ?.containerSize
+                      ? `w-12 h-12`
+                      : "w-8 h-8"
+                  )}
+                >
                   <Sparkles size={16} className="text-white" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-white">
+                <div className="flex-1 min-w-0 font-geistmono">
+                  <div
+                    className={cn(
+                      "font-medium text-white",
+                      spotlightSearchAdjustments?.spotlightSearch?.fontSize
+                        ? "text-[14px]"
+                        : "text-sm"
+                    )}
+                  >
                     {aiAction.title}
                   </div>
-                  <div className="text-xs text-white/70">
-                    {aiAction.subtitle}
+                  <div
+                    className={cn(
+                      "text-white/70 font-geistmono",
+                      spotlightSearchAdjustments?.spotlightSearch?.fontSize
+                        ? "text-[12px]"
+                        : "text-xs"
+                    )}
+                  >
+                    {shortenText(aiAction.subtitle, 50)}
+                    {aiAction.subtitle.length > 50 && '"'}
                   </div>
                 </div>
-                <div className="text-xs text-white bg-white/20 px-2 py-1 rounded font-mono">
+                <div
+                  className={cn(
+                    "text-white bg-white/20 px-2 py-1 rounded font-mono",
+                    spotlightSearchAdjustments?.spotlightSearch?.fontSize
+                      ? "text-[14px]"
+                      : "text-xs"
+                  )}
+                >
                   {aiAction.shortcut}
                 </div>
               </div>
@@ -477,19 +526,44 @@ export default function SpotlightSearch({
                 className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md hover:bg-white/20 transition-colors cursor-pointer z-[2]"
               >
                 <BrainCircuit size={15} className="text-white/80" />
-                <span className="text-white/80 ml-1">mindboard</span>
+                <span
+                  className={cn(
+                    "text-white/80 ml-1",
+                    spotlightSearchAdjustments?.spotlightSearch?.fontSize
+                      ? "text-[12px]"
+                      : "text-xs"
+                  )}
+                >
+                  mindboard
+                </span>
               </button>
             </div>
             <div className="flex items-center space-x-3">
               <div className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md">
                 <CornerDownLeft size={12} className="text-white/80" />
-                <span className="text-white/80 ml-1">open</span>
+                <span
+                  className={cn(
+                    "text-white/80 ml-1",
+                    spotlightSearchAdjustments?.spotlightSearch?.fontSize
+                      ? "text-[12px]"
+                      : "text-xs"
+                  )}
+                >
+                  open
+                </span>
               </div>
               <div className="flex items-center space-x-1 bg-white/10 px-2 py-1.5 rounded-md">
                 <span className="text-white/80 bg-white/20 px-1.5 py-0.5 rounded text-xs font-mono">
                   ⌘↵
                 </span>
-                <span className="text-white/80 ml-1">
+                <span
+                  className={cn(
+                    "text-white/80 ml-1",
+                    spotlightSearchAdjustments?.spotlightSearch?.fontSize
+                      ? "text-[12px]"
+                      : "text-xs"
+                  )}
+                >
                   {uiState.showDeepResearch ? "saved" : "research"}
                 </span>
               </div>
@@ -497,7 +571,16 @@ export default function SpotlightSearch({
                 <span className="text-white/80 bg-white/20 px-1.5 py-0.5 rounded text-xs font-mono">
                   esc
                 </span>
-                <span className="text-white/80 ml-1">close</span>
+                <span
+                  className={cn(
+                    "text-white/80 ml-1",
+                    spotlightSearchAdjustments?.spotlightSearch?.fontSize
+                      ? "text-[12px]"
+                      : "text-xs"
+                  )}
+                >
+                  close
+                </span>
               </div>
               {/* <button
                 onClick={openMindboard}

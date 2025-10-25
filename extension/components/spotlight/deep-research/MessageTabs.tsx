@@ -4,6 +4,7 @@ import { MessageSquare, FileText, Globe } from "lucide-react";
 import { SpotlightConversationMessage } from "@/types/spotlight";
 import { ImageWithFallback } from "@/components/ImageWithFallback";
 import { Context } from "@/types/context";
+import { needsUIAdjustments } from "@/constant/ui-config";
 
 const researchMessageTabs = [
   {
@@ -41,10 +42,24 @@ export default function MessageTabs({
   allTabRefs,
   matchedSourcesCount,
 }: MessageTabsProps) {
+  const _needsUIAdjustments = needsUIAdjustments.find((adjustment) =>
+    new URL(window.location.href).hostname.includes(adjustment.domain)
+  );
+
+  const deepResearchAdjustments = _needsUIAdjustments?.adjustments;
+
   const getContextBadgeFontSize = (count: number) => {
-    if (count >= 9) return "text-xs";
-    if (count >= 99) return "text-[10px]";
-    return "text-[9px]";
+    if (count >= 9)
+      return deepResearchAdjustments?.deepResearch?.fontSize
+        ? "text-[11px]"
+        : "text-xs";
+    if (count >= 99)
+      return deepResearchAdjustments?.deepResearch?.fontSize
+        ? "text-[10px]"
+        : "text-[10px]";
+    return deepResearchAdjustments?.deepResearch?.fontSize
+      ? "text-[9px]"
+      : "text-[9px]";
   };
 
   return (
@@ -100,12 +115,19 @@ export default function MessageTabs({
                 }
               }}
               className={cn(
-                "relative w-auto px-3 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2 group hover:bg-gray-100/20 rounded-md -translate-y-1",
+                "relative w-auto px-3 py-2 font-medium transition-colors flex items-center justify-center gap-2 group hover:bg-gray-100/20 rounded-md -translate-y-1",
+                deepResearchAdjustments?.deepResearch?.fontSize
+                  ? "text-[12px]"
+                  : "text-sm",
                 activeTab === t.id ? "text-white" : "text-white/60"
               )}
             >
               {t.id === "answer" ? (
-                <IconComponent size={14} />
+                <IconComponent
+                  size={
+                    deepResearchAdjustments?.deepResearch?.iconSize ? 16 : 14
+                  }
+                />
               ) : (
                 <div className="flex max-w-5 -space-x-2 rtl:space-x-reverse mr-3">
                   {matchedSources?.slice(0, 3)?.map((ctx, idx) => (
@@ -113,10 +135,21 @@ export default function MessageTabs({
                       {ctx?.og?.favicon ? (
                         <ImageWithFallback
                           src={ctx.og.favicon!}
-                          className="object-contain max-w-5 min-w-5 min-h-5 rounded-full border-3 border-[#5b5b5b] backdrop-blur-sm"
+                          className={cn(
+                            "object-contain rounded-full border-3 border-[#5b5b5b] backdrop-blur-sm",
+                            deepResearchAdjustments?.deepResearch?.iconSize
+                              ? "min-w-8 min-h-8 max-h-8"
+                              : "min-h-5 max-w-5 max-h-5"
+                          )}
                         />
                       ) : (
-                        <Globe size={14} />
+                        <Globe
+                          size={
+                            deepResearchAdjustments?.deepResearch?.iconSize
+                              ? 16
+                              : 14
+                          }
+                        />
                       )}
                     </div>
                   ))}
