@@ -20,7 +20,7 @@ export default defineConfig({
     return {
       name: "Urmind",
       description: "Your mind in your browser.",
-      version: "0.1.0",
+      version: "0.1.2",
       permissions: ["storage", "activeTab", "omnibox", "tabs", "contextMenus"],
       host_permissions: [
         "https://generativelanguage.googleapis.com/*",
