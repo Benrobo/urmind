@@ -64,8 +64,9 @@ export default function TextNode(props: TextNodeProps) {
         onClick={handleClick}
         className="w-full flex flex-col min-h-4 cursor-pointer border-none outline-none text-start hover:bg-white/5 rounded transition-colors"
       >
-        <p className="text-xs text-white-100">
-          {shortenText(context?.summary, 45)}
+        <p className="text-[10px] font-geistmono text-white-100/70">
+          {context?.summary.slice(0, 500)}
+          {context?.summary.length > 500 && "..."}
         </p>
       </button>
     </NodeWrapper>

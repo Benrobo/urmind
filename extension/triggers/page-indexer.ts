@@ -15,12 +15,14 @@ import logger from "@/lib/logger";
 import { UrmindDB } from "@/types/database";
 import { activityManagerStore } from "@/store/activity-manager.store";
 import { QueueStore } from "@/store/queue.store";
+import { manualIndexingStore } from "@/store/manual-indexing.store";
 
 export type PageIndexerPayload = {
   url: string;
   pageMetadata: PageMetadata;
   tabId: number;
   internalTrigger?: boolean;
+  manualTrigger?: boolean;
 };
 
 export const pageIndexerQueue = new QueueStore<PageIndexerPayload>(
@@ -30,10 +32,10 @@ export const pageIndexerQueue = new QueueStore<PageIndexerPayload>(
 const pageIndexerJob: Task<PageIndexerPayload> = task<PageIndexerPayload>({
   id: "page-indexer",
   run: async (payload: PageIndexerPayload) => {
-    const { url, pageMetadata, tabId } = payload;
+    const { url, pageMetadata, tabId, manualTrigger } = payload;
 
     // Early validation checks
-    if (!(await validateIndexingRequirements())) {
+    if (!(await validateIndexingRequirements(manualTrigger))) {
       return;
     }
 
@@ -56,6 +58,11 @@ const pageIndexerJob: Task<PageIndexerPayload> = task<PageIndexerPayload>({
       status: "in-progress",
     });
 
+    // Update manual indexing store if this is a manual trigger
+    if (payload.manualTrigger) {
+      await manualIndexingStore.setStatus(cleanUrl, "processing");
+    }
+
     try {
       await processPageIndexing({
         activityId,
@@ -74,6 +81,11 @@ const pageIndexerJob: Task<PageIndexerPayload> = task<PageIndexerPayload>({
       // Update queue item status to completed
       await pageIndexerQueue.updateStatus(fingerprint, "completed");
 
+      // Update manual indexing store if this is a manual trigger
+      if (payload.manualTrigger) {
+        await manualIndexingStore.setStatus(cleanUrl, "completed");
+      }
+
       // Log queue state and process next item
       await logQueueStateAndProcessNext();
     } catch (error) {
@@ -87,6 +99,12 @@ const pageIndexerJob: Task<PageIndexerPayload> = task<PageIndexerPayload>({
 
       // Update queue item status to failed
       await pageIndexerQueue.updateStatus(fingerprint, "failed");
+
+      // Update manual indexing store if this is a manual trigger
+      if (payload.manualTrigger) {
+        await manualIndexingStore.setStatus(cleanUrl, "failed");
+      }
+
       throw error;
     }
   },
@@ -178,6 +196,8 @@ async function processPageIndexing(props: {
       description: `Failed to create parent context`,
     });
 
+    await manualIndexingStore.setStatus(cleanUrl, "failed");
+
     // Process next queue item after failure
     await processNextQueueItem();
     return;
@@ -212,9 +232,11 @@ async function processPageIndexing(props: {
   );
 }
 
-async function validateIndexingRequirements(): Promise<boolean> {
+async function validateIndexingRequirements(
+  manualTrigger?: boolean
+): Promise<boolean> {
   const preferences = await preferencesStore.get();
-  const indexingEnabled = await preferencesStore.getIndexingEnabled();
+  const indexingMode = await preferencesStore.getIndexingMode();
   const hasApiKey = preferences?.geminiApiKey?.trim();
 
   if (!hasApiKey) {
@@ -224,12 +246,22 @@ async function validateIndexingRequirements(): Promise<boolean> {
     return false;
   }
 
-  if (!indexingEnabled) {
-    logger.warn("🚫 Indexing is disabled, skipping tab checks");
+  // Check indexing mode
+  if (indexingMode === "disabled") {
+    logger.warn("🚫 Indexing is disabled, skipping page indexing");
     return false;
   }
 
-  return true;
+  if (indexingMode === "manual" && !manualTrigger) {
+    logger.warn("🚫 Manual indexing mode - skipping automatic indexing");
+    return false;
+  }
+
+  if (indexingMode === "automatic" || manualTrigger) {
+    return true;
+  }
+
+  return false;
 }
 
 async function handleQueueLogic(
@@ -515,8 +547,10 @@ async function generateTextContext(
 
       let llmResponse: string;
 
-      // Try online model first if API key is available
-      if (preferences.geminiApiKey?.trim()) {
+      if (
+        preferences.geminiApiKey?.trim() &&
+        preferences?.generationStyle === "online"
+      ) {
         try {
           llmResponse = await generateWithOnlineModel(
             batch,
@@ -556,7 +590,7 @@ async function generateTextContext(
       return sanitizedResponse;
     },
     {
-      retries: 5,
+      retries: 3,
       factor: 5,
       minTimeout: 1000,
       maxTimeout: 10000,
