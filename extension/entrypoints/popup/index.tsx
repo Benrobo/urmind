@@ -52,7 +52,7 @@ export default function Popup() {
     | "manual-override"
     | "blacklist"
     | null;
-  const [openAccordion, setOpenAccordion] = useState<AccordionSection>("setup");
+  const [openAccordion, setOpenAccordion] = useState<AccordionSection>(null);
   const [currentDomain, setCurrentDomain] = useState<string | null>(null);
   const [isBlacklisted, setIsBlacklisted] = useState(false);
   const [isBlacklisting, setIsBlacklisting] = useState(false);

@@ -20,6 +20,7 @@ export const changelogEntries: ChangelogEntryData[] = [
     features: [
       "Domain blacklisting to prevent indexing specific sites",
       "Support for wildcard patterns (*.domain.com)",
+      "Quick blacklist button in popup for instant domain blocking",
       "One-click data export to .um backup files",
       "Smart restore with automatic embedding regeneration",
     ],
