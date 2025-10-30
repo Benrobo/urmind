@@ -1,4 +1,4 @@
-import { Sparkles, Layout, Clock, Ticket } from "lucide-react";
+import { Sparkles, Layout, Clock, Ticket, MousePointer } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import BrowserWindow from "../ui/BrowserWindow";
@@ -34,6 +34,16 @@ const features = [
     color: "orange-350",
     bgClass: "gradient-orange-subtle",
     imagePosition: "right",
+  },
+  {
+    icon: MousePointer,
+    title: "Manual Indexing & Smart Control",
+    description:
+      "Choose how you capture: automatic, manual, or disabled. Use the floating index button to save any page on demand, with smart category suggestions and clear visual states for pending, processing, and completed saves.",
+    image: "/changelogs/2.png",
+    color: "purple-100",
+    bgClass: "gradient-purple-subtle",
+    imagePosition: "left",
   },
 ];
 
@@ -123,33 +133,7 @@ export default function Features() {
                     {feature.description}
                   </p>
 
-                  {/* CTA Link */}
-                  <a
-                    href="#demo"
-                    className={cn(
-                      "inline-flex items-center gap-2 font-medium transition-all duration-200",
-                      feature.color === "purple-100"
-                        ? "text-purple-100 hover:text-purple-102"
-                        : feature.color === "blue-100"
-                          ? "text-blue-100 hover:text-blue-102"
-                          : "text-orange-350 hover:text-orange-400"
-                    )}
-                  >
-                    Learn more
-                    <svg
-                      className={cn("w-5 h-5")}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M17 8l4 4m0 0l-4 4m4-4H3"
-                      />
-                    </svg>
-                  </a>
+                  
                 </div>
 
                 {/* Image Side */}
