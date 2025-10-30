@@ -22,10 +22,6 @@ export const changelogEntries: ChangelogEntryData[] = [
       "Support for wildcard patterns (*.domain.com)",
       "One-click data export to .um backup files",
       "Smart restore with automatic embedding regeneration",
-      "Import progress tracking with real-time updates",
-      "Duplicate detection during imports",
-      "Beautiful settings interface with organized tabs",
-      "Export disabled when no data available",
     ],
   },
   {
