@@ -556,7 +556,7 @@ export default function Popup() {
                     "w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all duration-200",
                     isBlacklisted
                       ? "bg-green-500 hover:bg-green-600 text-white"
-                      : "bg-red-500 hover:bg-red-600 text-white",
+                      : "bg-red-305 hover:bg-red-305/80 text-white",
                     isBlacklisting && "opacity-50 cursor-not-allowed"
                   )}
                 >
@@ -580,7 +580,7 @@ export default function Popup() {
 
                 {isBlacklisted && (
                   <div className="p-3 bg-orange-500/10 border border-orange-400/30 rounded-lg">
-                    <div className="text-xs text-orange-200">
+                    <div className="text-xs text-white-200">
                       This domain is currently blacklisted. No pages from{" "}
                       {currentDomain} will be indexed or saved.
                     </div>
