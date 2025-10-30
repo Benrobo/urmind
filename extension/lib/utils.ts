@@ -120,3 +120,30 @@ export function estimateTokenCount(text: string) {
   const wordsEstimate = words * 1.4;
   return Math.round((charsEstimate + wordsEstimate) / 2);
 }
+
+export function extractDomain(urlOrDomain: string): string | null {
+  try {
+    let domain = urlOrDomain.trim();
+    
+    if (domain.startsWith("http://") || domain.startsWith("https://")) {
+      const url = new URL(domain);
+      domain = url.hostname;
+    } else if (domain.includes("/")) {
+      try {
+        const url = new URL("https://" + domain);
+        domain = url.hostname;
+      } catch {
+        domain = domain.split("/")[0];
+      }
+    }
+    
+    domain = domain.toLowerCase();
+    if (domain.startsWith("www.")) {
+      domain = domain.substring(4);
+    }
+    
+    return domain;
+  } catch {
+    return null;
+  }
+}

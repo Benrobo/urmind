@@ -1,4 +1,4 @@
-import { Sparkles, Layout, Clock, Ticket, MousePointer } from "lucide-react";
+import { Sparkles, Layout, Clock, Ticket, MousePointer, Shield } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import BrowserWindow from "../ui/BrowserWindow";
@@ -44,6 +44,16 @@ const features = [
     color: "purple-100",
     bgClass: "gradient-purple-subtle",
     imagePosition: "left",
+  },
+  {
+    icon: Shield,
+    title: "Privacy Controls & Data Management",
+    description:
+      "Your data, your rules. Block specific domains from being indexed with wildcard support, export your entire memory as a backup file, and restore seamlessly whenever needed. Complete control over what gets saved and how your data is managed.",
+    image: "/changelogs/3.png",
+    color: "blue-100",
+    bgClass: "gradient-blue-subtle",
+    imagePosition: "right",
   },
 ];
 

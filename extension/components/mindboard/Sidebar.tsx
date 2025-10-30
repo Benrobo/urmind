@@ -9,6 +9,7 @@ import {
   CheckCheck,
   RefreshCw,
   Dot,
+  Settings,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import useContextCategories from "@/hooks/useContextCategories";
@@ -19,6 +20,7 @@ import useStorageStore from "@/hooks/useStorageStore";
 import { sendMessageToBackgroundScriptWithResponse } from "@/helpers/messaging";
 import useClickOutside from "@/hooks/useClickOutside";
 import DeleteConfirmationModal from "./DeleteConfirmationModal";
+import SettingsModal from "./SettingsModal";
 import useUnviewedContextCounts from "@/hooks/useUnviewedContextCounts";
 import useAllContexts from "@/hooks/useAllContexts";
 
@@ -47,6 +49,7 @@ export default function MindBoardSidebar() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   // Use click outside hook to close popover
   const popoverClickOutsideRef = useClickOutside<HTMLDivElement>(() => {
@@ -232,26 +235,39 @@ export default function MindBoardSidebar() {
         transition={{ duration: 0.4, ease: "easeOut" }}
         className="p-4 border-b border-white/20"
       >
-        <div className="flex items-center gap-3">
-          <motion.div
-            className="w-8 h-8 rounded-lg flex items-center justify-center"
-            whileHover={{ scale: 1.1, rotate: 5 }}
-            transition={{ duration: 0.2 }}
-          >
-            <ImageWithFallback
-              src={chrome.runtime.getURL("icons/icon48.png")}
-              className="object-contain min-w-[20px] min-h-[20px] rounded-xs"
-            />
-          </motion.div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <motion.div
+              className="w-8 h-8 rounded-lg flex items-center justify-center"
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ImageWithFallback
+                src={chrome.runtime.getURL("icons/icon48.png")}
+                className="object-contain min-w-[20px] min-h-[20px] rounded-xs"
+              />
+            </motion.div>
 
-          <motion.h1
-            className="text-white font-semibold text-lg"
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
+            <motion.h1
+              className="text-white font-semibold text-lg"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+            >
+              Mindboard
+            </motion.h1>
+          </div>
+
+          <motion.button
+            onClick={() => setShowSettings(true)}
+            className="text-white/50 hover:text-white transition-colors"
+            title="Settings"
+            whileHover={{ scale: 1.1 }}
+            transition={{ duration: 0.2 }}
+            whileTap={{ scale: 0.98 }}
           >
-            Mindboard
-          </motion.h1>
+            <Settings className="w-4 h-4" />
+          </motion.button>
         </div>
       </motion.div>
 
@@ -278,7 +294,7 @@ export default function MindBoardSidebar() {
 
       {/* Categories */}
       <div className="flex-1">
-        <div className="flex items-center justify-between mb-4 px-3 py-4">
+        <div className="flex items-center justify-between mb-1 px-3 py-4">
           <h2 className="text-white/50 text-sm font-medium uppercase tracking-wide">
             Categories
           </h2>
@@ -357,7 +373,7 @@ export default function MindBoardSidebar() {
                           delay: index * 0.02,
                           ease: "easeOut",
                         }}
-                        className="relative"
+                        className={cn("relative", index === 0 && "mt-1")}
                         onMouseEnter={() => setHoveredCategory(category.id)}
                         onMouseLeave={() => {
                           // Only clear hover if popover is not active for this category
@@ -523,6 +539,13 @@ export default function MindBoardSidebar() {
         onConfirm={handleConfirmDelete}
         contextTitle={categoryToDelete?.name || "this category"}
         isDeleting={isDeleting}
+      />
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        hasContexts={Array.isArray(allContexts) && allContexts.length > 0}
       />
     </div>
   );

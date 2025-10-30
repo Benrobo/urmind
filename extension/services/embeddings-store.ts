@@ -56,6 +56,18 @@ export class EmbeddingsStore {
     }
   }
 
+  async hasEmbeddingsForContext(contextId: string): Promise<boolean> {
+    const embeddings = await this.getAll();
+    return embeddings.some(
+      (embedding) => embedding.metadata?.contextId === contextId
+    );
+  }
+
+  async embeddingExists(id: string): Promise<boolean> {
+    const embedding = await this.get(id);
+    return !!embedding;
+  }
+
   /**
    * Generate embedding for text using content script
    * Background -> Content: Generate embedding

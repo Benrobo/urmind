@@ -15,6 +15,7 @@ import logger from "@/lib/logger";
 import { UrmindDB } from "@/types/database";
 import { activityManagerStore } from "@/store/activity-manager.store";
 import { QueueStore } from "@/store/queue.store";
+import { domainBlacklistStore } from "@/store/domain-blacklist.store";
 import {
   GenerateCategoryPrompt,
   TextContextCreatorPrompt,
@@ -60,7 +61,14 @@ const saveToUrMindJob: Task<SaveToUrMindPayload> = task<SaveToUrMindPayload>({
       source,
     } = payload;
 
-    // Get the best available filename
+    const isBlacklisted = await domainBlacklistStore.isDomainBlacklisted(url);
+    if (isBlacklisted) {
+      logger.log.setConfig({ global: true })(
+        "🚫 Domain is blacklisted, skipping save"
+      );
+      return;
+    }
+
     const getFilename = (): string => {
       if (filename) return filename;
       if (file?.name) return file.name;

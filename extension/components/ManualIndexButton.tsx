@@ -89,7 +89,7 @@ export default function ManualIndexButton({
 
   useEffect(() => {
     if (buttonState === "indexing") {
-      const maxStatusCheck = 5;
+      const maxStatusCheck = 15;
       let counter = 0;
 
       const interval = setInterval(() => {

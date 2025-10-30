@@ -16,6 +16,7 @@ import { UrmindDB } from "@/types/database";
 import { activityManagerStore } from "@/store/activity-manager.store";
 import { QueueStore } from "@/store/queue.store";
 import { manualIndexingStore } from "@/store/manual-indexing.store";
+import { domainBlacklistStore } from "@/store/domain-blacklist.store";
 
 export type PageIndexerPayload = {
   url: string;
@@ -35,7 +36,7 @@ const pageIndexerJob: Task<PageIndexerPayload> = task<PageIndexerPayload>({
     const { url, pageMetadata, tabId, manualTrigger } = payload;
 
     // Early validation checks
-    if (!(await validateIndexingRequirements(manualTrigger))) {
+    if (!(await validateIndexingRequirements(url, manualTrigger))) {
       return;
     }
 
@@ -233,11 +234,22 @@ async function processPageIndexing(props: {
 }
 
 export async function validateIndexingRequirements(
+  urlOrManualTrigger: string | boolean,
   manualTrigger?: boolean
 ): Promise<boolean> {
   const preferences = await preferencesStore.get();
   const indexingMode = await preferencesStore.getIndexingMode();
   const hasApiKey = preferences?.geminiApiKey?.trim();
+
+  let url: string | undefined;
+  let isManual: boolean;
+
+  if (typeof urlOrManualTrigger === "string") {
+    url = urlOrManualTrigger;
+    isManual = manualTrigger ?? false;
+  } else {
+    isManual = urlOrManualTrigger;
+  }
 
   if (!hasApiKey) {
     logger.warn.setConfig({ global: true })(
@@ -246,18 +258,27 @@ export async function validateIndexingRequirements(
     return false;
   }
 
-  // Check indexing mode
+  if (url) {
+    const isBlacklisted = await domainBlacklistStore.isDomainBlacklisted(url);
+    if (isBlacklisted) {
+      logger.warn.setConfig({ global: true })(
+        "🚫 Domain is blacklisted, skipping indexing"
+      );
+      return false;
+    }
+  }
+
   if (indexingMode === "disabled") {
     logger.warn("🚫 Indexing is disabled, skipping page indexing");
     return false;
   }
 
-  if (indexingMode === "manual" && !manualTrigger) {
+  if (indexingMode === "manual" && !isManual) {
     logger.warn("🚫 Manual indexing mode - skipping automatic indexing");
     return false;
   }
 
-  if (indexingMode === "automatic" || manualTrigger) {
+  if (indexingMode === "automatic" || isManual) {
     return true;
   }
 

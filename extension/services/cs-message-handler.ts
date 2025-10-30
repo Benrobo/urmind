@@ -48,12 +48,10 @@ export class MessageHandler {
    * Handle a database operation message from background script
    */
   async handleOperation(payload: HandleOperationPayload): Promise<any> {
-    console.log("🔍 Content script handling operation:", payload.operation);
     let result;
     switch (payload.operation) {
       case "page-metadata-extraction":
         result = await pageExtractionService.extractPageMetadata();
-        console.log("📄 Content script extracted page metadata:", result);
         break;
 
       default:
@@ -69,7 +67,6 @@ export class MessageHandler {
       sender: chrome.runtime.MessageSender,
       sendResponse: (response?: any) => void
     ) => {
-      console.log("🔍 Content script message listener:", request);
       (async () => {
         try {
           const { action, payload, responseRequired } = request as {

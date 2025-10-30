@@ -10,8 +10,27 @@ export type ChangelogEntryData = {
 
 export const changelogEntries: ChangelogEntryData[] = [
   {
-    version: "v1.2",
+    version: "v1.3",
     tags: ["latest"],
+    date: "October 30, 2025",
+    title: "Privacy Controls & Data Management",
+    description:
+      "Take complete control of your data with powerful privacy settings and backup capabilities. Block specific domains from being indexed, export your entire memory as a backup file, and seamlessly restore your data whenever needed. Your mind, your rules, your control.",
+    image: "/changelogs/3.png",
+    features: [
+      "Domain blacklisting to prevent indexing specific sites",
+      "Support for wildcard patterns (*.domain.com)",
+      "One-click data export to .um backup files",
+      "Smart restore with automatic embedding regeneration",
+      "Import progress tracking with real-time updates",
+      "Duplicate detection during imports",
+      "Beautiful settings interface with organized tabs",
+      "Export disabled when no data available",
+    ],
+  },
+  {
+    version: "v1.2",
+    tags: [],
     date: "October 26, 2025",
     title: "Manual Page Indexing & Smart Control",
     description:
