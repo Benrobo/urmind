@@ -27,6 +27,9 @@ import {
   Eye,
   Zap,
   X,
+  Shield,
+  ShieldOff,
+  GlobeLock,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { geminiAi } from "@/helpers/agent/utils";
@@ -34,6 +37,8 @@ import { generateText } from "ai";
 import { ai_models } from "@/constant/internal";
 import Accordion from "@/components/Accordion";
 import toast, { Toaster } from "react-hot-toast";
+import { domainBlacklistStore } from "@/store/domain-blacklist.store";
+import { extractDomain } from "@/lib/utils";
 
 export default function Popup() {
   const { value: preferences } = useStorageStore(preferencesStore);
@@ -45,8 +50,12 @@ export default function Popup() {
     | "mode"
     | "timing"
     | "manual-override"
+    | "blacklist"
     | null;
   const [openAccordion, setOpenAccordion] = useState<AccordionSection>("setup");
+  const [currentDomain, setCurrentDomain] = useState<string | null>(null);
+  const [isBlacklisted, setIsBlacklisted] = useState(false);
+  const [isBlacklisting, setIsBlacklisting] = useState(false);
   const [localTiming, setLocalTiming] = useState<TabTimingPreferences>(
     preferences.tabTiming || {
       duration: 2,
@@ -70,6 +79,27 @@ export default function Popup() {
       setOriginalTiming(preferences.tabTiming);
     }
   }, [preferences.tabTiming]);
+
+  useEffect(() => {
+    // Get current tab URL and check if blacklisted
+    const getCurrentTab = async () => {
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      if (tab?.url) {
+        const domain = extractDomain(tab.url);
+        setCurrentDomain(domain);
+        if (domain) {
+          const blacklisted = await domainBlacklistStore.isDomainBlacklisted(
+            tab.url
+          );
+          setIsBlacklisted(blacklisted);
+        }
+      }
+    };
+    getCurrentTab();
+  }, []);
 
   const handleGenerationStyleChange = async (style: GenerationStyle) => {
     // Prevent switching to online mode without API key
@@ -150,6 +180,28 @@ export default function Popup() {
 
   const handleIndexingModeChange = async (mode: IndexingMode) => {
     await preferencesStore.setIndexingMode(mode);
+  };
+
+  const handleToggleBlacklist = async () => {
+    if (!currentDomain) return;
+
+    setIsBlacklisting(true);
+    try {
+      if (isBlacklisted) {
+        await domainBlacklistStore.removeDomain(currentDomain);
+        toast.success(`${currentDomain} removed from blacklist`);
+        setIsBlacklisted(false);
+      } else {
+        await domainBlacklistStore.addDomain(currentDomain);
+        toast.success(`${currentDomain} added to blacklist`);
+        setIsBlacklisted(true);
+      }
+    } catch (error) {
+      console.error("Failed to toggle blacklist:", error);
+      toast.error("Failed to update blacklist");
+    } finally {
+      setIsBlacklisting(false);
+    }
   };
 
   return (
@@ -434,6 +486,114 @@ export default function Popup() {
                 </div>
               </div>
             </div>
+          </div>
+        </Accordion>
+
+        {/* Quick Blacklist Accordion */}
+        <Accordion
+          title="Quick Blacklist"
+          subtitle={
+            currentDomain
+              ? isBlacklisted
+                ? `${currentDomain} is blacklisted`
+                : `Blacklist ${currentDomain}`
+              : "No active tab"
+          }
+          icon={
+            <div
+              className={cn(
+                "w-8 h-8 rounded flex items-center justify-center border-[.5px]",
+                isBlacklisted
+                  ? "bg-red-500/20 border-red-102/30"
+                  : "bg-blue-500/20 border-blue-102"
+              )}
+            >
+              {isBlacklisted ? (
+                <ShieldOff size={16} className="text-red-305" />
+              ) : (
+                <Shield size={16} className="text-blue-201" />
+              )}
+            </div>
+          }
+          isOpen={openAccordion === "blacklist"}
+          onToggle={() =>
+            setOpenAccordion(openAccordion === "blacklist" ? null : "blacklist")
+          }
+        >
+          <div className="space-y-4 mt-3">
+            {/* Info Box */}
+            <div className="p-3 bg-blue-500/10 border border-blue-400/30 rounded-lg">
+              <div className="flex items-start gap-2">
+                <Info className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-blue-201">
+                  <strong>Quick Domain Control:</strong> Instantly prevent
+                  UrMind from indexing the current site. This blocks all pages
+                  from this domain from being saved to your memory.
+                </div>
+              </div>
+            </div>
+
+            {currentDomain ? (
+              <>
+                {/* Current Domain Display */}
+                <div className="p-3 bg-white/5 border border-white/10 rounded-lg">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-white/60 flex items-center gap-2">
+                      <GlobeLock size={16} />
+                      Current Domain:
+                    </span>
+                    <span className="text-sm text-white font-mono">
+                      {currentDomain}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Toggle Button */}
+                <button
+                  onClick={handleToggleBlacklist}
+                  disabled={isBlacklisting}
+                  className={cn(
+                    "w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all duration-200",
+                    isBlacklisted
+                      ? "bg-green-500 hover:bg-green-600 text-white"
+                      : "bg-red-500 hover:bg-red-600 text-white",
+                    isBlacklisting && "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  {isBlacklisting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      {isBlacklisted ? "Removing..." : "Adding..."}
+                    </>
+                  ) : isBlacklisted ? (
+                    <>
+                      <Shield size={16} />
+                      Remove from Blacklist
+                    </>
+                  ) : (
+                    <>
+                      <ShieldOff size={16} />
+                      Add to Blacklist
+                    </>
+                  )}
+                </button>
+
+                {isBlacklisted && (
+                  <div className="p-3 bg-orange-500/10 border border-orange-400/30 rounded-lg">
+                    <div className="text-xs text-orange-200">
+                      This domain is currently blacklisted. No pages from{" "}
+                      {currentDomain} will be indexed or saved.
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="p-3 bg-white/5 border border-white/10 rounded-lg text-center">
+                <div className="text-sm text-white/60">
+                  No active tab detected
+                </div>
+              </div>
+            )}
           </div>
         </Accordion>
       </div>
