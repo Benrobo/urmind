@@ -7,7 +7,6 @@ import HowItWorks from "../components/sections/HowItWorks";
 import Demo from "../components/sections/Demo";
 import CTA from "../components/sections/CTA";
 import ChangelogWidget from "../components/ChangelogWidget";
-import { Analytics } from "@vercel/analytics/next";
 
 export const Route = createFileRoute("/")({
   component: App,
@@ -71,7 +70,6 @@ function App() {
       <Demo />
       <CTA />
       <ChangelogWidget />
-      <Analytics />
     </div>
   );
 }
