@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { Github } from "lucide-react";
+import { Github, Puzzle } from "lucide-react";
 import Button from "./ui/Button";
 
 export default function Header() {
@@ -61,12 +61,19 @@ export default function Header() {
               <Github size={20} />
             </a>
             <a
-              href="https://github.com/Benrobo/urmind/releases"
+              href="https://chromewebstore.google.com/detail/aojkjckponffomcbglcipbdbchfcolkd?utm_source=item-share-cb"
               target="_blank"
               rel="noopener noreferrer"
             >
-              <Button variant="primary" size="sm">
-                Install Extension
+              <Button
+                variant="primary"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <span className="relative z-10 flex items-center gap-2 text-sm">
+                  Install Extension
+                </span>
+                <Puzzle size={15} />
               </Button>
             </a>
           </div>
