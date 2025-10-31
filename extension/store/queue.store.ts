@@ -13,6 +13,8 @@ export type QueueItem<T = any> = {
 };
 
 export class QueueStore<T = any> extends StorageStore<QueueItem<T>[]> {
+  private cleanupInterval: NodeJS.Timeout | null = null;
+
   constructor(storageKey: string) {
     super(storageKey as any, []);
   }
@@ -97,11 +99,19 @@ export class QueueStore<T = any> extends StorageStore<QueueItem<T>[]> {
   }
 
   /**
-   * Clean up old queue items (older than 2 minutes)
+   * Clean up old queue items (older than 10 seconds)
    * Removes items that are completed, failed, or stuck in processing
    */
   async cleanupOldItems(): Promise<void> {
-    setInterval(() => {
+    // Only create interval if one doesn't exist
+    if (this.cleanupInterval !== null) {
+      logger.warn(
+        "Cleanup interval already running, skipping duplicate creation"
+      );
+      return;
+    }
+
+    this.cleanupInterval = setInterval(() => {
       (async () => {
         logger.log("cleaning up");
         const currentItems = await this.get();
@@ -119,6 +129,17 @@ export class QueueStore<T = any> extends StorageStore<QueueItem<T>[]> {
           logger.log(`🧹 Cleaned up ${removedCount} old queue items`);
         }
       })();
-    }, 5000);
+    }, 10 * 1000);
+  }
+
+  /**
+   * Stop the cleanup interval
+   */
+  stopCleanup(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+      logger.log("🛑 Stopped cleanup interval");
+    }
   }
 }

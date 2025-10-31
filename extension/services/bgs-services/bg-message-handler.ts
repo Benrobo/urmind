@@ -66,8 +66,15 @@ export class BackgroundMessageHandler {
   private readyContentScripts = new Set<number>();
   private pendingPageIndexingJobs = new Map<
     number,
-    Array<PendingPageIndexingJob>
+    Array<PendingPageIndexingJob & { timestamp: number }>
   >();
+  private cleanupInterval: NodeJS.Timeout | null = null;
+  private readonly PENDING_JOB_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+
+  constructor() {
+    // Start periodic cleanup of stale pending jobs
+    this.startPendingJobsCleanup();
+  }
 
   /**
    * Handle content script ready signal
@@ -144,6 +151,7 @@ export class BackgroundMessageHandler {
         this.pendingPageIndexingJobs.get(tabId)!.push({
           url: payload.url,
           pageMetadata: payload.pageMetadata,
+          timestamp: Date.now(),
         });
       }
     }
@@ -549,6 +557,53 @@ export class BackgroundMessageHandler {
     logger.log("🧹 Cleaning up for closed tab:", tabId);
     this.readyContentScripts.delete(tabId);
     this.pendingPageIndexingJobs.delete(tabId);
+  }
+
+  /**
+   * Start periodic cleanup of stale pending jobs
+   */
+  private startPendingJobsCleanup(): void {
+    if (this.cleanupInterval !== null) {
+      return;
+    }
+
+    this.cleanupInterval = setInterval(() => {
+      const now = Date.now();
+      let cleanedCount = 0;
+
+      for (const [tabId, jobs] of this.pendingPageIndexingJobs.entries()) {
+        const validJobs = jobs.filter(
+          (job) => now - job.timestamp < this.PENDING_JOB_TIMEOUT
+        );
+
+        if (validJobs.length === 0) {
+          // Remove the entry if no valid jobs remain
+          this.pendingPageIndexingJobs.delete(tabId);
+          cleanedCount++;
+        } else if (validJobs.length < jobs.length) {
+          // Update with only valid jobs
+          this.pendingPageIndexingJobs.set(tabId, validJobs);
+          cleanedCount += jobs.length - validJobs.length;
+        }
+      }
+
+      if (cleanedCount > 0) {
+        logger.log(
+          `🧹 Cleaned up ${cleanedCount} stale pending page indexing jobs`
+        );
+      }
+    }, 60 * 1000); // Run every minute
+  }
+
+  /**
+   * Stop the cleanup interval
+   */
+  stopCleanup(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+      logger.log("🛑 Stopped pending jobs cleanup interval");
+    }
   }
 
   /**
