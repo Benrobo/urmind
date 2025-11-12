@@ -103,7 +103,7 @@ export default function Demo() {
             className="w-full mx-auto flex flex-col sm:flex-row md:flex-row gap-4 justify-center items-center mb-6"
           >
             <a
-              href="https://github.com/Benrobo/urmind/releases/tag/v1.0"
+              href="https://chromewebstore.google.com/detail/aojkjckponffomcbglcipbdbchfcolkd?utm_source=item-share-cb"
               target="_blank"
               rel="noopener noreferrer"
               className="w-full md:w-auto"
